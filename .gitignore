@@ -1,0 +1,17 @@
+# Backup files
+*~
+*.backup
+*.bak
+
+# Generated files (Snake.atom is generated from Snake.ab)
+# Note: Keeping Snake.atom in repo for now since it has valuable inline docs
+# Snake.atom
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

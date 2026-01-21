@@ -1,0 +1,181 @@
+// Execute like:
+// cpp -P Snake.ab
+
+// Variables:
+#define turn C
+#define direction D
+// E,F,G -- Save
+#define height H
+// I,J,K,L,M,N -- Temp
+#define pos P
+#define quantity Q
+#define head S
+#define tail T
+#define score U
+#define string V
+#define width W
+#define size Z
+
+// Turns
+#define Left -1
+#define Ahead 0
+#define Right 1
+
+// Directions
+#define West 0
+#define North 1
+#define East 2
+#define South 3
+
+// Bits
+#define BorderBit 4
+#define FlagsMask 7
+#define CountBit 8
+// #FFFFFFF8 = -8
+#define CountMask -CountBit
+
+// Labels
+#define Adjust a
+#define Border b
+#define AdjustLoop c
+#define LocateLinear g
+#define HomePage h
+#define Init i
+#define LocateLeft j
+#define LocateLoop k
+#define Locate l
+#define MoveTo m
+#define Play p
+#define Reset r
+
+// VT100
+#define ClearScreen $12
+#define NormalVideo $27"[m"
+#define ReverseVideo $27"[7m"
+#define Position(row,column) $27"["row";"column"H"
+#define Double(k) $27"#"k
+#define newline '
+
+#if 0
+// Abbreviations
+#  define End E.
+#  define For(init) F.init
+#  define Gosub(label) GOS.label
+#  define Gosub_(label) GOS.label
+#  define Goto(label) G.label
+#  define If(expr) IF expr
+#  define Label(line, name) Concat(line, name)
+#  define Next(variable) N.
+#  define Print(any) P.any
+#  define Remark(comment)
+#  define Return R.
+#  define Step(expression) S.expression
+#  define Subroutine(line, label) Concat(line, label)REM
+#  define Then
+#  define To(expression) T.expression
+#else
+#  define End END
+#  define For(init) FOR init
+#  define Gosub(label) GOSUB label
+#  define Gosub_(label) GOSUB label; REM #label
+#  define Goto(label) GOTO label; REM #label
+#  define If(expr) IF expr
+#  define Label(line, name) Concat(line, name)
+#  define Next(variable) NEXT variable
+#  define Print(any) PRINT any
+#  define Remark(comment) REM comment
+#  define Return RETURN
+#  define Step(expression) STEP expression
+#  define Subroutine(line, label) Concat(line, label)REM === #label ===
+#  define Then THEN
+#  define To(expression) TO expression
+#endif
+
+// OS
+#define KeyBuffer = #400
+#define KeyMask = #F
+#define KeyOut = #410
+#define KeyIn = #411
+#define KeyEmpty = ?KeyOut=?KeyIn
+#define KeyPeek = ?(KeyBuffer+?KeyOut)
+#define KeyNext = ?KeyOut=(?KeyOut+1)&KeyMask
+
+// Helpers
+#define Scan(x) x
+#define Concat(a,b) a ## b
+
+10 width=40
+20 height=21
+30 Gosub_(Init)
+40 Gosub_(Play)
+50 End
+
+Subroutine(1000, Play)
+
+Subroutine(2000, Adjust)(pos, quantity)
+2010 I=0; K=size; L=0
+Label(2020, AdjustLoop)If(I>=size) Then Return
+2030 If(P>=K) Then pos=pos-K; K=L; I=I+1
+2040 AA(I)=AA(I)+quantity
+2050 I=2*I+1
+2060 L=K/2
+2070 K=K-L
+2080 Goto(AdjustLoop)
+
+Subroutine(2200, Locate)(pos=count 0<=p*CountBit<AA(0), destroys p. Result in J)
+2210 pos=pos*CountBit
+2220 I=1; J=0; K=size; Remark(Interval [J..K]; upper limit is not included)
+Label(2230,LocateLoop)M=(K-J)/2; L=AA(I)&CountMask
+2240 If(P<L) Then K=K-M; Goto(LocateLeft)
+2250 J=K-M; pos=pos-L; I=I+1
+Label(2260, LocateLeft)I=2*I+1
+2270 If(I<size) Then Goto(LocateLoop)
+2280 Remark(Linear search:)
+Label(2290,LocateLinear)If(pos=0) Then Return
+2300 If(AA(J)&FlagsMask=0) Then pos=pos-CountBit
+2310 J=J+1; Goto(LocateLinear)
+                                     
+Subroutine(3000, Border)(pos)
+3010 Gosub(MoveTo); Print(" ")
+3020 AA(pos)=AA(pos)|BorderBit
+3030 E=I; F=pos; Remark(Save some variables)
+3040 quantity=-CountBit; Gosub(Adjust)
+3050 pos=F; I=E; Remark(Restore the variables)
+3060 Return
+
+Subroutine(3200, MoveTo)(pos)
+3210 Remark(Centrate board)
+3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
+3230 Return          
+
+Subroutine(8000, HomePage)
+8010 Print(ClearScreen)
+8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
+8030 For(I=1) To(height); Print(newline Double(6)); Next(I)
+8040 Print(ReverseVideo)
+8050 For(pos=0) To(W-1); Gosub(Border); Next(pos); Remark(TopBorder)
+8060 For(I=width) To(size-width-width) Step(width)
+8070   pos=I; Gosub(Border); Remark(LeftBorder)
+8080   pos=I+width-1; Gosub(Border); Remark(RightBorder)
+8090 Next(I)
+8100 For(pos=size-width) To(size-1); Gosub(Border); Next(pos); Remark(BottomBorder)
+8110 Print(NormalVideo)
+8120 Return
+
+Subroutine(9800, Init)
+9810 @=0
+9820 size=width*height
+9830 DIM AA(size); Remark(Allocates (size+1)!)
+9840 Goto(Reset) // Goto(subroutine) === Gosub(subroutine); Return
+
+Subroutine(9900, Reset)
+9905 Print("Initializing...")
+9910 AA(0)=size*CountBit; Remark(See Bits above)
+9920 For(I=1) To(size-1) Step(2)
+9930   J=(I-1)/2
+9940   K=AA(J)/2&-CountBit; Remark(AA(J)/2/CountBit*CountBit)
+9950   AA(I+1)=K
+9960   AA(I)=AA(J)-K
+9970 Next(I)
+9980 score=0; turn=Left
+9990 Return

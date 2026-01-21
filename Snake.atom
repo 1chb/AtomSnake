@@ -1,0 +1,258 @@
+11234567890123456789012345678901234567890
+2time             Snake             score
+3time             Snake             score
+4########################################
+5#                                      #
+6#               P = Play/Pause         #
+7#               A = Auto               #
+8#                                      #
+9#               [ = Up                 #
+0#      Left = ;   , = Right            #
+1#               / = Down               #
+2#                                      #
+3#                                      #
+4#                ++++>                 #
+5#                                      #
+6#                                      #
+7#            +, - = Speed +/-          #
+8#            W, Q = Width +/-          #
+9#            H, G = Height +/-         #
+0#           1,2,3 = number of players  #
+1#                                      #
+2#          Esc, Q = Quit               #
+3#                                      #
+4########################################
+
+START: init, show welcome+help+options => WELCOME
+WELCOME:
+  Esc,Q: goodbye => STOP
+  P: new cake => PLAY
+  A: new cake => AUTO
+  +,-: increase/decrease speed
+  W,w: change Width
+  H,h: change height
+PLAY:
+  tick: move, points
+  cake: eat, new cake, points
+  dir: change
+  full,clash: show result => RESULT
+  +,-: increase/decrease speed
+  A: Add an automatic player (max 3 in total)
+  P: PAUSE
+  Esc,Q: confirm quit => CONFIRM
+RESULT:
+  W: => WELCOME
+  Esc,Q: goodbye => STOP
+PAUSE:
+  P: => RETURN
+  Esc,Q: confirm quit => CONFIRM
+AUTO:
+  tick: move, points
+  obstacle: turn
+  cake: eat, new cake, points
+  +,-: increase/decrease speed
+  P: PAUSE
+  Esc,Q: confirm quit => CONFIRM
+CONFIRM:
+  Y: goodbye => STOP
+  Esc,N: RETURN
+STOP.
+
+
+Bits:
+0-1  : Empty=00, Mouse=01, Snake direction (W=00, N=01, E=10, S=11)
+2    : Snake or wall=1, Otherwise=0
+3-30 : Empty counts
+31   : Unused
+
+Variables:
+AA:	Area + Tree, see bits and DIM.
+A,B:
+C:	Turn: Left = -1, Unchanged = 0, Right = 1 (optional).
+D:	Direction: D=2, West = 0, North = 1, East = 2, South = 3.
+E,F,G:
+H:	Height: H = 22, valid (3..22).
+I,J,K:	Temporary within functions, beware of functions calling functions!
+L,M:	Also temporary variables.
+N,O:
+P,Q:    Function parameters, may be overwritten by the called function, sometimes P=Return value.
+R:
+S:	Snake head: S = Z/2+1, valid (0..Z-1) except for border walls, S=3*5/2+1=8.
+T:	Snake tail: T = Z/2-1, valid=S, T=S=3*5/2-1=6.
+U:      Score U = 0, (optional).
+V:	String; DIM V(10)
+W:	Width: W = 40 (Valid 5..40).
+X,Y:
+Z:	Size: Z = H*W.
+
+Size = Width*Height
+
+Program (Init, Adjust, Locate, MoveTo, HomePage, InitSnake, ChangeDirection, Step, AdvanceHead, EatTail, Draw, Clash)
+
+
+Init:
+DIM AA(Size); REM Allocates (Size+1)!
+AA(0) = Size*8; REM See Bits above
+FOR I=1 TO Size-1 STEP 2
+  J = (I-1)/2
+  K = AA(J)/8/2*8
+  AA(I+1) = K
+  AA(I) = AA(J)-K
+NEXT I
+
+Size=6
+AA: [48, 24, 24, 16, 8, 16, 8]
+I:  1 -> 3 -> 5
+J:  0 -> 1 -> 2
+K: 24 -> 8 -> 8
+
+1000 REM Adjust: P=Index, Q=Quantity (-8,+8).
+1010 I=0; K=Z; L=0
+1020bIF I>=Z THEN RETURN
+1030 IF P>=K THEN P=P-K; K=L; I=I+1
+1040 AA(I)=AA(I)+Q
+1050 I=2*I+1
+1060 L=K/2
+1070 K=K-L
+1080 GOTO b
+
+Size=6, P=4, Q=-8, AA=[48, 24, 24, 16, 8, 16, 8]
+AA: [48 -> 40, 24, 24 -> 16, 16, 8, 16 -> 8, 8]
+I: 0 -> 1 -> 2 -> 5 -> 11 -> RETURN
+K: 6 -> 3 ------> 2 ->  1
+P: 4 ------> 1
+
+[40,  24,  16,  16,  8,   8, 8]
+[0,   1,   2,   3,   4,   5]
+ <------------0----------->
+ <----1---->    <----2---->
+ <--3->   <4>   <--5->   <6>
+
+2000 REM Locate: P=Count 0<=P*8<AA(0), destroys P. Result in J
+2005 P=P*8
+2010 I=1; J=0; K=Z; REM Interval [J..K], upper limit is not included
+2020dM=(K-J)/2; L=AA(I)&#FFFFFFF8
+2030 IF P<L THEN K=K-M; GOTO e
+2040 J=K-M; P=P-L; I=I+1
+2050eI=2*I+1
+2060 IF I<Z THEN GOTO d
+2070 REM Linear search:
+2080fIF P=0 THEN RETURN
+2090 IF AA(J)&7=0 THEN P=P-8
+2100 J=J+1
+2110 GOTO f
+
+3000 REM === ScanInput ===
+3010 DO DO WAIT; P."."; U. ?#410<>?#411
+3020  P.'
+3030  DO K=?(#400+?#410)
+3040   P.K
+3050   ?#410=(?#410+1)&#F
+3060  U.?#410=?#411
+3070 U.K=27; REM Press Esc to stop scanning
+3080 R.
+
+4000 REM === Page ===
+4010 P.$27"[2J"; REM Clear screen
+4015 p.$27"[1m"; REM Bold
+4020 @=0; REM Move to init
+4030 FOR I=1 TO 2; P.$27"["I";18H"$27"#"I+2"Snake"; N.
+4040 P.'$27"#6"$27"[7m"; REM Double width + reverse
+4044 Print top border:
+4045  K=(40-W)/2; REM Centrate board
+4046  IF K>0 THEN P.$27"["K"C"; REM Move right
+4050  FOR I=1 TO W; P." "; N.
+4055 REM Print vertical borders:
+4060  FOR J=2 TO H-1
+4070   P.$27"["J+2";"K+1"H"$27"#6 "$27"["W-2"C "
+4080  NEXT J
+4084 REM Print bottom border:
+4085  P.$27"["H+2";"K+1"H"$27"#6"
+4086  FOR I=1 TO W; P." "; N.
+4090 P.$27"[m"; REM Normal mode
+4100 RETURN
+
+4200 REM MoveTo: P=Pos
+4210 K=P%W+(42-W)/2; REM Centrate board
+4220 P.$27"["P/W+3";"K"H"
+4230 RETURN
+
+4300 REM === HomePage ===
+4310 P.$12; REM Clear screen
+4320 FOR I=1 TO 2; P.$27"["I";18H"$27"#"I+2"Snake"; N.; REM Double width and height
+4330 FOR I=1 TO H; P.'$27"#6"; N.; REM Double width
+4340 P.$27"[7m"; REM Reverse video
+4350 FOR P=0 TO W-1; GOSUB 4400; N.; REM Top border
+4360 FOR I=W TO Z-W STEP W; P=I; GOSUB 4400; P=I+W-1; GOSUB 4400; N.; REM Left and right borders
+4370 FOR P=Z-W TO Z-1; GOSUB 4400; N.; REM Bottom border
+4380 RETURN
+
+4400 REM Draw and set border: P=Pos
+4410 GOSUB 4200; P." "; REM Draw
+4420 AA(P)=AA(P)|4; REM Set. Border ignore lower two bits.
+4430 RETURN
+
+4500 REM === InitSnake ===
+4510 S=(H+1)/2*W-W/2; Rem head
+4520 T=S-2; Rem tail
+4530 D=2; REM Go east
+4540 FOR P=T TO S
+4550  GOSUB 4200; P."+"; REM Draw
+4560  AA(P)=AA(P)&#FFFFFFF8|4|D; REM Set snake
+4570 NEXT P
+4580 RETURN
+
+Directions:
+===========
+     North(1)
+West(0) + East(2)
+     South(3)
+
+Turns: Left (-1), Continue (0), Right (+1)
+  West(0)  : Left(0-1) => South(3), Right(0+1) => North(1)
+  North(1) : Left(1-1) => West(0),  Right(1+1) => East(2)
+  East(2)  : Left(2-1) => North(1), Right(2+1) => South(3)
+  South(3) : Left(3-1) => East(2),  Right(3+1) => West(0)
+
+Optional Turn: D = Dir, C = Turn
+D = (D+C)&3
+
+5000 REM ChangeDirection: D = (new) Dir, S = Head
+IF AA(S)&3=D THEN RETURN; REM Direction not changed
+AA(S) = AA(S)&~3|D; REM ~3 = #FFFFFFFC
+REM Optional: P = S; Q = '+'; GOSUB 7000; REM Draw
+RETURN
+
+6000 REM Step: (mutable) P = Pos, D = Dir, W = Width => returns next P
+P = P                REM West=P-1, North=P-W, East=P+1, South=P+W
+  + (D&2-1)          REM West= -1, North= -1, East= +1, South= +1
+  * ((D&1)*(W-1)+1)  REM West=  1, North=  W, East=  1, South=  W
+
+6500 REM EatTail: T = Tail
+P = T; Q = 8; GOSUB 1000;   REM GOSUB Adjust, release space to tree
+D = AA(T);                  REM Keep flags
+AA(T) = D&#FFFFFFF8;        REM Clear location flags
+P=T; $V=" "; GOSUB 7000;    REM GOSUB Draw, clear location display
+P = T; GOSUB Step; T = P;   REM Step tail
+RETURN
+
+6700 REM AdvanceHead: S = Head
+D = AA(S)&3;                  REM Get current direction
+P = S; GOSUB Step; S = P;     REM advance
+M = AA(S);                    REM Get new flags
+IF M&4 THEN GOTO 9000;        REM GOTO Clash, Game over
+P=S; Q=-8; GOSUB 1000;        REM GOSUB Adjust, allocate space from tree
+AA(S) = M&#FFFFFFF8|4|D;      REM Allocate location and save direction
+P=S; $V="+"; GOSUB 7000;      REM Draw, set location display
+IF M&3=0 THEN GOSUB 6500;     REM GOSUB Eat tail because nothing else to eat.
+U=U + M&3;                    REM Update score
+RETURN
+
+7000 REM Draw P=Pos, $V=String
+7010 K=P%W+(40-W)/2; REM Centrate board
+7020 P.$27"["P/W+2";"K"H"$V
+7030 RETURN
+
+9000 REM Clash
+9010 REM Set stop flag
+9020 RETURN
