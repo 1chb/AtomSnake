@@ -2,6 +2,7 @@
 // cpp -P Snake.ab
 
 // Variables:
+#define alive B
 #define turn C
 #define direction D
 // E,F,G -- Save
@@ -38,6 +39,9 @@
 #define Adjust a
 #define Border b
 #define AdjustLoop c
+#define ChangeDirection d
+#define EatTail e
+#define AdvanceHead f
 #define LocateLinear g
 #define HomePage h
 #define Init i
@@ -45,8 +49,13 @@
 #define LocateLoop k
 #define Locate l
 #define MoveTo m
+#define InitSnake n
 #define Play p
+#define GameLoop q
 #define Reset r
+#define StepSub t
+#define Draw w
+#define Clash x
 
 // VT100
 #define ClearScreen $12
@@ -54,7 +63,6 @@
 #define ReverseVideo $27"[7m"
 #define Position(row,column) $27"["row";"column"H"
 #define Double(k) $27"#"k
-#define newline '
 
 #if 0
 // Abbreviations
@@ -92,13 +100,13 @@
 #endif
 
 // OS
-#define KeyBuffer = #400
-#define KeyMask = #F
-#define KeyOut = #410
-#define KeyIn = #411
-#define KeyEmpty = ?KeyOut=?KeyIn
-#define KeyPeek = ?(KeyBuffer+?KeyOut)
-#define KeyNext = ?KeyOut=(?KeyOut+1)&KeyMask
+#define KeyBuffer #400
+#define KeyMask #F
+#define KeyOut #410
+#define KeyIn #411
+#define KeyEmpty ?KeyOut=?KeyIn
+#define KeyPeek ?(KeyBuffer+?KeyOut)
+#define KeyNext ?KeyOut=(?KeyOut+1)&KeyMask
 
 // Helpers
 #define Scan(x) x
@@ -111,6 +119,25 @@
 50 End
 
 Subroutine(1000, Play)
+1010 Gosub(HomePage)
+1020 Gosub(InitSnake)
+1030 L=20; Remark(Tick delay in centiseconds)
+1040 M=TIME+L; Remark(Next tick time)
+1050 Remark(Main game loop)
+Label(1060, GameLoop)If(alive=0) Then Return
+1070 Remark(Check keyboard)
+1080 If(KeyEmpty) Then Goto(1130)
+1090   N=KeyPeek; KeyNext
+1100   If(N=91) Then direction=North; Gosub(ChangeDirection); Remark(Up [)
+1110   If(N=59) Then direction=West; Gosub(ChangeDirection); Remark(Left ;)
+1120   If(N=44) Then direction=East; Gosub(ChangeDirection); Remark(Right)
+1125   If(N=47) Then direction=South; Gosub(ChangeDirection); Remark(/)
+1127   If(N=27) Then alive=0; Remark(Esc to quit)
+1130 Remark(Wait for tick)
+1140 If(TIME<M) Then Goto(GameLoop)
+1150 M=TIME+L; Remark(Schedule next tick)
+1160 Gosub(AdvanceHead)
+1170 Goto(GameLoop)
 
 Subroutine(2000, Adjust)(pos, quantity)
 2010 I=0; K=size; L=0
@@ -146,12 +173,57 @@ Subroutine(3000, Border)(pos)
 Subroutine(3200, MoveTo)(pos)
 3210 Remark(Centrate board)
 3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
-3230 Return          
+3230 Return
+
+Subroutine(4500, InitSnake)
+4510 head=(height+1)/2*width-width/2; Remark(Center of board)
+4520 tail=head-2
+4530 direction=East; Remark(Go east)
+4540 For(pos=tail) To(head)
+4550   Gosub(MoveTo); Print("+")
+4560   AA(pos)=(AA(pos)&CountMask)|BorderBit|direction
+4570 Next(pos)
+4580 Return
+
+Subroutine(5000, ChangeDirection)
+5010 If((AA(head)&3)=direction) Then Return; Remark(Direction not changed)
+5020 AA(head)=(AA(head)&~3)|direction; Remark(~3 = #FFFFFFFC)
+5030 Return
+
+Subroutine(6000, StepSub)
+6010 Remark(P=Pos D=Dir W=Width)
+6020 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
+6030 Return
+
+Subroutine(6500, EatTail)
+6510 pos=tail; quantity=CountBit; Gosub(Adjust)
+6520 direction=AA(tail)
+6530 AA(tail)=direction&CountMask
+6540 pos=tail; string=" "; Gosub(7000)
+6550 pos=tail; Gosub(StepSub); tail=pos
+6560 Return
+
+Subroutine(6700, AdvanceHead)
+6710 direction=AA(head)&3
+6720 pos=head; Gosub(StepSub); head=pos
+6730 M=AA(head)
+6740 If(M&BorderBit) Then Gosub(9000); Return
+6750 pos=head; quantity=-CountBit; Gosub(Adjust)
+6760 AA(head)=(M&CountMask)|BorderBit|direction
+6770 pos=head; string="+"; Gosub(7000)
+6780 Gosub(EatTail)
+6790 Return
+
+Subroutine(7000, Draw)
+7010 Remark(pos=Position string=String)
+7020 K=pos%width+(40-width)/2
+7030 Print(Position(pos/width+2, K) string)
+7040 Return
 
 Subroutine(8000, HomePage)
 8010 Print(ClearScreen)
 8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
-8030 For(I=1) To(height); Print(newline Double(6)); Next(I)
+8030 FOR I=1 TO height; PRINT ' $27"#6"; NEXT I
 8040 Print(ReverseVideo)
 8050 For(pos=0) To(W-1); Gosub(Border); Next(pos); Remark(TopBorder)
 8060 For(I=width) To(size-width-width) Step(width)
@@ -161,6 +233,11 @@ Subroutine(8000, HomePage)
 8100 For(pos=size-width) To(size-1); Gosub(Border); Next(pos); Remark(BottomBorder)
 8110 Print(NormalVideo)
 8120 Return
+
+Subroutine(9000, Clash)
+9010 alive=0
+9020 Print(Position(height+4, 1)"GAME OVER!")
+9030 Return
 
 Subroutine(9800, Init)
 9810 @=0
@@ -177,5 +254,5 @@ Subroutine(9900, Reset)
 9950   AA(I+1)=K
 9960   AA(I)=AA(J)-K
 9970 Next(I)
-9980 score=0; turn=Left
+9980 score=0; turn=Left; alive=1
 9990 Return
