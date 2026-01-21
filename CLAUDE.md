@@ -21,15 +21,15 @@ This is a Snake game implementation written in BBC BASIC for a custom 6502 board
 - **Development Cycle**: Extremely slow due to manual entry requirement.
 - **Future Plan**: USB-to-serial connection for automatic transfer (separate project).
 
-### Source Control Warning
-**THESE FILES ARE NOT UNDER SOURCE CONTROL!** Exercise extreme caution when making changes.
+### Source Control
+Files are under Git source control. Standard git workflow applies.
 
 ### Best Practices for This Project
-1. **ALWAYS make backup copies** before modifying any files
-2. **NEVER modify original files directly** - work on copies instead
-3. Use naming conventions like `Snake.ab.new`, `Snake.atom.backup`, etc.
-4. The user must manually type any changes into the 6502 board, so minimize code size when possible
-5. Test changes thoroughly before the user invests time typing them in
+1. Commit changes regularly with descriptive messages
+2. The user must manually type any changes into the 6502 board, so minimize code size when possible
+3. Test changes thoroughly before the user invests time typing them in
+4. Use feature branches for experimental changes
+5. Snake.atom is generated from Snake.ab - regenerate after editing Snake.ab
 
 ### Source Files
 
