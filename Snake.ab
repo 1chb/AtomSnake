@@ -10,6 +10,7 @@
 // I,J,K,L,M,N -- Temp
 #define pos P
 #define quantity Q
+#define time R
 #define head S
 #define tail T
 #define score U
@@ -27,6 +28,13 @@
 #define North 1
 #define East 2
 #define South 3
+
+// KEYS: 8, 4, 6, 2, Esc
+#define UP    #38
+#define LEFT  #34
+#define RIGHT #36
+#define DOWN  #32
+#define QUIT  27
 
 // Bits
 #define BorderBit 4
@@ -49,12 +57,11 @@
 #define LocateLoop k
 #define Locate l
 #define MoveTo m
-#define InitSnake n
+#define InitGame n
 #define Play p
 #define GameLoop q
 #define Reset r
 #define StepSub t
-#define Draw w
 #define Clash x
 
 // VT100
@@ -115,27 +122,28 @@
 10 width=40
 20 height=21
 30 Gosub_(Init)
-40 Gosub_(Play)
+40 time=0; Gosub_(Play)
 50 End
 
 Subroutine(1000, Play)
 1010 Gosub(HomePage)
-1020 Gosub(InitSnake)
+1020 Gosub(InitGame)
 1030 L=20; Remark(Tick delay in centiseconds)
-1040 M=TIME+L; Remark(Next tick time)
+1040 M=time+L; Remark(Next tick time)
 1050 Remark(Main game loop)
 Label(1060, GameLoop)If(alive=0) Then Return
 1070 Remark(Check keyboard)
 1080 If(KeyEmpty) Then Goto(1130)
 1090   N=KeyPeek; KeyNext
-1100   If(N=91) Then direction=North; Gosub(ChangeDirection); Remark(Up [)
-1110   If(N=59) Then direction=West; Gosub(ChangeDirection); Remark(Left ;)
-1120   If(N=44) Then direction=East; Gosub(ChangeDirection); Remark(Right)
-1125   If(N=47) Then direction=South; Gosub(ChangeDirection); Remark(/)
-1127   If(N=27) Then alive=0; Remark(Esc to quit)
+1100   If(N=UP)    Then direction=North; Gosub(ChangeDirection);
+1110   If(N=LEFT)  Then direction=West; Gosub(ChangeDirection);
+1120   If(N=RIGHT) Then direction=East; Gosub(ChangeDirection);
+1125   If(N=DOWN)  Then direction=South; Gosub(ChangeDirection);
+1127   If(N=QUIT)  Then alive=0;
 1130 Remark(Wait for tick)
-1140 If(TIME<M) Then Goto(GameLoop)
-1150 M=TIME+L; Remark(Schedule next tick)
+1135 time=time+1
+1140 If(time<M) Then Goto(GameLoop)
+1150 M=time+L; Remark(Schedule next tick)
 1160 Gosub(AdvanceHead)
 1170 Goto(GameLoop)
 
@@ -149,9 +157,11 @@ Label(2020, AdjustLoop)If(I>=size) Then Return
 2070 K=K-L
 2080 Goto(AdjustLoop)
 
-Subroutine(2200, Locate)(pos=count 0<=p*CountBit<AA(0), destroys p. Result in J)
+Subroutine(2200, Locate)(pos=count 0<=p*CountBit<AA(0))
+2201 Remark(destroys p. Result in J)
 2210 pos=pos*CountBit
-2220 I=1; J=0; K=size; Remark(Interval [J..K]; upper limit is not included)
+2220 I=1; J=0; K=size
+2221 Remark(Interval [J..K]; upper limit is not included)
 Label(2230,LocateLoop)M=(K-J)/2; L=AA(I)&CountMask
 2240 If(P<L) Then K=K-M; Goto(LocateLeft)
 2250 J=K-M; pos=pos-L; I=I+1
@@ -175,7 +185,7 @@ Subroutine(3200, MoveTo)(pos)
 3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
 3230 Return
 
-Subroutine(4500, InitSnake)
+Subroutine(4500, InitGame)
 4510 head=(height+1)/2*width-width/2; Remark(Center of board)
 4520 tail=head-2
 4530 direction=East; Remark(Go east)
@@ -186,8 +196,8 @@ Subroutine(4500, InitSnake)
 4580 Return
 
 Subroutine(5000, ChangeDirection)
-5010 If((AA(head)&3)=direction) Then Return; Remark(Direction not changed)
-5020 AA(head)=(AA(head)&~3)|direction; Remark(~3 = #FFFFFFFC)
+5010 If((AA(head)&3)=direction) Then Return; Remark(Dir not changed)
+5020 AA(head)=(AA(head)&#FFFFFFFC)|direction
 5030 Return
 
 Subroutine(6000, StepSub)
@@ -199,7 +209,7 @@ Subroutine(6500, EatTail)
 6510 pos=tail; quantity=CountBit; Gosub(Adjust)
 6520 direction=AA(tail)
 6530 AA(tail)=direction&CountMask
-6540 pos=tail; string=" "; Gosub(7000)
+6540 pos=tail; Gosub(MoveTo); Print(" ")
 6550 pos=tail; Gosub(StepSub); tail=pos
 6560 Return
 
@@ -207,22 +217,17 @@ Subroutine(6700, AdvanceHead)
 6710 direction=AA(head)&3
 6720 pos=head; Gosub(StepSub); head=pos
 6730 M=AA(head)
-6740 If(M&BorderBit) Then Gosub(9000); Return
+6740 If(M&BorderBit) Then Gosub(Clash); Return
 6750 pos=head; quantity=-CountBit; Gosub(Adjust)
 6760 AA(head)=(M&CountMask)|BorderBit|direction
-6770 pos=head; string="+"; Gosub(7000)
+6770 pos=head; Gosub(MoveTo); Print("+")
 6780 Gosub(EatTail)
 6790 Return
 
-Subroutine(7000, Draw)
-7010 Remark(pos=Position string=String)
-7020 K=pos%width+(40-width)/2
-7030 Print(Position(pos/width+2, K) string)
-7040 Return
-
 Subroutine(8000, HomePage)
 8010 Print(ClearScreen)
-8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
+8020 For(I=1) To(2)
+8021 Print(Position(I,18)Double(I+2)"Snake"); Next(I)
 8030 FOR I=1 TO height; PRINT ' $27"#6"; NEXT I
 8040 Print(ReverseVideo)
 8050 For(pos=0) To(W-1); Gosub(Border); Next(pos); Remark(TopBorder)
