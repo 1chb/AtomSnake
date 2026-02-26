@@ -6,7 +6,6 @@
 #define turn C
 #define direction D
 // E,F,G -- Save
-#define food F
 #define height H
 // I,J,K,L,M,N -- Temp
 #define pos P
@@ -44,11 +43,12 @@
 #define CountBit 8
 // #FFFFFFF8 = -8
 #define CountMask -CountBit
+#define Mouse 1
 
 // Labels
 #define Adjust a
 #define Border b
-#define AdjustLoop c
+#define Check c
 #define ChangeDirection d
 #define EatTail e
 #define AdvanceHead f
@@ -56,18 +56,22 @@
 #define HomePage h
 #define Init i
 #define LocateLeft j
-#define LocateLoop k
+#define K___ k
 #define Locate l
 #define MoveTo m
 #define InitGame n
 #define PauseLoop o
 #define Play p
 #define GameLoop q
-#define Reset r
+#define BorderPrim r
 #define SpawnFood s
 #define StepSub t
+#define MarkHead u
+#define Eat v
 #define WaitForTick w
 #define Clash x
+#define Debug y
+#define Error z
 
 // VT100
 #define ClearScreen $12
@@ -78,7 +82,7 @@
 #define Position(row,column) $27"["row";"column"H"
 #define Double(k) $27"#"k
 
-#if 1
+#ifdef PROD
 // Abbreviations
 #  define End E.
 #  define For(init) F.init
@@ -92,9 +96,10 @@
 #  define Remark(comment)
 #  define Return R.
 #  define Step(expression) S.expression
-#  define Subroutine(line, label) Concat(line, label)REM
+#  define Subroutine(line, label, doc) Label(line, label)
 #  define Then
 #  define To(expression) T.expression
+#  define Until(expression) U.expression
 #else
 #  define End END
 #  define For(init) FOR init
@@ -108,9 +113,10 @@
 #  define Remark(comment) REM comment
 #  define Return RETURN
 #  define Step(expression) STEP expression
-#  define Subroutine(line, label) Concat(line, label)REM === #label ===
+#  define Subroutine(line, label, doc) Label(line, label) REM === #label === doc
 #  define Then THEN
 #  define To(expression) TO expression
+#  define Until(expression) UNTIL expression
 #endif
 
 // OS
@@ -133,9 +139,9 @@
 50 Print(Position(height+3,1) ShowCursor)
 60 End
 
-Subroutine(1000, Play)
-1010 Gosub(HomePage)
-1020 Gosub(InitGame)
+Subroutine(1000, Play, )
+1010 Gosub_(HomePage)
+1020 Gosub_(InitGame)
 1030 L=20; Remark(Tick delay in centiseconds)
 1040 M=time+L; Remark(Next tick time)
 1050 Remark(Main game loop)
@@ -159,75 +165,102 @@ Label(1180, PauseLoop)If(KeyEmpty) Then Goto(PauseLoop)
 1190 N=KeyPeek; KeyNext; If(N<>PAUSE) Then Goto(PauseLoop)
 1200 Return
 
-Subroutine(2000, Adjust)(pos, quantity)
-2010 I=0; K=size; L=0
-Label(2020, AdjustLoop)If(I>=size) Then Return
-2030 If(P>=K) Then pos=pos-K; K=L; I=I+1
-2040 AA(I)=AA(I)+quantity
-2050 I=2*I+1
-2060 L=K/2
-2070 K=K-L
-2080 Goto(AdjustLoop)
+// Subroutine(2000, Adjust, (pos, quantity) Destroys pos I K L)
+// 2010 I=0; K=size; L=0
+// Label(2020, AdjustLoop) If(I>=size) Then Return
+// 2030 If(pos>=K) Then pos=pos-K; K=L; I=I+1
+// 2040 AA(I)=AA(I)+quantity
+// 2050 I=2*I+1
+// 2060 L=K/2
+// 2070 K=K-L
+// 2080 Goto(AdjustLoop)
 
-Subroutine(2200, Locate)(pos=count 0<=p*CountBit<AA(0))
-2201 Remark(destroys p. Result in J)
+Subroutine(2000, Adjust, (pos, quantity, Changes pos,I,M))
+2010 I=0; M=size;
+2020 DO; AA(I)=AA(I)+quantity
+2030 M=M/2; I=I+I+1; Remark(Assume lower half)
+2040 If(pos>=M) Then pos=pos-M; I=I+1; Remark(Otherwise upper half)
+2050 Until(I>=size)
+2060 Return
+
+Subroutine(2100, Debug, Destroys I)
+#ifdef DEBUG
+2110 For(I=1) To(2)
+2120 Print(Position(I,5)Double(I+2)AA(0)/8":"J".");Next(I)
+#endif
+2130 Return
+
+Subroutine(2200, Locate, (pos=count 0<=pos*CountBit<AA(0) => J, Destroys pos I J K L M))
 2210 pos=pos*CountBit
 2220 I=1; J=0; K=size
 2221 Remark(Interval [J..K]; upper limit is not included)
-Label(2230,LocateLoop)M=(K-J)/2; L=AA(I)&CountMask
-2240 If(P<L) Then K=K-M; Goto(LocateLeft)
+2230 DO; M=(K-J)/2; L=AA(I)&CountMask
+2240 If(pos<L) Then K=K-M; Goto(LocateLeft)
 2250 J=K-M; pos=pos-L; I=I+1
-Label(2260, LocateLeft)I=2*I+1
-2270 If(I<size) Then Goto(LocateLoop)
+Label(2260, LocateLeft)I=I+I+1
+2270 Until(I>=size)
 2280 Remark(Linear search:)
-Label(2290,LocateLinear)If(pos=0) Then Return
-2300 If(AA(J)&FlagsMask=0) Then pos=pos-CountBit
-2310 J=J+1; Goto(LocateLinear)
-                                     
-Subroutine(3000, Border)(pos)
-3010 Gosub(MoveTo); Print(" ")
+Label(2300,LocateLinear)
+2310 If(AA(J)&FlagsMask) Goto(2340)
+2320 If(pos=0) Then Return
+2330 pos=pos-CountBit
+2340 J=J+1
+2350 If(J>size) Then Gosub(Error); Here
+2360 Goto(LocateLinear)
+
+Subroutine(3000, Border, (pos))Gosub(MoveTo)
+Subroutine(3010, BorderPrim, (pos))Print(" ")
 3020 AA(pos)=AA(pos)|BorderBit
 3030 E=I; F=pos; Remark(Save some variables)
 3040 quantity=-CountBit; Gosub(Adjust)
 3050 pos=F; I=E; Remark(Restore the variables)
 3060 Return
 
-Subroutine(3200, MoveTo)(pos)
+Subroutine(3200, MoveTo, (pos))
 3210 Remark(Centrate board)
 3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
 3230 Return
 
-Subroutine(4500, InitGame)
+Subroutine(4500, InitGame, )
 4510 head=(height+1)/2*width-width/2; Remark(Center of board)
 4520 tail=head-2
 4530 direction=East; Remark(Go east)
-4540 For(pos=tail) To(head)
-4550   Gosub(MoveTo); Print("+")
+4540 For(J=tail) To(head)
+4550   pos=J; Gosub(MoveTo); Print("+")
 4560   AA(pos)=(AA(pos)&CountMask)|BorderBit|direction
-4570 Next(pos)
-4580 Gosub(SpawnFood)
-4590 Return
+4565   quantity=-CountBit; Gosub(Adjust)
+4570 Next(J)
+4580 For(N=1) To(5); Gosub(SpawnFood); Next(N)
+4590 Goto(Debug)
 
-Subroutine(5000, ChangeDirection)
+Subroutine(5000, ChangeDirection, (AA(head), direction))
 5010 If((AA(head)&3)=direction) Then Return; Remark(Dir not changed)
 5020 AA(head)=(AA(head)&#FFFFFFFC)|direction
 5030 Return
 
-Subroutine(5500, SpawnFood)
-5510 REM
+Subroutine(5500, SpawnFood, Destroys pos quantity I K L M => J)
 5520 pos=ABS(RND)%(AA(0)/CountBit)
+5522 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos".");Next(I)
 5530 Gosub(Locate)
-5540 If(AA(J)&FlagsMask) Then Goto(5520)
-5550 food=J
-5560 pos=food; Gosub(MoveTo); Print("@")
-5570 Return
+5540 If(AA(J)&FlagsMask) Then Gosub(Error); Here
+5550 AA(J)=AA(J)+Mouse
+5560 pos=J; Gosub(MoveTo); Print("@")
+5570 quantity=-CountBit; Gosub(Adjust)
+5580 Goto(Debug)
 
-Subroutine(6000, StepSub)
-6010 Remark(P=Pos D=Dir W=Width)
+Subroutine(5800, Error, )
+5810 For(pos=0) To(size-1)
+5820 M=AA(pos)&FlagsMask
+5830 Gosub(MoveTo); If(M>0) Then Print(M)
+5840 Next(pos)
+5850 Print(ShowCursor)
+5860 Return
+
+Subroutine(6000, StepSub, (pos direction width => pos))
 6020 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
 6030 Return
 
-Subroutine(6500, EatTail)
+Subroutine(6500, EatTail, Destroys direction quantity pos I K L)
 6510 pos=tail; quantity=CountBit; Gosub(Adjust)
 6520 direction=AA(tail)
 6530 AA(tail)=direction&CountMask
@@ -235,24 +268,28 @@ Subroutine(6500, EatTail)
 6550 pos=tail; Gosub(StepSub); tail=pos
 6560 Return
 
-Subroutine(6700, AdvanceHead)
+Subroutine(6700, AdvanceHead, )
 6710 direction=AA(head)&3
 6720 pos=head; Gosub(StepSub); head=pos
 6730 M=AA(head)
 6740 If(M&BorderBit) Then Goto(Clash)
 6750 N=direction
-6760 If(head<>food) Then Gosub(EatTail)
-6770 direction=N
-6780 pos=head; quantity=-CountBit; Gosub(Adjust)
-6790 AA(head)=(M&CountMask)|BorderBit|direction
-6800 pos=head; Gosub(MoveTo); Print("+")
-6810 If(head<>food) Then Return
+6760 If(M&FlagsMask=Mouse) Then Goto(Eat)
+6770 Gosub(EatTail)
+6780 Gosub(MarkHead)
+6790 pos=head; quantity=-CountBit; Gosub(Adjust)
+6795 Goto(Debug)
+Label(6800,Eat)
 6820 score=score+1;
-6830 For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
+6830 For(I=1) To(2); Print(Position(I,36)Double(I+2)score);Next(I)
 6840 Gosub(SpawnFood);
-6850 Return
+Subroutine(6900, MarkHead, )
+6910 direction=N
+6920 AA(head)=(M&CountMask)|BorderBit|direction
+6930 pos=head; Gosub(MoveTo); Print("+"); Gosub(MoveTo); Remark(Looks better)
+6940 Goto(Debug)
 
-Subroutine(8000, HomePage)
+Subroutine(8000, HomePage, )
 8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
 8025 For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
@@ -260,38 +297,30 @@ Subroutine(8000, HomePage)
 8040 Print(ReverseVideo)
 8050 Remark(TopBorder)
 8055 pos=0; Gosub(MoveTo)
-8060 For(pos=0) To(width-1)
-8065   Print(" ")
-8070   AA(pos)=AA(pos)|BorderBit
-8075 Next(pos)
-8080 REM
+8060 For(pos=0) To(width-1);Gosub(BorderPrim);Next(pos)
+8080 Remark(SideBorders)
 8090 For(I=width) To(size-width-width) Step(width)
 8100   pos=I; Gosub(Border); Remark(LeftBorder)
 8110   pos=I+width-1; Gosub(Border); Remark(RightBorder)
 8120 Next(I)
 8130 Remark(BottomBorder)
 8135 pos=size-width; Gosub(MoveTo)
-8140 For(pos=size-width) To(size-1)
-8145   Print(" ")
-8150   AA(pos)=AA(pos)|BorderBit
-8155 Next(pos)
+8140 For(pos=size-width) To(size-1);Gosub(BorderPrim);Next(pos)
 8160 Print(NormalVideo)
 8170 Return
 
-Subroutine(9000, Clash)
+Subroutine(9000, Clash, )
 9010 alive=0
 9020 For(I=1) To(2);
 9030 Print(Position(height-1+I,2)Double(I+2)"[GAME OVER!]"); Next(I)
 9040 Return
 
-Subroutine(9800, Init)
+Subroutine(9800, Init, (width*height))
 9810 @=0
 9820 size=width*height
 9830 DIM AA(size); Remark(Allocates (size+1)!)
-9840 Goto(Reset) // Goto(subroutine) === Gosub(subroutine); Return
 
-Subroutine(9900, Reset)
-9905 Print("Initializing...")
+9900 Print("Initializing...")
 9910 AA(0)=size*CountBit; Remark(See Bits above)
 9920 For(I=1) To(size-1) Step(2)
 9930   J=(I-1)/2
@@ -301,3 +330,29 @@ Subroutine(9900, Reset)
 9970 Next(I)
 9980 score=0; turn=Left; alive=1
 9990 Return
+
+#define CellCount(i) (AA(i)&FlagsMask)
+#define ChildA(i) i+i+1
+#define ChildB(i) i+i+2
+
+Subroutine(8500, Check, (Changes pos,I,M))
+8510 For(I=0) To(size/2-2)
+8520   If(CellCount(I) <> CellCount(ChildA(I))+CellCount(ChildB(I))) Then Print(I'); End
+8540 Next(I)
+8550 Remark(Check counts of free cells) 
+8560 Return
+
+#if 0
+
+Z=40*21=840
+Tree   0:   1 840 >>= 0->0, L=840
+     1-2:   2 420+420 >>= 1->0, 2->420 >>= (a-1)*420, L=420
+     3-6:   4 (210+210)+(210+210) >>= (a-3)*210, L=210
+    7-14:   8 105+105+105+105 + 105+105+105+105 >>= (a-7)*105, L=105
+   15-30:  16 (52+53)+(52+53)+(52+53)+(52+53) + (52+53)+(52+53)+(52+53)+(52+53) >>= (a-15)/2*105 + (a-15)%2*52, e.g 7*105 + 1*52 = 735+52 = 787, L=52+(a-15)%2
+   31-62:  32 ((26+26)+(26+27))+((26+26)+(26+27))+((26+26)+(26+27))+((26+26)+(26+27)) + ((26+26)+(26+27))+((26+26)+(26+27))+((26+26)+(26+27))+((26+26)+(26+27)) >>= (a-31)/4*105 + (a-31)%4*26, L=26+(a-31)%4/3
+  63-126:  64 (((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14))) + (((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14))) >>= (a-63)/8*105 + (a-63)%8*13, L=13+(a-63)%8/7
+ 127-254: 128 ((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7)))) + ((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7)))) >>= (a-127)/16*105 + (a-127)%16/2*13 + (a-127)%2*6, L=6+(a-127)%2+(a-127)%16/15.
+ 255-510: 256 (((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4))))) + (((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))
+
+#endif
