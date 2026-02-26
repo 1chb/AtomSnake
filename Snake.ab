@@ -6,6 +6,7 @@
 #define turn C
 #define direction D
 // E,F,G -- Save
+#define food F
 #define height H
 // I,J,K,L,M,N -- Temp
 #define pos P
@@ -61,17 +62,21 @@
 #define Play p
 #define GameLoop q
 #define Reset r
+#define SpawnFood s
 #define StepSub t
+#define WaitForTick w
 #define Clash x
 
 // VT100
 #define ClearScreen $12
 #define NormalVideo $27"[m"
 #define ReverseVideo $27"[7m"
+#define HideCursor $27"[?25l"
+#define ShowCursor $27"[?25h"
 #define Position(row,column) $27"["row";"column"H"
 #define Double(k) $27"#"k
 
-#if 0
+#if 1
 // Abbreviations
 #  define End E.
 #  define For(init) F.init
@@ -133,18 +138,19 @@ Subroutine(1000, Play)
 1050 Remark(Main game loop)
 Label(1060, GameLoop)If(alive=0) Then Return
 1070 Remark(Check keyboard)
-1080 If(KeyEmpty) Then Goto(1130)
+1080 If(KeyEmpty) Then Goto(WaitForTick)
 1090   N=KeyPeek; KeyNext
 1100   If(N=UP)    Then direction=North; Gosub(ChangeDirection);
 1110   If(N=LEFT)  Then direction=West; Gosub(ChangeDirection);
 1120   If(N=RIGHT) Then direction=East; Gosub(ChangeDirection);
 1125   If(N=DOWN)  Then direction=South; Gosub(ChangeDirection);
 1127   If(N=QUIT)  Then alive=0;
-1130 Remark(Wait for tick)
+Label(1130, WaitForTick) Remark(Wait for tick)
 1135 time=time+1
 1140 If(time<M) Then Goto(GameLoop)
 1150 M=time+L; Remark(Schedule next tick)
 1160 Gosub(AdvanceHead)
+1165 Print(Position(height+4, 8)score"  ")
 1170 Goto(GameLoop)
 
 Subroutine(2000, Adjust)(pos, quantity)
@@ -193,12 +199,22 @@ Subroutine(4500, InitGame)
 4550   Gosub(MoveTo); Print("+")
 4560   AA(pos)=(AA(pos)&CountMask)|BorderBit|direction
 4570 Next(pos)
-4580 Return
+4580 Gosub(SpawnFood)
+4590 Return
 
 Subroutine(5000, ChangeDirection)
 5010 If((AA(head)&3)=direction) Then Return; Remark(Dir not changed)
 5020 AA(head)=(AA(head)&#FFFFFFFC)|direction
 5030 Return
+
+Subroutine(5500, SpawnFood)
+5510 REM
+5520 pos=ABS(RND)%(AA(0)/CountBit)
+5530 Gosub(Locate)
+5540 If(AA(J)&FlagsMask) Then Goto(5520)
+5550 food=J
+5560 pos=food; Gosub(MoveTo); Print("@")
+5570 Return
 
 Subroutine(6000, StepSub)
 6010 Remark(P=Pos D=Dir W=Width)
@@ -218,30 +234,44 @@ Subroutine(6700, AdvanceHead)
 6720 pos=head; Gosub(StepSub); head=pos
 6730 M=AA(head)
 6740 If(M&BorderBit) Then Gosub(Clash); Return
-6750 pos=head; quantity=-CountBit; Gosub(Adjust)
-6760 AA(head)=(M&CountMask)|BorderBit|direction
-6770 pos=head; Gosub(MoveTo); Print("+")
-6780 Gosub(EatTail)
-6790 Return
+6750 N=direction
+6760 If(head<>food) Then Gosub(EatTail)
+6770 direction=N
+6780 pos=head; quantity=-CountBit; Gosub(Adjust)
+6790 AA(head)=(M&CountMask)|BorderBit|direction
+6800 pos=head; Gosub(MoveTo); Print("+")
+6810 If(head=food) Then score=score+1; Gosub(SpawnFood);
+6820 Return
 
 Subroutine(8000, HomePage)
-8010 Print(ClearScreen)
+8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2)
 8021 Print(Position(I,18)Double(I+2)"Snake"); Next(I)
 8030 FOR I=1 TO height; PRINT ' $27"#6"; NEXT I
 8040 Print(ReverseVideo)
-8050 For(pos=0) To(W-1); Gosub(Border); Next(pos); Remark(TopBorder)
-8060 For(I=width) To(size-width-width) Step(width)
-8070   pos=I; Gosub(Border); Remark(LeftBorder)
-8080   pos=I+width-1; Gosub(Border); Remark(RightBorder)
-8090 Next(I)
-8100 For(pos=size-width) To(size-1); Gosub(Border); Next(pos); Remark(BottomBorder)
-8110 Print(NormalVideo)
-8120 Return
+8050 Remark(TopBorder)
+8055 pos=0; Gosub(MoveTo)
+8060 For(pos=0) To(width-1)
+8065   Print(" ")
+8070   AA(pos)=AA(pos)|BorderBit
+8075 Next(pos)
+8080 REM
+8090 For(I=width) To(size-width-width) Step(width)
+8100   pos=I; Gosub(Border); Remark(LeftBorder)
+8110   pos=I+width-1; Gosub(Border); Remark(RightBorder)
+8120 Next(I)
+8130 Remark(BottomBorder)
+8135 pos=size-width; Gosub(MoveTo)
+8140 For(pos=size-width) To(size-1)
+8145   Print(" ")
+8150   AA(pos)=AA(pos)|BorderBit
+8155 Next(pos)
+8160 Print(NormalVideo)
+8170 Return
 
 Subroutine(9000, Clash)
 9010 alive=0
-9020 Print(Position(height+4, 1)"GAME OVER!")
+9020 Print(Position(height+4, 1)"GAME OVER!" ShowCursor)
 9030 Return
 
 Subroutine(9800, Init)
