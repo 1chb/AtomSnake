@@ -35,6 +35,7 @@
 #define LEFT  #34
 #define RIGHT #36
 #define DOWN  #32
+#define PAUSE #50
 #define QUIT  27
 
 // Bits
@@ -59,6 +60,7 @@
 #define Locate l
 #define MoveTo m
 #define InitGame n
+#define PauseLoop o
 #define Play p
 #define GameLoop q
 #define Reset r
@@ -128,7 +130,8 @@
 20 height=21
 30 Gosub_(Init)
 40 time=0; Gosub_(Play)
-50 End
+50 Print(Position(height+3,1) ShowCursor)
+60 End
 
 Subroutine(1000, Play)
 1010 Gosub(HomePage)
@@ -144,14 +147,17 @@ Label(1060, GameLoop)If(alive=0) Then Return
 1110   If(N=LEFT)  Then direction=West; Gosub(ChangeDirection);
 1120   If(N=RIGHT) Then direction=East; Gosub(ChangeDirection);
 1125   If(N=DOWN)  Then direction=South; Gosub(ChangeDirection);
+1126   If(N=PAUSE) Then Gosub(PauseLoop);
 1127   If(N=QUIT)  Then alive=0;
 Label(1130, WaitForTick) Remark(Wait for tick)
 1135 time=time+1
 1140 If(time<M) Then Goto(GameLoop)
 1150 M=time+L; Remark(Schedule next tick)
 1160 Gosub(AdvanceHead)
-1165 Print(Position(height+4, 8)score"  ")
 1170 Goto(GameLoop)
+Label(1180, PauseLoop)If(KeyEmpty) Then Goto(PauseLoop)
+1190 N=KeyPeek; KeyNext; If(N<>PAUSE) Then Goto(PauseLoop)
+1200 Return
 
 Subroutine(2000, Adjust)(pos, quantity)
 2010 I=0; K=size; L=0
@@ -233,21 +239,24 @@ Subroutine(6700, AdvanceHead)
 6710 direction=AA(head)&3
 6720 pos=head; Gosub(StepSub); head=pos
 6730 M=AA(head)
-6740 If(M&BorderBit) Then Gosub(Clash); Return
+6740 If(M&BorderBit) Then Goto(Clash)
 6750 N=direction
 6760 If(head<>food) Then Gosub(EatTail)
 6770 direction=N
 6780 pos=head; quantity=-CountBit; Gosub(Adjust)
 6790 AA(head)=(M&CountMask)|BorderBit|direction
 6800 pos=head; Gosub(MoveTo); Print("+")
-6810 If(head=food) Then score=score+1; Gosub(SpawnFood);
-6820 Return
+6810 If(head<>food) Then Return
+6820 score=score+1;
+6830 For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
+6840 Gosub(SpawnFood);
+6850 Return
 
 Subroutine(8000, HomePage)
 8010 Print(ClearScreen HideCursor)
-8020 For(I=1) To(2)
-8021 Print(Position(I,18)Double(I+2)"Snake"); Next(I)
-8030 FOR I=1 TO height; PRINT ' $27"#6"; NEXT I
+8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
+8025 For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
+8030 For(I=1) To(height); Print($10$13$27"#6"); Next(I)
 8040 Print(ReverseVideo)
 8050 Remark(TopBorder)
 8055 pos=0; Gosub(MoveTo)
@@ -271,8 +280,9 @@ Subroutine(8000, HomePage)
 
 Subroutine(9000, Clash)
 9010 alive=0
-9020 Print(Position(height+4, 1)"GAME OVER!" ShowCursor)
-9030 Return
+9020 For(I=1) To(2);
+9030 Print(Position(height-1+I,2)Double(I+2)"[GAME OVER!]"); Next(I)
+9040 Return
 
 Subroutine(9800, Init)
 9810 @=0
