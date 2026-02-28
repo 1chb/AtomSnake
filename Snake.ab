@@ -8,6 +8,7 @@
 // E,F,G -- Save
 #define height H
 // I,J,K,L,M,N -- Temp
+#define nodes O
 #define pos P
 #define quantity Q
 #define time R
@@ -55,7 +56,7 @@
 #define LocateLinear g
 #define HomePage h
 #define Init i
-#define LocateLeft j
+#define L___ j
 #define K___ k
 #define Locate l
 #define MoveTo m
@@ -93,6 +94,7 @@
 #  define Label(line, name) Concat(line, name)
 #  define Next(variable) N.
 #  define Print(any) P.any
+#  define PrintLn(any) P.any'
 #  define Remark(comment)
 #  define Return R.
 #  define Step(expression) S.expression
@@ -110,6 +112,7 @@
 #  define Label(line, name) Concat(line, name)
 #  define Next(variable) NEXT variable
 #  define Print(any) PRINT any
+#  define PrintLn(any) PRINT any $13$10
 #  define Remark(comment) REM comment
 #  define Return RETURN
 #  define Step(expression) STEP expression
@@ -134,14 +137,14 @@
 
 10 width=40
 20 height=21
-30 Gosub_(Init)
+30 Gosub_(Init); Gosub_(Check)
 40 time=0; Gosub_(Play)
 50 Print(Position(height+3,1) ShowCursor)
 60 End
 
 Subroutine(1000, Play, )
-1010 Gosub_(HomePage)
-1020 Gosub_(InitGame)
+1010 Gosub_(HomePage); Gosub_(Check)
+1020 Gosub_(InitGame); Gosub_(Check)
 1030 L=20; Remark(Tick delay in centiseconds)
 1040 M=time+L; Remark(Next tick time)
 1050 Remark(Main game loop)
@@ -165,22 +168,12 @@ Label(1180, PauseLoop)If(KeyEmpty) Then Goto(PauseLoop)
 1190 N=KeyPeek; KeyNext; If(N<>PAUSE) Then Goto(PauseLoop)
 1200 Return
 
-// Subroutine(2000, Adjust, (pos, quantity) Destroys pos I K L)
-// 2010 I=0; K=size; L=0
-// Label(2020, AdjustLoop) If(I>=size) Then Return
-// 2030 If(pos>=K) Then pos=pos-K; K=L; I=I+1
-// 2040 AA(I)=AA(I)+quantity
-// 2050 I=2*I+1
-// 2060 L=K/2
-// 2070 K=K-L
-// 2080 Goto(AdjustLoop)
-
-Subroutine(2000, Adjust, (pos, quantity, Changes pos,I,M))
+Subroutine(2000, Adjust, (pos, quantity, Destroys pos,I,M,N))
 2010 I=0; M=size;
 2020 DO; AA(I)=AA(I)+quantity
-2030 M=M/2; I=I+I+1; Remark(Assume lower half)
-2040 If(pos>=M) Then pos=pos-M; I=I+1; Remark(Otherwise upper half)
-2050 Until(I>=size)
+2030   N=M; M=M/2; I=I+I+1; Remark(Assume lower half)
+2040   If (pos>=M) Then pos=pos-M; M=N-M; I=I+1; Remark(Otherwise upper half)
+2050 Until(I>=nodes)
 2060 Return
 
 Subroutine(2100, Debug, Destroys I)
@@ -192,15 +185,12 @@ Subroutine(2100, Debug, Destroys I)
 
 Subroutine(2200, Locate, (pos=count 0<=pos*CountBit<AA(0) => J, Destroys pos I J K L M))
 2210 pos=pos*CountBit
-2220 I=1; J=0; K=size
-2221 Remark(Interval [J..K]; upper limit is not included)
-2230 DO; M=(K-J)/2; L=AA(I)&CountMask
-2240 If(pos<L) Then K=K-M; Goto(LocateLeft)
-2250 J=K-M; pos=pos-L; I=I+1
-Label(2260, LocateLeft)I=I+I+1
-2270 Until(I>=size)
-2280 Remark(Linear search:)
-Label(2300,LocateLinear)
+2220 I=1; J=0; K=size; DO; Remark(Interval [J..K]; upper limit is not included)
+2230   M=(K-J)/2; L=AA(I)&CountMask
+2240   If(pos<L) Then K=J+M; I=I+I+1
+2250   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+2
+2260 Until(I>=nodes)
+Label(2300,LocateLinear); Remark(Linear search:)
 2310 If(AA(J)&FlagsMask) Goto(2340)
 2320 If(pos=0) Then Return
 2330 pos=pos-CountBit
@@ -246,6 +236,7 @@ Subroutine(5500, SpawnFood, Destroys pos quantity I K L M => J)
 5550 AA(J)=AA(J)+Mouse
 5560 pos=J; Gosub(MoveTo); Print("@")
 5570 quantity=-CountBit; Gosub(Adjust)
+5575 Gosub(Check)
 5580 Goto(Debug)
 
 Subroutine(5800, Error, )
@@ -260,7 +251,7 @@ Subroutine(6000, StepSub, (pos direction width => pos))
 6020 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
 6030 Return
 
-Subroutine(6500, EatTail, Destroys direction quantity pos I K L)
+Subroutine(6500, EatTail, Destroys direction pos quantity I K L M N)
 6510 pos=tail; quantity=CountBit; Gosub(Adjust)
 6520 direction=AA(tail)
 6530 AA(tail)=direction&CountMask
@@ -268,24 +259,24 @@ Subroutine(6500, EatTail, Destroys direction quantity pos I K L)
 6550 pos=tail; Gosub(StepSub); tail=pos
 6560 Return
 
-Subroutine(6700, AdvanceHead, )
+Subroutine(6700, AdvanceHead, Updates head tail score; Destroys direction pos quantity E G I J K L M N)
 6710 direction=AA(head)&3
 6720 pos=head; Gosub(StepSub); head=pos
-6730 M=AA(head)
-6740 If(M&BorderBit) Then Goto(Clash)
-6750 N=direction
-6760 If(M&FlagsMask=Mouse) Then Goto(Eat)
+6730 E=AA(head)
+6740 If(E&BorderBit) Then Goto(Clash)
+6750 G=direction
+6760 If(E&FlagsMask=Mouse) Then Goto(Eat)
 6770 Gosub(EatTail)
 6780 Gosub(MarkHead)
 6790 pos=head; quantity=-CountBit; Gosub(Adjust)
 6795 Goto(Debug)
 Label(6800,Eat)
-6820 score=score+1;
+6820 score=score+1
 6830 For(I=1) To(2); Print(Position(I,36)Double(I+2)score);Next(I)
-6840 Gosub(SpawnFood);
+6840 Gosub(SpawnFood)
 Subroutine(6900, MarkHead, )
-6910 direction=N
-6920 AA(head)=(M&CountMask)|BorderBit|direction
+6910 direction=G
+6920 AA(head)=(E&CountMask)|BorderBit|direction
 6930 pos=head; Gosub(MoveTo); Print("+"); Gosub(MoveTo); Remark(Looks better)
 6940 Goto(Debug)
 
@@ -309,38 +300,55 @@ Subroutine(8000, HomePage, )
 8160 Print(NormalVideo)
 8170 Return
 
-Subroutine(9000, Clash, )
-9010 alive=0
-9020 For(I=1) To(2);
-9030 Print(Position(height-1+I,2)Double(I+2)"[GAME OVER!]"); Next(I)
-9040 Return
-
-Subroutine(9800, Init, (width*height))
-9810 @=0
-9820 size=width*height
-9830 DIM AA(size); Remark(Allocates (size+1)!)
-
-9900 Print("Initializing...")
-9910 AA(0)=size*CountBit; Remark(See Bits above)
-9920 For(I=1) To(size-1) Step(2)
-9930   J=(I-1)/2
-9940   K=AA(J)/2&-CountBit; Remark(AA(J)/2/CountBit*CountBit)
-9950   AA(I+1)=K
-9960   AA(I)=AA(J)-K
-9970 Next(I)
-9980 score=0; turn=Left; alive=1
-9990 Return
-
-#define CellCount(i) (AA(i)&FlagsMask)
+#define CellCount(i) (AA(i)&CountMask)
 #define ChildA(i) i+i+1
 #define ChildB(i) i+i+2
 
-Subroutine(8500, Check, (Changes pos,I,M))
-8510 For(I=0) To(size/2-2)
-8520   If(CellCount(I) <> CellCount(ChildA(I))+CellCount(ChildB(I))) Then Print(I'); End
-8540 Next(I)
-8550 Remark(Check counts of free cells) 
-8560 Return
+Subroutine(8500, Check, (Changes I,J,K,L,M,N,pos))
+8510 For(I=0) To(nodes/2-1)
+8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8800)
+8530 Next(I)
+8550 Remark(Check leaf counts against actual empty cells)
+8560 Remark(Walk each cell to its leaf node)
+8570 L=0; K=CellCount(L); Remark(L: last leaf if any. But initially it is the root with K such valid)
+8600 For(J=0) To(size-1)
+8610   I=0; M=size; pos=J; DO
+8620     N=M; M=M/2; I=I+I+1; Remark(Assume left)
+8630     If(pos>=M) Then pos=pos-M; M=N-M; I=I+1; Remark(When right)
+8640   Until(I>=nodes/2)
+8650   Remark(I is the leaf for cell J)
+8660   If(I>L) Then Gosub(8700); Remark(Validate when new leaf)
+8670   If(AA(J)&FlagsMask=0) Then K=K+CountBit; Remark(Count empty cells)
+8680 Next(J)
+8700 If (CellCount(L)=K) Then L=I; K=0; Return
+8800 PrintLn(" - Error:")
+8810 For(P=0) To(Z-1); @=8; Print(AA(P)/8); @=1; Print("/"AA(P)&7); Next(P)
+8820 @=8; PrintLn(ShowCursor); End
+
+Subroutine(9000, Clash, )
+9010 alive=0
+9020 For(I=1) To(2);
+9030   Print(Position(height-1+I,2)Double(I+2)"[GAME OVER!]");
+9040 Next(I)
+9050 Return
+
+Subroutine(9800, Init, (width*height))
+9810 @=0
+9820 size=width*height; Remark(size<3 not supported !!!!)
+9830 DIM AA(size-1); Remark(Allocates (size cells, 0-based)!)
+9900 Print("Initializing...")
+9905 nodes=1;DO;nodes=nodes+nodes;Until(nodes+nodes>size+1);nodes=nodes-1; Remark(Number of tree cells - nodes=2^n-1 - 3 7 15 31 ...)
+9907 Remark(TODO: Consider reduce number of nodes; e.g. nodes=nodes/2)
+9910 AA(0)=size*CountBit; Remark(See Bits above)
+9920 For(I=1) To(nodes-2) Step(2)
+9930   J=(I-1)/2
+9940   K=AA(J)/2&CountMask; Remark(AA(J)/2/CountBit*CountBit)
+9950   AA(I)=K
+9960   AA(I+1)=AA(J)-K
+9970 Next(I)
+9975 For(I=nodes) To(size-1); AA(I)=0; Next(I); Remark(Clear remaining nodes)
+9980 score=0; turn=Left; alive=1
+9990 Return
 
 #if 0
 
