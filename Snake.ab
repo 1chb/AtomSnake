@@ -142,7 +142,7 @@
 50 Print(Position(height+3,1) ShowCursor)
 60 End
 
-Subroutine(1000, Play, )
+Subroutine(1000, Play, => alive AA : D E G I J K L M N P Q)
 1010 Gosub_(HomePage); Gosub_(Check)
 1020 Gosub_(InitGame); Gosub_(Check)
 1030 L=20; Remark(Tick delay in centiseconds)
@@ -168,7 +168,7 @@ Label(1180, PauseLoop)If(KeyEmpty) Then Goto(PauseLoop)
 1190 N=KeyPeek; KeyNext; If(N<>PAUSE) Then Goto(PauseLoop)
 1200 Return
 
-Subroutine(2000, Adjust, (pos, quantity, Destroys pos,I,M,N))
+Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
 2010 I=0; M=size;
 2020 DO; AA(I)=AA(I)+quantity
 2030   N=M; M=M/2; I=I+I+1; Remark(Assume lower half)
@@ -176,14 +176,14 @@ Subroutine(2000, Adjust, (pos, quantity, Destroys pos,I,M,N))
 2050 Until(I>=nodes)
 2060 Return
 
-Subroutine(2100, Debug, Destroys I)
+Subroutine(2100, Debug, => : I)
 #ifdef DEBUG
 2110 For(I=1) To(2)
 2120 Print(Position(I,5)Double(I+2)AA(0)/8":"J".");Next(I)
 #endif
 2130 Return
 
-Subroutine(2200, Locate, (pos=count 0<=pos*CountBit<AA(0) => J, Destroys pos I J K L M))
+Subroutine(2200, Locate, pos => J : I K L M pos)
 2210 pos=pos*CountBit
 2220 I=1; J=0; K=size; DO; Remark(Interval [J..K]; upper limit is not included)
 2230   M=(K-J)/2; L=AA(I)&CountMask
@@ -198,20 +198,20 @@ Label(2300,LocateLinear); Remark(Linear search:)
 2350 If(J>size) Then Gosub(Error); Here
 2360 Goto(LocateLinear)
 
-Subroutine(3000, Border, (pos))Gosub(MoveTo)
-Subroutine(3010, BorderPrim, (pos))Print(" ")
+Subroutine(3000, Border, pos => AA : M N Q pos)Gosub(MoveTo)
+Subroutine(3010, BorderPrim, pos => AA : M N Q pos)Print(" ")
 3020 AA(pos)=AA(pos)|BorderBit
 3030 E=I; F=pos; Remark(Save some variables)
 3040 quantity=-CountBit; Gosub(Adjust)
 3050 pos=F; I=E; Remark(Restore the variables)
 3060 Return
 
-Subroutine(3200, MoveTo, (pos))
+Subroutine(3200, MoveTo, pos =>)
 3210 Remark(Centrate board)
 3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
 3230 Return
 
-Subroutine(4500, InitGame, )
+Subroutine(4500, InitGame, => head tail direction score AA : D E G I J K L M N P Q)
 4510 head=(height+1)/2*width-width/2; Remark(Center of board)
 4520 tail=head-2
 4530 direction=East; Remark(Go east)
@@ -223,12 +223,12 @@ Subroutine(4500, InitGame, )
 4580 For(N=1) To(5); Gosub(SpawnFood); Next(N)
 4590 Goto(Debug)
 
-Subroutine(5000, ChangeDirection, (AA(head), direction))
+Subroutine(5000, ChangeDirection, head direction => AA)
 5010 If((AA(head)&3)=direction) Then Return; Remark(Dir not changed)
 5020 AA(head)=(AA(head)&#FFFFFFFC)|direction
 5030 Return
 
-Subroutine(5500, SpawnFood, Destroys pos quantity I K L M => J)
+Subroutine(5500, SpawnFood, => J AA : I K L M N P Q)
 5520 pos=ABS(RND)%(AA(0)/CountBit)
 5522 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos".");Next(I)
 5530 Gosub(Locate)
@@ -239,7 +239,7 @@ Subroutine(5500, SpawnFood, Destroys pos quantity I K L M => J)
 5575 Gosub(Check)
 5580 Goto(Debug)
 
-Subroutine(5800, Error, )
+Subroutine(5800, Error, => : M P)
 5810 For(pos=0) To(size-1)
 5820 M=AA(pos)&FlagsMask
 5830 Gosub(MoveTo); If(M>0) Then Print(M)
@@ -247,11 +247,11 @@ Subroutine(5800, Error, )
 5850 Print(ShowCursor)
 5860 Return
 
-Subroutine(6000, StepSub, (pos direction width => pos))
+Subroutine(6000, StepSub, pos direction => pos)
 6020 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
 6030 Return
 
-Subroutine(6500, EatTail, Destroys direction pos quantity I K L M N)
+Subroutine(6500, EatTail, => tail AA : D I M N P Q)
 6510 pos=tail; quantity=CountBit; Gosub(Adjust)
 6520 direction=AA(tail)
 6530 AA(tail)=direction&CountMask
@@ -259,7 +259,7 @@ Subroutine(6500, EatTail, Destroys direction pos quantity I K L M N)
 6550 pos=tail; Gosub(StepSub); tail=pos
 6560 Return
 
-Subroutine(6700, AdvanceHead, Updates head tail score; Destroys direction pos quantity E G I J K L M N)
+Subroutine(6700, AdvanceHead, => head tail score alive AA : D E G I J K L M N P Q)
 6710 direction=AA(head)&3
 6720 pos=head; Gosub(StepSub); head=pos
 6730 E=AA(head)
@@ -274,13 +274,13 @@ Label(6800,Eat)
 6820 score=score+1
 6830 For(I=1) To(2); Print(Position(I,36)Double(I+2)score);Next(I)
 6840 Gosub(SpawnFood)
-Subroutine(6900, MarkHead, )
+Subroutine(6900, MarkHead, E G head => AA : D P)
 6910 direction=G
 6920 AA(head)=(E&CountMask)|BorderBit|direction
 6930 pos=head; Gosub(MoveTo); Print("+"); Gosub(MoveTo); Remark(Looks better)
 6940 Goto(Debug)
 
-Subroutine(8000, HomePage, )
+Subroutine(8000, HomePage, => AA : I M N P Q)
 8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
 8025 For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
@@ -304,7 +304,7 @@ Subroutine(8000, HomePage, )
 #define ChildA(i) i+i+1
 #define ChildB(i) i+i+2
 
-Subroutine(8500, Check, (Changes I,J,K,L,M,N,pos))
+Subroutine(8500, Check, => : I J K L M N P)
 8510 For(I=0) To(nodes/2-1)
 8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8800)
 8530 Next(I)
@@ -325,14 +325,14 @@ Subroutine(8500, Check, (Changes I,J,K,L,M,N,pos))
 8810 For(P=0) To(Z-1); @=8; Print(AA(P)/8); @=1; Print("/"AA(P)&7); Next(P)
 8820 @=8; PrintLn(ShowCursor); End
 
-Subroutine(9000, Clash, )
+Subroutine(9000, Clash, => alive : I)
 9010 alive=0
 9020 For(I=1) To(2);
 9030   Print(Position(height-1+I,2)Double(I+2)"[GAME OVER!]");
 9040 Next(I)
 9050 Return
 
-Subroutine(9800, Init, (width*height))
+Subroutine(9800, Init, width height => size nodes score turn alive AA : I J K)
 9810 @=0
 9820 size=width*height; Remark(size<3 not supported !!!!)
 9830 DIM AA(size-1); Remark(Allocates (size cells, 0-based)!)

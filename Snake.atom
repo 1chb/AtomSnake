@@ -4,7 +4,7 @@
 40 R=0; GOSUB p; REM "Play"
 50 PRINT $27"["H+3";"1"H" $27"[?25h"
 60 END
-1000p REM === "Play" ===
+1000p REM === "Play" === => B AA : D E G I J K L M N P Q
 1010 GOSUB h; REM "HomePage"; GOSUB c; REM "Check"
 1020 GOSUB n; REM "InitGame"; GOSUB c; REM "Check"
 1030 L=20; REM Tick delay in centiseconds
@@ -29,16 +29,16 @@
 1180o IF ?#410=?#411 THEN GOTO o; REM "PauseLoop"
 1190 N=?(#400 +?#410); ?#410=(?#410 +1)&#F; IF N<>#50 THEN GOTO o; REM "PauseLoop"
 1200 RETURN
-2000a REM === "Adjust" === (P, Q, Destroys P,I,M,N)
+2000a REM === "Adjust" === P Q => AA : I M N P
 2010 I=0; M=Z;
 2020 DO; AA(I)=AA(I)+Q
 2030 N=M; M=M/2; I=I+I+1; REM Assume lower half
 2040 IF P>=M THEN P=P-M; M=N-M; I=I+1; REM Otherwise upper half
 2050 UNTIL I>=O
 2060 RETURN
-2100y REM === "Debug" === Destroys I
+2100y REM === "Debug" === => : I
 2130 RETURN
-2200l REM === "Locate" === (P=count 0<=P*8<AA(0) => J, Destroys P I J K L M)
+2200l REM === "Locate" === P => J : I K L M P
 2210 P=P*8
 2220 I=1; J=0; K=Z; DO; REM Interval [J..K]; upper limit is not included
 2230 M=(K-J)/2; L=AA(I)&-8
@@ -52,18 +52,18 @@
 2340 J=J+1
 2350 IF J>Z THEN GOSUB z; Here
 2360 GOTO g; REM "LocateLinear"
-3000b REM === "Border" === (P)GOSUB m
-3010r REM === "BorderPrim" === (P)PRINT " "
+3000b REM === "Border" === P => AA : M N Q P GOSUB m
+3010r REM === "BorderPrim" === P => AA : M N Q P PRINT " "
 3020 AA(P)=AA(P)|4
 3030 E=I; F=P; REM Save some variables
 3040 Q=-8; GOSUB a
 3050 P=F; I=E; REM Restore the variables
 3060 RETURN
-3200m REM === "MoveTo" === (P)
+3200m REM === "MoveTo" === P =>
 3210 REM Centrate board
 3220 PRINT $27"["P/W+3";"P%W+(42-W)/2"H"
 3230 RETURN
-4500n REM === "InitGame" ===
+4500n REM === "InitGame" === => S T D U AA : D E G I J K L M N P Q
 4510 S=(H+1)/2*W-W/2; REM Center of board
 4520 T=S-2
 4530 D=2; REM Go east
@@ -74,11 +74,11 @@
 4570 NEXT J
 4580 FOR N=1 TO 5; GOSUB s; NEXT N
 4590 GOTO y; REM "Debug"
-5000d REM === "ChangeDirection" === (AA(S), D)
+5000d REM === "ChangeDirection" === S D => AA
 5010 IF (AA(S)&3)=D THEN RETURN; REM Dir not changed
 5020 AA(S)=(AA(S)&#FFFFFFFC)|D
 5030 RETURN
-5500s REM === "SpawnFood" === Destroys P Q I K L M => J
+5500s REM === "SpawnFood" === => J AA : I K L M N P Q
 5520 P=ABS(RND)%(AA(0)/8)
 5522 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2 P ".";NEXT I
 5530 GOSUB l
@@ -88,24 +88,24 @@
 5570 Q=-8; GOSUB a
 5575 GOSUB c
 5580 GOTO y; REM "Debug"
-5800z REM === "Error" ===
+5800z REM === "Error" === => : M P
 5810 FOR P=0 TO Z-1
 5820 M=AA(P)&7
 5830 GOSUB m; IF M>0 THEN PRINT M
 5840 NEXT P
 5850 PRINT $27"[?25h"
 5860 RETURN
-6000t REM === "StepSub" === (P D W => P)
+6000t REM === "StepSub" === P D => P
 6020 P=P+(D&2-1)*((D&1)*(W-1)+1)
 6030 RETURN
-6500e REM === "EatTail" === Destroys D P Q I K L M N
+6500e REM === "EatTail" === => T AA : D I M N P Q
 6510 P=T; Q=8; GOSUB a
 6520 D=AA(T)
 6530 AA(T)=D&-8
 6540 P=T; GOSUB m; PRINT " "
 6550 P=T; GOSUB t; T=P
 6560 RETURN
-6700f REM === "AdvanceHead" === Updates S T U; Destroys D P Q E G I J K L M N
+6700f REM === "AdvanceHead" === => S T U B AA : D E G I J K L M N P Q
 6710 D=AA(S)&3
 6720 P=S; GOSUB t; S=P
 6730 E=AA(S)
@@ -120,12 +120,12 @@
 6820 U=U+1
 6830 FOR I=1 TO 2; PRINT $27"["I ";"36"H"$27"#"I+2 U;NEXT I
 6840 GOSUB s
-6900u REM === "MarkHead" ===
+6900u REM === "MarkHead" === E G S => AA : D P
 6910 D=G
 6920 AA(S)=(E&-8)|4|D
 6930 P=S; GOSUB m; PRINT "+"; GOSUB m; REM Looks better
 6940 GOTO y; REM "Debug"
-8000h REM === "HomePage" ===
+8000h REM === "HomePage" === => AA : I M N P Q
 8010 PRINT $12 $27"[?25l"
 8020 FOR I=1 TO 2; PRINT $27"["I ";"18"H"$27"#"I+2"Snake"; NEXT I
 8025 FOR I=1 TO 2; PRINT $27"["I ";"30"H"$27"#"I+2"Score 0"; NEXT I
@@ -144,7 +144,7 @@
 8140 FOR P=Z-W TO Z-1;GOSUB r;NEXT P
 8160 PRINT $27"[m"
 8170 RETURN
-8500c REM === "Check" === (Changes I,J,K,L,M,N,P)
+8500c REM === "Check" === => : I J K L M N P
 8510 FOR I=0 TO O/2-1
 8520 IF (AA(I)&-8)<>(AA(I+I+1)&-8)+(AA(I+I+2)&-8) THEN GOTO 8800; REM "8800"
 8530 NEXT I
@@ -164,13 +164,13 @@
 8800 PRINT " - Error:" $13$10
 8810 FOR P=0 TO Z-1; @=8; PRINT AA(P)/8; @=1; PRINT "/"AA(P)&7; NEXT P
 8820 @=8; PRINT $27"[?25h" $13$10; END
-9000x REM === "Clash" ===
+9000x REM === "Clash" === => B : I
 9010 B=0
 9020 FOR I=1 TO 2;
 9030 PRINT $27"["H-1+I ";"2"H"$27"#"I+2"[GAME OVER!]";
 9040 NEXT I
 9050 RETURN
-9800i REM === "Init" === (W*H)
+9800i REM === "Init" === W H => Z O U C B AA : I J K
 9810 @=0
 9820 Z=W*H; REM Z<3 not supported !!!!
 9830 DIM AA(Z-1); REM Allocates (Z cells, 0-based)!
