@@ -122,6 +122,12 @@
 #  define Until(expression) UNTIL expression
 #endif
 
+#ifdef TREE_CHECK
+#  define CheckTree Gosub(Check)
+#else
+#  define CheckTree
+#endif
+
 // OS
 #define KeyBuffer #400
 #define KeyMask #F
@@ -137,14 +143,14 @@
 
 10 width=40
 20 height=21
-30 Gosub_(Init); Gosub_(Check)
+30 Gosub_(Init); CheckTree
 40 time=0; Gosub_(Play)
 50 Print(Position(height+3,1) ShowCursor)
 60 End
 
-Subroutine(1000, Play, => alive AA : D E G I J K L M N P Q)
-1010 Gosub_(HomePage); Gosub_(Check)
-1020 Gosub_(InitGame); Gosub_(Check)
+Subroutine(1000, Play, => alive AA : D G I J K L M N P Q)
+1010 Gosub_(HomePage); CheckTree
+1020 Gosub_(InitGame); CheckTree
 1030 L=20; Remark(Tick delay in centiseconds)
 1040 M=time+L; Remark(Next tick time)
 1050 Remark(Main game loop)
@@ -176,7 +182,7 @@ Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
 2050 Until(I>=nodes)
 2060 Return
 
-Subroutine(2100, Debug, => : I)
+Subroutine(2100, Debug, AA(0) J => : I)
 #ifdef DEBUG
 2110 For(I=1) To(2)
 2120 Print(Position(I,5)Double(I+2)AA(0)/8":"J".");Next(I)
@@ -188,14 +194,14 @@ Subroutine(2200, Locate, pos => J : I K L M pos)
 2220 I=1; J=0; K=size; DO; Remark(Interval [J..K]; upper limit is not included)
 2230   M=(K-J)/2; L=AA(I)&CountMask
 2240   If(pos<L) Then K=J+M; I=I+I+1
-2250   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+2
+2250   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
 2260 Until(I>=nodes)
 Label(2300,LocateLinear); Remark(Linear search:)
 2310 If(AA(J)&FlagsMask) Goto(2340)
 2320 If(pos=0) Then Return
 2330 pos=pos-CountBit
 2340 J=J+1
-2350 If(J>size) Then Gosub(Error); Here
+2350 If(J>=size) Then Gosub(Error); Here
 2360 Goto(LocateLinear)
 
 Subroutine(3000, Border, pos => AA : M N Q pos)Gosub(MoveTo)
@@ -211,7 +217,7 @@ Subroutine(3200, MoveTo, pos =>)
 3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
 3230 Return
 
-Subroutine(4500, InitGame, => head tail direction score AA : D E G I J K L M N P Q)
+Subroutine(4500, InitGame, => head tail direction score AA : D G I J K L M N P Q)
 4510 head=(height+1)/2*width-width/2; Remark(Center of board)
 4520 tail=head-2
 4530 direction=East; Remark(Go east)
@@ -220,7 +226,7 @@ Subroutine(4500, InitGame, => head tail direction score AA : D E G I J K L M N P
 4560   AA(pos)=(AA(pos)&CountMask)|BorderBit|direction
 4565   quantity=-CountBit; Gosub(Adjust)
 4570 Next(J)
-4580 For(N=1) To(5); Gosub(SpawnFood); Next(N)
+4580 For(G=1) To(5); Gosub(SpawnFood); Next(G)
 4590 Goto(Debug)
 
 Subroutine(5000, ChangeDirection, head direction => AA)
@@ -236,7 +242,7 @@ Subroutine(5500, SpawnFood, => J AA : I K L M N P Q)
 5550 AA(J)=AA(J)+Mouse
 5560 pos=J; Gosub(MoveTo); Print("@")
 5570 quantity=-CountBit; Gosub(Adjust)
-5575 Gosub(Check)
+5575 CheckTree
 5580 Goto(Debug)
 
 Subroutine(5800, Error, => : M P)
@@ -259,13 +265,12 @@ Subroutine(6500, EatTail, => tail AA : D I M N P Q)
 6550 pos=tail; Gosub(StepSub); tail=pos
 6560 Return
 
-Subroutine(6700, AdvanceHead, => head tail score alive AA : D E G I J K L M N P Q)
+Subroutine(6700, AdvanceHead, => head tail score alive AA : D G I J K L M N P Q)
 6710 direction=AA(head)&3
 6720 pos=head; Gosub(StepSub); head=pos
-6730 E=AA(head)
-6740 If(E&BorderBit) Then Goto(Clash)
+6740 If(AA(head)&BorderBit) Then Goto(Clash)
 6750 G=direction
-6760 If(E&FlagsMask=Mouse) Then Goto(Eat)
+6760 If(AA(head)&FlagsMask=Mouse) Then Goto(Eat)
 6770 Gosub(EatTail)
 6780 Gosub(MarkHead)
 6790 pos=head; quantity=-CountBit; Gosub(Adjust)
@@ -274,9 +279,9 @@ Label(6800,Eat)
 6820 score=score+1
 6830 For(I=1) To(2); Print(Position(I,36)Double(I+2)score);Next(I)
 6840 Gosub(SpawnFood)
-Subroutine(6900, MarkHead, E G head => AA : D P)
+Subroutine(6900, MarkHead, G head => AA : D P)
 6910 direction=G
-6920 AA(head)=(E&CountMask)|BorderBit|direction
+6920 AA(head)=(AA(head)&CountMask)|BorderBit|direction
 6930 pos=head; Gosub(MoveTo); Print("+"); Gosub(MoveTo); Remark(Looks better)
 6940 Goto(Debug)
 
@@ -304,6 +309,7 @@ Subroutine(8000, HomePage, => AA : I M N P Q)
 #define ChildA(i) i+i+1
 #define ChildB(i) i+i+2
 
+#ifdef TREE_CHECK
 Subroutine(8500, Check, => : I J K L M N P)
 8510 For(I=0) To(nodes/2-1)
 8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8800)
@@ -322,8 +328,9 @@ Subroutine(8500, Check, => : I J K L M N P)
 8680 Next(J)
 8700 If (CellCount(L)=K) Then L=I; K=0; Return
 8800 PrintLn(" - Error:")
-8810 For(P=0) To(Z-1); @=8; Print(AA(P)/8); @=1; Print("/"AA(P)&7); Next(P)
+8810 For(P=0) To(Z-1); @=4; Print(AA(P)/8); @=1; Print("/"AA(P)&7); Next(P)
 8820 @=8; PrintLn(ShowCursor); End
+#endif
 
 Subroutine(9000, Clash, => alive : I)
 9010 alive=0
@@ -362,5 +369,28 @@ Tree   0:   1 840 >>= 0->0, L=840
   63-126:  64 (((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14))) + (((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14))) >>= (a-63)/8*105 + (a-63)%8*13, L=13+(a-63)%8/7
  127-254: 128 ((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7)))) + ((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7)))) >>= (a-127)/16*105 + (a-127)%16/2*13 + (a-127)%2*6, L=6+(a-127)%2+(a-127)%16/15.
  255-510: 256 (((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4))))) + (((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))
+
+ACORN ATOM
+
+>OLD
+>L.,100
+   10 GOS.i
+   15 @=0
+   20 P.W"*"H"="Z"/"O'
+   21 GOS.50
+   22 P=O/2; Q=-8; AA(P)=AA(P)|4; GOS.a; GOS.50
+   32 FOR E=0 TO Z-1; P=E
+   33 IF AA(P)&7=0 Q=-8; AA(P)=AA(P)|4; GOS.a
+   35 GOS.50
+   37 N.;E.
+   39 @=0
+   40 GOS.h
+   45 GOS.c
+   46 @=4
+   47 FOR P=0 T.Z; P.AA(P); N.; P.'
+   48 FO P=0 T.Z; P.AA(P)/8; N.;P.'
+   49 E.
+   50 FOR P=0 T.Z-1; @=4; P.AA(P)/8; @=1; P."/"AA(P)&7; N.; P.'
+   60 G.c
 
 #endif
