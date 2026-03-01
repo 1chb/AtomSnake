@@ -64,7 +64,7 @@
 #define L___ j
 #define K___ k
 #define Locate l
-#define MoveTo m
+// m -- free (was MoveTo)
 #define InitGame n
 #define PauseLoop o
 #define Play p
@@ -91,6 +91,7 @@
 #define GraphicsOff $27"(B"
 
 #define SnakeHead GraphicsOn "`" GraphicsOff
+#define MoveToPos(p) Position(p/width+3, p%width+(42-width)/2)
 
 #ifdef PROD
 // Abbreviations
@@ -213,7 +214,7 @@ Label(2300,LocateLinear); Remark(Linear search:)
 2350 If(J>=size) Then Gosub(Error); Here
 2360 Goto(LocateLinear)
 
-Subroutine(3000, Border, pos => AA : M N Q pos)Gosub(MoveTo)
+Subroutine(3000, Border, pos => AA : M N Q pos)Print(MoveToPos(pos))
 Subroutine(3010, BorderPrim, pos => AA : M N Q pos)Print(" ")
 3020 AA(pos)=AA(pos)|BorderBit
 3030 E=I; G=pos; Remark(Save some variables)
@@ -221,21 +222,17 @@ Subroutine(3010, BorderPrim, pos => AA : M N Q pos)Print(" ")
 3050 pos=G; I=E; Remark(Restore the variables)
 3060 Return
 
-Subroutine(3200, MoveTo, pos =>)
-3210 Remark(Centrate board)
-3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
-3230 Return
-
 Subroutine(4500, InitGame, => head tail direction score lastDir foodCount AA : D G I J K L M N P Q)
 4510 head=(height+1)/2*width-width/2; Remark(Center of board)
 4520 tail=head-2
 4530 direction=East; Remark(Go east)
 4540 For(J=tail) To(head)
-4550   pos=J; Gosub(MoveTo); Print(GraphicsOn "q" GraphicsOff)
-4560   AA(pos)=(AA(pos)&CountMask)|BorderBit|direction
-4565   quantity=-CountBit; Gosub(Adjust)
+4550   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
+4560   AA(J)=(AA(J)&CountMask)|BorderBit|direction
+4565   pos=J; quantity=-CountBit; Gosub(Adjust)
 4570 Next(J)
-4575 lastDir=East; foodCount=0; pos=head; Gosub(MoveTo); Print(SnakeHead)
+4575 lastDir=East; foodCount=0
+4576 Print(MoveToPos(head) SnakeHead)
 4580 For(G=1) To(5); Gosub(SpawnFood); Next(G)
 4590 Goto(Debug)
 
@@ -251,15 +248,15 @@ Subroutine(5500, SpawnFood, => J foodCount AA : I K L M N P Q)
 5530 Gosub(Locate)
 5540 If(AA(J)&FlagsMask) Then Gosub(Error); Here
 5550 AA(J)=AA(J)+Mouse
-5560 pos=J; Gosub(MoveTo); Print("@")
-5570 quantity=-CountBit; Gosub(Adjust)
+5560 Print(MoveToPos(J) "@")
+5570 pos=J; quantity=-CountBit; Gosub(Adjust)
 5575 foodCount=foodCount+1; CheckTree
 5580 Goto(Debug)
 
 Subroutine(5800, Error, => : M P)
 5810 For(pos=0) To(size-1)
 5820 M=AA(pos)&FlagsMask
-5830 Gosub(MoveTo); If(M>0) Then Print(M)
+5830 If(M>0) Then Print(MoveToPos(pos) M)
 5840 Next(pos)
 5850 Print(ShowCursor)
 5860 Return
@@ -272,13 +269,14 @@ Subroutine(6500, EatTail, => tail AA : D I M N P Q)
 6510 pos=tail; quantity=CountBit; Gosub(Adjust)
 6520 direction=AA(tail)
 6530 AA(tail)=direction&CountMask
-6540 pos=tail; Gosub(MoveTo); Print(" ")
+6540 Print(MoveToPos(tail) " ")
 6550 pos=tail; Gosub(StepSub); tail=pos
 6560 Return
 
 Subroutine(6700, AdvanceHead, => head tail score alive foodCount AA lastDir : D G I J K L M N P Q)
 6710 direction=AA(head)&3
-6715 N=snakeLUT?(lastDir*4+direction); pos=head; Gosub(MoveTo); Print(GraphicsOn $N GraphicsOff)
+6715 N=snakeLUT?(lastDir*4+direction)
+6716 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
 6717 lastDir=direction
 6720 pos=head; Gosub(StepSub); head=pos
 6740 If(AA(head)&BorderBit) Then Goto(GameOver)
@@ -296,7 +294,8 @@ Label(6800,Eat)
 Subroutine(6900, MarkHead, G head => AA : D P)
 6910 direction=G
 6920 AA(head)=(AA(head)&CountMask)|BorderBit|direction
-6930 pos=head; Gosub(MoveTo); Print(SnakeHead); Gosub(MoveTo); Remark(Looks better)
+6930 Print(MoveToPos(head) SnakeHead)
+6935 Print(MoveToPos(head)); Remark(Reposition cursor)
 6940 Goto(Debug)
 
 Subroutine(8000, HomePage, => AA : I M N P Q)
@@ -306,7 +305,7 @@ Subroutine(8000, HomePage, => AA : I M N P Q)
 8030 For(I=1) To(height); Print($10$13$27"#6"); Next(I)
 8040 Print(ReverseVideo)
 8050 Remark(TopBorder)
-8055 pos=0; Gosub(MoveTo)
+8055 Print(MoveToPos(0))
 8060 For(pos=0) To(width-1);Gosub(BorderPrim);Next(pos)
 8080 Remark(SideBorders)
 8090 For(I=width) To(size-width-width) Step(width)
@@ -314,7 +313,7 @@ Subroutine(8000, HomePage, => AA : I M N P Q)
 8110   pos=I+width-1; Gosub(Border); Remark(RightBorder)
 8120 Next(I)
 8130 Remark(BottomBorder)
-8135 pos=size-width; Gosub(MoveTo)
+8135 Print(MoveToPos((size-width)))
 8140 For(pos=size-width) To(size-1);Gosub(BorderPrim);Next(pos)
 8160 Print(NormalVideo)
 8170 Return
@@ -347,7 +346,7 @@ Subroutine(8500, Check, => : I J K L M N P)
 #endif
 
 Subroutine(9000, GameOver, head foodCount => alive : I P)
-9010 alive=0; pos=head; Gosub(MoveTo)
+9010 alive=0; Print(MoveToPos(head))
 9020 If(foodCount>0) Then Goto(9100) // Food remaining, not a win
 9030 Print(SnakeHead)
 9040 For(I=1) To(2); Print(Position(I,1)Double(I+2)"You Win!"); Next(I)

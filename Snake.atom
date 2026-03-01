@@ -52,27 +52,24 @@
 2340 J=J+1
 2350 IF J>=Z THEN GOSUB z; Here
 2360 GOTO g; REM "LocateLinear"
-3000b REM === "Border" === P => AA : M N Q P GOSUB m
+3000b REM === "Border" === P => AA : M N Q P PRINT $27"["P/W+3";"P%W+(42-W)/2"H"
 3010r REM === "BorderPrim" === P => AA : M N Q P PRINT " "
 3020 AA(P)=AA(P)|4
 3030 E=I; G=P; REM Save some variables
 3040 Q=-8; GOSUB a
 3050 P=G; I=E; REM Restore the variables
 3060 RETURN
-3200m REM === "MoveTo" === P =>
-3210 REM Centrate board
-3220 PRINT $27"["P/W+3";"P%W+(42-W)/2"H"
-3230 RETURN
 4500n REM === "InitGame" === => S T D U E X AA : D G I J K L M N P Q
 4510 S=(H+1)/2*W-W/2; REM Center of board
 4520 T=S-2
 4530 D=2; REM Go east
 4540 FOR J=T TO S
-4550 P=J; GOSUB m; PRINT $27"(0" "q" $27"(B"
-4560 AA(P)=(AA(P)&-8)|4|D
-4565 Q=-8; GOSUB a
+4550 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $27"(0" "q" $27"(B"
+4560 AA(J)=(AA(J)&-8)|4|D
+4565 P=J; Q=-8; GOSUB a
 4570 NEXT J
-4575 E=2; X=0; P=S; GOSUB m; PRINT $27"(0" "`" $27"(B"
+4575 E=2; X=0
+4576 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" "`" $27"(B"
 4580 FOR G=1 TO 5; GOSUB s; NEXT G
 4590 GOTO y; REM "Debug"
 5000d REM === "ChangeDirection" === S D => AA
@@ -86,14 +83,14 @@
 5530 GOSUB l
 5540 IF AA(J)&7 THEN GOSUB z; Here
 5550 AA(J)=AA(J)+1
-5560 P=J; GOSUB m; PRINT "@"
-5570 Q=-8; GOSUB a
+5560 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" "@"
+5570 P=J; Q=-8; GOSUB a
 5575 X=X+1;
 5580 GOTO y; REM "Debug"
 5800z REM === "Error" === => : M P
 5810 FOR P=0 TO Z-1
 5820 M=AA(P)&7
-5830 GOSUB m; IF M>0 THEN PRINT M
+5830 IF M>0 THEN PRINT $27"["P/W+3";"P%W+(42-W)/2"H" M
 5840 NEXT P
 5850 PRINT $27"[?25h"
 5860 RETURN
@@ -104,12 +101,13 @@
 6510 P=T; Q=8; GOSUB a
 6520 D=AA(T)
 6530 AA(T)=D&-8
-6540 P=T; GOSUB m; PRINT " "
+6540 PRINT $27"["T/W+3";"T%W+(42-W)/2"H" " "
 6550 P=T; GOSUB t; T=P
 6560 RETURN
 6700f REM === "AdvanceHead" === => S T U B X AA E : D G I J K L M N P Q
 6710 D=AA(S)&3
-6715 N=F?(E*4+D); P=S; GOSUB m; PRINT $27"(0" $N $27"(B"
+6715 N=F?(E*4+D)
+6716 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" $N $27"(B"
 6717 E=D
 6720 P=S; GOSUB t; S=P
 6740 IF AA(S)&4 THEN GOTO x; REM "GameOver"
@@ -127,7 +125,8 @@
 6900u REM === "MarkHead" === G S => AA : D P
 6910 D=G
 6920 AA(S)=(AA(S)&-8)|4|D
-6930 P=S; GOSUB m; PRINT $27"(0" "`" $27"(B"; GOSUB m; REM Looks better
+6930 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" "`" $27"(B"
+6935 PRINT $27"["S/W+3";"S%W+(42-W)/2"H"; REM Reposition cursor
 6940 GOTO y; REM "Debug"
 8000h REM === "HomePage" === => AA : I M N P Q
 8010 PRINT $12 $27"[?25l"
@@ -136,7 +135,7 @@
 8030 FOR I=1 TO H; PRINT $10$13$27"#6"; NEXT I
 8040 PRINT $27"[7m"
 8050 REM TopBorder
-8055 P=0; GOSUB m
+8055 PRINT $27"["0/W+3";"0%W+(42-W)/2"H"
 8060 FOR P=0 TO W-1;GOSUB r;NEXT P
 8080 REM SideBorders
 8090 FOR I=W TO Z-W-W STEP W
@@ -144,12 +143,12 @@
 8110 P=I+W-1; GOSUB b; REM RightBorder
 8120 NEXT I
 8130 REM BottomBorder
-8135 P=Z-W; GOSUB m
+8135 PRINT $27"["(Z-W)/W+3";"(Z-W)%W+(42-W)/2"H"
 8140 FOR P=Z-W TO Z-1;GOSUB r;NEXT P
 8160 PRINT $27"[m"
 8170 RETURN
 9000x REM === "GameOver" === S X => B : I P
-9010 B=0; P=S; GOSUB m
+9010 B=0; PRINT $27"["S/W+3";"S%W+(42-W)/2"H"
 9020 IF X>0 THEN GOTO 9100; REM "9100"
 9030 PRINT $27"(0" "`" $27"(B"
 9040 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"You Win!"; NEXT I
