@@ -18,7 +18,7 @@
 1110 IF N=#34 THEN D=0; GOSUB d;
 1120 IF N=#36 THEN D=2; GOSUB d;
 1125 IF N=#32 THEN D=3; GOSUB d;
-1126 IF N=#50 THEN GOSUB o;
+1126 IF N=#35 THEN GOSUB o;
 1127 IF N=27 THEN B=0;
 1130w REM Wait for tick
 1135 R=R+1
@@ -26,8 +26,10 @@
 1150 Y=R+A; REM Schedule next tick
 1160 GOSUB f
 1170 GOTO q; REM "GameLoop"
-1180o IF ?#410=?#411 THEN GOTO o; REM "PauseLoop"
-1190 N=?(#400 +?#410); ?#410=(?#410 +1)&#F; IF N<>#50 THEN GOTO o; REM "PauseLoop"
+1180o REM === "PauseLoop" === => : N
+1185 DO; DO; UNTIL ?#410<>?#411
+1190 N=?(#400 +?#410); ?#410=(?#410 +1)&#F
+1195 UNTIL N=#35
 1200 RETURN
 2000a REM === "Adjust" === P Q => AA : I M N P
 2010 I=0; M=Z;

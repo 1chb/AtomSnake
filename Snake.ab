@@ -35,12 +35,12 @@
 #define East 2
 #define South 3
 
-// KEYS: 8, 4, 6, 2, Esc
+// KEYS: North=8, West=4, East=6, South=2, Pause=5, Quit=Esc
 #define UP    #38
 #define LEFT  #34
 #define RIGHT #36
 #define DOWN  #32
-#define PAUSE #50
+#define PAUSE #35
 #define QUIT  27
 
 // Bits
@@ -144,6 +144,7 @@
 #define KeyOut #410
 #define KeyIn #411
 #define KeyEmpty ?KeyOut=?KeyIn
+#define KeyAvailable ?KeyOut<>?KeyIn
 #define KeyPeek ?(KeyBuffer+?KeyOut)
 #define KeyNext ?KeyOut=(?KeyOut+1)&KeyMask
 
@@ -180,8 +181,10 @@ Label(1130, WaitForTick) Remark(Wait for tick)
 1150 nextTick=time+tickDelay; Remark(Schedule next tick)
 1160 Gosub(AdvanceHead)
 1170 Goto(GameLoop)
-Label(1180, PauseLoop)If(KeyEmpty) Then Goto(PauseLoop)
-1190 N=KeyPeek; KeyNext; If(N<>PAUSE) Then Goto(PauseLoop)
+Subroutine(1180, PauseLoop, => : N)
+1185 DO; DO; Until(KeyAvailable)
+1190   N=KeyPeek; KeyNext
+1195 Until(N=PAUSE)
 1200 Return
 
 Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
