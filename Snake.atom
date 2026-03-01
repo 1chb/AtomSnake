@@ -55,23 +55,24 @@
 3000b REM === "Border" === P => AA : M N Q P GOSUB m
 3010r REM === "BorderPrim" === P => AA : M N Q P PRINT " "
 3020 AA(P)=AA(P)|4
-3030 E=I; F=P; REM Save some variables
+3030 E=I; G=P; REM Save some variables
 3040 Q=-8; GOSUB a
-3050 P=F; I=E; REM Restore the variables
+3050 P=G; I=E; REM Restore the variables
 3060 RETURN
 3200m REM === "MoveTo" === P =>
 3210 REM Centrate board
 3220 PRINT $27"["P/W+3";"P%W+(42-W)/2"H"
 3230 RETURN
-4500n REM === "InitGame" === => S T D U AA : D G I J K L M N P Q
+4500n REM === "InitGame" === => S T D U E AA : D G I J K L M N P Q
 4510 S=(H+1)/2*W-W/2; REM Center of board
 4520 T=S-2
 4530 D=2; REM Go east
 4540 FOR J=T TO S
-4550 P=J; GOSUB m; PRINT "+"
+4550 P=J; GOSUB m; PRINT $27"(0" "q" $27"(B"
 4560 AA(P)=(AA(P)&-8)|4|D
 4565 Q=-8; GOSUB a
 4570 NEXT J
+4575 E=2; P=S; GOSUB m; PRINT $27"(0" "`" $27"(B"
 4580 FOR G=1 TO 5; GOSUB s; NEXT G
 4590 GOTO y; REM "Debug"
 5000d REM === "ChangeDirection" === S D => AA
@@ -105,8 +106,10 @@
 6540 P=T; GOSUB m; PRINT " "
 6550 P=T; GOSUB t; T=P
 6560 RETURN
-6700f REM === "AdvanceHead" === => S T U B AA : D G I J K L M N P Q
+6700f REM === "AdvanceHead" === => S T U B AA E : D G I J K L M N P Q
 6710 D=AA(S)&3
+6715 N=F?(E*4+D); P=S; GOSUB m; PRINT $27"(0" $N $27"(B"
+6717 E=D
 6720 P=S; GOSUB t; S=P
 6740 IF AA(S)&4 THEN GOTO x; REM "Clash"
 6750 G=D
@@ -122,7 +125,7 @@
 6900u REM === "MarkHead" === G S => AA : D P
 6910 D=G
 6920 AA(S)=(AA(S)&-8)|4|D
-6930 P=S; GOSUB m; PRINT "+"; GOSUB m; REM Looks better
+6930 P=S; GOSUB m; PRINT $27"(0" "`" $27"(B"; GOSUB m; REM Looks better
 6940 GOTO y; REM "Debug"
 8000h REM === "HomePage" === => AA : I M N P Q
 8010 PRINT $12 $27"[?25l"
@@ -143,13 +146,14 @@
 8140 FOR P=Z-W TO Z-1;GOSUB r;NEXT P
 8160 PRINT $27"[m"
 8170 RETURN
-9000x REM === "Clash" === => B : I
+9000x REM === "Clash" === => B : I P
+9005 P=S; GOSUB m; PRINT "X"
 9010 B=0
 9020 FOR I=1 TO 2;
 9030 PRINT $27"["H-1+I ";"2"H"$27"#"I+2"[GAME OVER!]";
 9040 NEXT I
 9050 RETURN
-9800i REM === "Init" === W H => Z O U C B AA : I J K
+9800i REM === "Init" === W H => Z O U C B F AA : I J K
 9810 @=0
 9820 Z=W*H; REM Z<3 not supported !!!!
 9830 DIM AA(Z-1); REM Allocates (Z cells, 0-based)!
@@ -165,4 +169,7 @@
 9970 NEXT I
 9975 FOR I=O TO Z-1; AA(I)=0; NEXT I; REM Clear remaining O
 9980 U=0; C=-1; B=1
+9985 REM Snake body LUT: F?(E*4+D) => line drawing char
+9986 REM Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└ n=┼
+9987 DIM F(16); $F="qmnlkxlnnjqkjnmx"
 9990 RETURN

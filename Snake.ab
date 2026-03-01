@@ -5,7 +5,9 @@
 #define alive B
 #define turn C
 #define direction D
-// E,F,G -- Save
+#define lastDir E
+#define snakeLUT F
+// G -- Save (used as temp in Border)
 #define height H
 // I,J,K,L,M,N -- Temp
 #define nodes O
@@ -82,6 +84,8 @@
 #define ShowCursor $27"[?25h"
 #define Position(row,column) $27"["row";"column"H"
 #define Double(k) $27"#"k
+#define GraphicsOn $27"(0"
+#define GraphicsOff $27"(B"
 
 #ifdef PROD
 // Abbreviations
@@ -207,9 +211,9 @@ Label(2300,LocateLinear); Remark(Linear search:)
 Subroutine(3000, Border, pos => AA : M N Q pos)Gosub(MoveTo)
 Subroutine(3010, BorderPrim, pos => AA : M N Q pos)Print(" ")
 3020 AA(pos)=AA(pos)|BorderBit
-3030 E=I; F=pos; Remark(Save some variables)
+3030 E=I; G=pos; Remark(Save some variables)
 3040 quantity=-CountBit; Gosub(Adjust)
-3050 pos=F; I=E; Remark(Restore the variables)
+3050 pos=G; I=E; Remark(Restore the variables)
 3060 Return
 
 Subroutine(3200, MoveTo, pos =>)
@@ -217,15 +221,16 @@ Subroutine(3200, MoveTo, pos =>)
 3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
 3230 Return
 
-Subroutine(4500, InitGame, => head tail direction score AA : D G I J K L M N P Q)
+Subroutine(4500, InitGame, => head tail direction score lastDir AA : D G I J K L M N P Q)
 4510 head=(height+1)/2*width-width/2; Remark(Center of board)
 4520 tail=head-2
 4530 direction=East; Remark(Go east)
 4540 For(J=tail) To(head)
-4550   pos=J; Gosub(MoveTo); Print("+")
+4550   pos=J; Gosub(MoveTo); Print(GraphicsOn "q" GraphicsOff)
 4560   AA(pos)=(AA(pos)&CountMask)|BorderBit|direction
 4565   quantity=-CountBit; Gosub(Adjust)
 4570 Next(J)
+4575 lastDir=East; pos=head; Gosub(MoveTo); Print(GraphicsOn "`" GraphicsOff)
 4580 For(G=1) To(5); Gosub(SpawnFood); Next(G)
 4590 Goto(Debug)
 
@@ -265,8 +270,10 @@ Subroutine(6500, EatTail, => tail AA : D I M N P Q)
 6550 pos=tail; Gosub(StepSub); tail=pos
 6560 Return
 
-Subroutine(6700, AdvanceHead, => head tail score alive AA : D G I J K L M N P Q)
+Subroutine(6700, AdvanceHead, => head tail score alive AA lastDir : D G I J K L M N P Q)
 6710 direction=AA(head)&3
+6715 N=snakeLUT?(lastDir*4+direction); pos=head; Gosub(MoveTo); Print(GraphicsOn $N GraphicsOff)
+6717 lastDir=direction
 6720 pos=head; Gosub(StepSub); head=pos
 6740 If(AA(head)&BorderBit) Then Goto(Clash)
 6750 G=direction
@@ -282,7 +289,7 @@ Label(6800,Eat)
 Subroutine(6900, MarkHead, G head => AA : D P)
 6910 direction=G
 6920 AA(head)=(AA(head)&CountMask)|BorderBit|direction
-6930 pos=head; Gosub(MoveTo); Print("+"); Gosub(MoveTo); Remark(Looks better)
+6930 pos=head; Gosub(MoveTo); Print(GraphicsOn "`" GraphicsOff); Gosub(MoveTo); Remark(Looks better)
 6940 Goto(Debug)
 
 Subroutine(8000, HomePage, => AA : I M N P Q)
@@ -332,14 +339,15 @@ Subroutine(8500, Check, => : I J K L M N P)
 8820 @=8; PrintLn(ShowCursor); End
 #endif
 
-Subroutine(9000, Clash, => alive : I)
+Subroutine(9000, Clash, => alive : I P)
+9005 pos=head; Gosub(MoveTo); Print("X")
 9010 alive=0
 9020 For(I=1) To(2);
 9030   Print(Position(height-1+I,2)Double(I+2)"[GAME OVER!]");
 9040 Next(I)
 9050 Return
 
-Subroutine(9800, Init, width height => size nodes score turn alive AA : I J K)
+Subroutine(9800, Init, width height => size nodes score turn alive snakeLUT AA : I J K)
 9810 @=0
 9820 size=width*height; Remark(size<3 not supported !!!!)
 9830 DIM AA(size-1); Remark(Allocates (size cells, 0-based)!)
@@ -355,6 +363,9 @@ Subroutine(9800, Init, width height => size nodes score turn alive AA : I J K)
 9970 Next(I)
 9975 For(I=nodes) To(size-1); AA(I)=0; Next(I); Remark(Clear remaining nodes)
 9980 score=0; turn=Left; alive=1
+9985 Remark(Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char)
+9986 Remark(Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└ n=┼)
+9987 DIM snakeLUT(16); $F="qmnlkxlnnjqkjnmx"
 9990 Return
 
 #if 0
