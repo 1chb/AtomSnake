@@ -2,6 +2,7 @@
 // cpp -P Snake.ab
 
 // Variables:
+#define tickDelay A
 #define alive B
 #define turn C
 #define direction D
@@ -19,6 +20,8 @@
 #define score U
 #define string V
 #define width W
+#define foodCount X
+#define nextTick Y
 #define size Z
 
 // Turns
@@ -72,7 +75,7 @@
 #define MarkHead u
 #define Eat v
 #define WaitForTick w
-#define Clash x
+#define GameOver x
 #define Debug y
 #define Error z
 
@@ -86,6 +89,8 @@
 #define Double(k) $27"#"k
 #define GraphicsOn $27"(0"
 #define GraphicsOff $27"(B"
+
+#define SnakeHead GraphicsOn "`" GraphicsOff
 
 #ifdef PROD
 // Abbreviations
@@ -152,11 +157,11 @@
 50 Print(Position(height+3,1) ShowCursor)
 60 End
 
-Subroutine(1000, Play, => alive AA : D G I J K L M N P Q)
+Subroutine(1000, Play, => alive tickDelay nextTick AA : D G I J K L M N P Q)
 1010 Gosub_(HomePage); CheckTree
 1020 Gosub_(InitGame); CheckTree
-1030 L=20; Remark(Tick delay in centiseconds)
-1040 M=time+L; Remark(Next tick time)
+1030 tickDelay=20; Remark(Tick delay in loop iterations)
+1040 nextTick=time+tickDelay; Remark(Next tick time)
 1050 Remark(Main game loop)
 Label(1060, GameLoop)If(alive=0) Then Return
 1070 Remark(Check keyboard)
@@ -170,8 +175,8 @@ Label(1060, GameLoop)If(alive=0) Then Return
 1127   If(N=QUIT)  Then alive=0;
 Label(1130, WaitForTick) Remark(Wait for tick)
 1135 time=time+1
-1140 If(time<M) Then Goto(GameLoop)
-1150 M=time+L; Remark(Schedule next tick)
+1140 If(time<nextTick) Then Goto(GameLoop)
+1150 nextTick=time+tickDelay; Remark(Schedule next tick)
 1160 Gosub(AdvanceHead)
 1170 Goto(GameLoop)
 Label(1180, PauseLoop)If(KeyEmpty) Then Goto(PauseLoop)
@@ -221,7 +226,7 @@ Subroutine(3200, MoveTo, pos =>)
 3220 Print(Position(pos/width+3, pos%width+(42-width)/2))
 3230 Return
 
-Subroutine(4500, InitGame, => head tail direction score lastDir AA : D G I J K L M N P Q)
+Subroutine(4500, InitGame, => head tail direction score lastDir foodCount AA : D G I J K L M N P Q)
 4510 head=(height+1)/2*width-width/2; Remark(Center of board)
 4520 tail=head-2
 4530 direction=East; Remark(Go east)
@@ -230,7 +235,7 @@ Subroutine(4500, InitGame, => head tail direction score lastDir AA : D G I J K L
 4560   AA(pos)=(AA(pos)&CountMask)|BorderBit|direction
 4565   quantity=-CountBit; Gosub(Adjust)
 4570 Next(J)
-4575 lastDir=East; pos=head; Gosub(MoveTo); Print(GraphicsOn "`" GraphicsOff)
+4575 lastDir=East; foodCount=0; pos=head; Gosub(MoveTo); Print(SnakeHead)
 4580 For(G=1) To(5); Gosub(SpawnFood); Next(G)
 4590 Goto(Debug)
 
@@ -239,15 +244,16 @@ Subroutine(5000, ChangeDirection, head direction => AA)
 5020 AA(head)=(AA(head)&#FFFFFFFC)|direction
 5030 Return
 
-Subroutine(5500, SpawnFood, => J AA : I K L M N P Q)
+Subroutine(5500, SpawnFood, => J foodCount AA : I K L M N P Q)
+5510 If(AA(0)&CountMask=0) Then Return // Board full
 5520 pos=ABS(RND)%(AA(0)/CountBit)
-5522 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos".");Next(I)
+5522 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos"  ");Next(I)
 5530 Gosub(Locate)
 5540 If(AA(J)&FlagsMask) Then Gosub(Error); Here
 5550 AA(J)=AA(J)+Mouse
 5560 pos=J; Gosub(MoveTo); Print("@")
 5570 quantity=-CountBit; Gosub(Adjust)
-5575 CheckTree
+5575 foodCount=foodCount+1; CheckTree
 5580 Goto(Debug)
 
 Subroutine(5800, Error, => : M P)
@@ -270,12 +276,12 @@ Subroutine(6500, EatTail, => tail AA : D I M N P Q)
 6550 pos=tail; Gosub(StepSub); tail=pos
 6560 Return
 
-Subroutine(6700, AdvanceHead, => head tail score alive AA lastDir : D G I J K L M N P Q)
+Subroutine(6700, AdvanceHead, => head tail score alive foodCount AA lastDir : D G I J K L M N P Q)
 6710 direction=AA(head)&3
 6715 N=snakeLUT?(lastDir*4+direction); pos=head; Gosub(MoveTo); Print(GraphicsOn $N GraphicsOff)
 6717 lastDir=direction
 6720 pos=head; Gosub(StepSub); head=pos
-6740 If(AA(head)&BorderBit) Then Goto(Clash)
+6740 If(AA(head)&BorderBit) Then Goto(GameOver)
 6750 G=direction
 6760 If(AA(head)&FlagsMask=Mouse) Then Goto(Eat)
 6770 Gosub(EatTail)
@@ -283,13 +289,14 @@ Subroutine(6700, AdvanceHead, => head tail score alive AA lastDir : D G I J K L 
 6790 pos=head; quantity=-CountBit; Gosub(Adjust)
 6795 Goto(Debug)
 Label(6800,Eat)
+6810 foodCount=foodCount-1
 6820 score=score+1
 6830 For(I=1) To(2); Print(Position(I,36)Double(I+2)score);Next(I)
 6840 Gosub(SpawnFood)
 Subroutine(6900, MarkHead, G head => AA : D P)
 6910 direction=G
 6920 AA(head)=(AA(head)&CountMask)|BorderBit|direction
-6930 pos=head; Gosub(MoveTo); Print(GraphicsOn "`" GraphicsOff); Gosub(MoveTo); Remark(Looks better)
+6930 pos=head; Gosub(MoveTo); Print(SnakeHead); Gosub(MoveTo); Remark(Looks better)
 6940 Goto(Debug)
 
 Subroutine(8000, HomePage, => AA : I M N P Q)
@@ -339,13 +346,15 @@ Subroutine(8500, Check, => : I J K L M N P)
 8820 @=8; PrintLn(ShowCursor); End
 #endif
 
-Subroutine(9000, Clash, => alive : I P)
-9005 pos=head; Gosub(MoveTo); Print("X")
-9010 alive=0
-9020 For(I=1) To(2);
-9030   Print(Position(height-1+I,2)Double(I+2)"[GAME OVER!]");
-9040 Next(I)
+Subroutine(9000, GameOver, head foodCount => alive : I P)
+9010 alive=0; pos=head; Gosub(MoveTo)
+9020 If(foodCount>0) Then Goto(9100) // Food remaining, not a win
+9030 Print(SnakeHead)
+9040 For(I=1) To(2); Print(Position(I,1)Double(I+2)"You Win!"); Next(I)
 9050 Return
+9100 Print("X")
+9110 For(I=1) To(2); Print(Position(I,1)Double(I+2)"Loser!"); Next(I)
+9120 Return
 
 Subroutine(9800, Init, width height => size nodes score turn alive snakeLUT AA : I J K)
 9810 @=0
@@ -367,41 +376,3 @@ Subroutine(9800, Init, width height => size nodes score turn alive snakeLUT AA :
 9986 Remark(Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└ n=┼)
 9987 DIM snakeLUT(16); $F="qmnlkxlnnjqkjnmx"
 9990 Return
-
-#if 0
-
-Z=40*21=840
-Tree   0:   1 840 >>= 0->0, L=840
-     1-2:   2 420+420 >>= 1->0, 2->420 >>= (a-1)*420, L=420
-     3-6:   4 (210+210)+(210+210) >>= (a-3)*210, L=210
-    7-14:   8 105+105+105+105 + 105+105+105+105 >>= (a-7)*105, L=105
-   15-30:  16 (52+53)+(52+53)+(52+53)+(52+53) + (52+53)+(52+53)+(52+53)+(52+53) >>= (a-15)/2*105 + (a-15)%2*52, e.g 7*105 + 1*52 = 735+52 = 787, L=52+(a-15)%2
-   31-62:  32 ((26+26)+(26+27))+((26+26)+(26+27))+((26+26)+(26+27))+((26+26)+(26+27)) + ((26+26)+(26+27))+((26+26)+(26+27))+((26+26)+(26+27))+((26+26)+(26+27)) >>= (a-31)/4*105 + (a-31)%4*26, L=26+(a-31)%4/3
-  63-126:  64 (((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14))) + (((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14)))+(((13+13)+(13+13))+((13+13)+(13+14))) >>= (a-63)/8*105 + (a-63)%8*13, L=13+(a-63)%8/7
- 127-254: 128 ((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7)))) + ((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7))))+((((6+7)+(6+7))+((6+7)+(6+7)))+(((6+7)+(6+7))+((6+7)+(7+7)))) >>= (a-127)/16*105 + (a-127)%16/2*13 + (a-127)%2*6, L=6+(a-127)%2+(a-127)%16/15.
- 255-510: 256 (((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4))))) + (((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))+(((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+3)+(3+4))))+((((3+3)+(3+4))+((3+3)+(3+4)))+(((3+3)+(3+4))+((3+4)+(3+4)))))
-
-ACORN ATOM
-
->OLD
->L.,100
-   10 GOS.i
-   15 @=0
-   20 P.W"*"H"="Z"/"O'
-   21 GOS.50
-   22 P=O/2; Q=-8; AA(P)=AA(P)|4; GOS.a; GOS.50
-   32 FOR E=0 TO Z-1; P=E
-   33 IF AA(P)&7=0 Q=-8; AA(P)=AA(P)|4; GOS.a
-   35 GOS.50
-   37 N.;E.
-   39 @=0
-   40 GOS.h
-   45 GOS.c
-   46 @=4
-   47 FOR P=0 T.Z; P.AA(P); N.; P.'
-   48 FO P=0 T.Z; P.AA(P)/8; N.;P.'
-   49 E.
-   50 FOR P=0 T.Z-1; @=4; P.AA(P)/8; @=1; P."/"AA(P)&7; N.; P.'
-   60 G.c
-
-#endif

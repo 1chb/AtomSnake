@@ -4,11 +4,11 @@
 40 R=0; GOSUB p; REM "Play"
 50 PRINT $27"["H+3";"1"H" $27"[?25h"
 60 END
-1000p REM === "Play" === => B AA : D G I J K L M N P Q
+1000p REM === "Play" === => B A Y AA : D G I J K L M N P Q
 1010 GOSUB h; REM "HomePage";
 1020 GOSUB n; REM "InitGame";
-1030 L=20; REM Tick delay in centiseconds
-1040 M=R+L; REM Next tick R
+1030 A=20; REM Tick delay in loop iterations
+1040 Y=R+A; REM Next tick R
 1050 REM Main game loop
 1060q IF B=0 THEN RETURN
 1070 REM c keyboard
@@ -22,8 +22,8 @@
 1127 IF N=27 THEN B=0;
 1130w REM Wait for tick
 1135 R=R+1
-1140 IF R<M THEN GOTO q; REM "GameLoop"
-1150 M=R+L; REM Schedule next tick
+1140 IF R<Y THEN GOTO q; REM "GameLoop"
+1150 Y=R+A; REM Schedule next tick
 1160 GOSUB f
 1170 GOTO q; REM "GameLoop"
 1180o IF ?#410=?#411 THEN GOTO o; REM "PauseLoop"
@@ -63,7 +63,7 @@
 3210 REM Centrate board
 3220 PRINT $27"["P/W+3";"P%W+(42-W)/2"H"
 3230 RETURN
-4500n REM === "InitGame" === => S T D U E AA : D G I J K L M N P Q
+4500n REM === "InitGame" === => S T D U E X AA : D G I J K L M N P Q
 4510 S=(H+1)/2*W-W/2; REM Center of board
 4520 T=S-2
 4530 D=2; REM Go east
@@ -72,22 +72,23 @@
 4560 AA(P)=(AA(P)&-8)|4|D
 4565 Q=-8; GOSUB a
 4570 NEXT J
-4575 E=2; P=S; GOSUB m; PRINT $27"(0" "`" $27"(B"
+4575 E=2; X=0; P=S; GOSUB m; PRINT $27"(0" "`" $27"(B"
 4580 FOR G=1 TO 5; GOSUB s; NEXT G
 4590 GOTO y; REM "Debug"
 5000d REM === "ChangeDirection" === S D => AA
 5010 IF (AA(S)&3)=D THEN RETURN; REM Dir not changed
 5020 AA(S)=(AA(S)&#FFFFFFFC)|D
 5030 RETURN
-5500s REM === "SpawnFood" === => J AA : I K L M N P Q
+5500s REM === "SpawnFood" === => J X AA : I K L M N P Q
+5510 IF AA(0)&-8=0 THEN RETURN
 5520 P=ABS(RND)%(AA(0)/8)
-5522 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2 P ".";NEXT I
+5522 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2 P "  ";NEXT I
 5530 GOSUB l
 5540 IF AA(J)&7 THEN GOSUB z; Here
 5550 AA(J)=AA(J)+1
 5560 P=J; GOSUB m; PRINT "@"
 5570 Q=-8; GOSUB a
-5575
+5575 X=X+1;
 5580 GOTO y; REM "Debug"
 5800z REM === "Error" === => : M P
 5810 FOR P=0 TO Z-1
@@ -106,12 +107,12 @@
 6540 P=T; GOSUB m; PRINT " "
 6550 P=T; GOSUB t; T=P
 6560 RETURN
-6700f REM === "AdvanceHead" === => S T U B AA E : D G I J K L M N P Q
+6700f REM === "AdvanceHead" === => S T U B X AA E : D G I J K L M N P Q
 6710 D=AA(S)&3
 6715 N=F?(E*4+D); P=S; GOSUB m; PRINT $27"(0" $N $27"(B"
 6717 E=D
 6720 P=S; GOSUB t; S=P
-6740 IF AA(S)&4 THEN GOTO x; REM "Clash"
+6740 IF AA(S)&4 THEN GOTO x; REM "GameOver"
 6750 G=D
 6760 IF AA(S)&7=1 THEN GOTO v; REM "Eat"
 6770 GOSUB e
@@ -119,6 +120,7 @@
 6790 P=S; Q=-8; GOSUB a
 6795 GOTO y; REM "Debug"
 6800v
+6810 X=X-1
 6820 U=U+1
 6830 FOR I=1 TO 2; PRINT $27"["I ";"36"H"$27"#"I+2 U;NEXT I
 6840 GOSUB s
@@ -146,13 +148,15 @@
 8140 FOR P=Z-W TO Z-1;GOSUB r;NEXT P
 8160 PRINT $27"[m"
 8170 RETURN
-9000x REM === "Clash" === => B : I P
-9005 P=S; GOSUB m; PRINT "X"
-9010 B=0
-9020 FOR I=1 TO 2;
-9030 PRINT $27"["H-1+I ";"2"H"$27"#"I+2"[GAME OVER!]";
-9040 NEXT I
+9000x REM === "GameOver" === S X => B : I P
+9010 B=0; P=S; GOSUB m
+9020 IF X>0 THEN GOTO 9100; REM "9100"
+9030 PRINT $27"(0" "`" $27"(B"
+9040 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"You Win!"; NEXT I
 9050 RETURN
+9100 PRINT "X"
+9110 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"Loser!"; NEXT I
+9120 RETURN
 9800i REM === "Init" === W H => Z O U C B F AA : I J K
 9810 @=0
 9820 Z=W*H; REM Z<3 not supported !!!!
