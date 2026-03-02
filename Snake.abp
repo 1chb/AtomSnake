@@ -1,5 +1,7 @@
 // Execute like:
-// cpp -P Snake.ab
+// cpp -P Snake.abp
+
+#include "AcornAtom.abp"
 
 // Variables:
 #define tickDelay A
@@ -79,78 +81,15 @@
 #define Debug y
 #define Error z
 
-// VT100
-#define ClearScreen $12
-#define NormalVideo $27"[m"
-#define ReverseVideo $27"[7m"
-#define HideCursor $27"[?25l"
-#define ShowCursor $27"[?25h"
-#define Position(row,column) $27"["row";"column"H"
-#define Double(k) $27"#"k
-#define GraphicsOn $27"(0"
-#define GraphicsOff $27"(B"
-
+// Snake-specific macros
 #define SnakeHead GraphicsOn "`" GraphicsOff
 #define MoveToPos(p) Position(p/width+3, p%width+(42-width)/2)
-
-#ifdef PROD
-// Abbreviations
-#  define End E.
-#  define For(init) F.init
-#  define Gosub(label) GOS.label
-#  define Gosub_(label) GOS.label
-#  define Goto(label) G.label
-#  define If(expr) IF expr
-#  define Label(line, name) Concat(line, name)
-#  define Next(variable) N.
-#  define Print(any) P.any
-#  define PrintLn(any) P.any'
-#  define Remark(comment)
-#  define Return R.
-#  define Step(expression) S.expression
-#  define Subroutine(line, label, doc) Label(line, label)
-#  define Then
-#  define To(expression) T.expression
-#  define Until(expression) U.expression
-#else
-#  define End END
-#  define For(init) FOR init
-#  define Gosub(label) GOSUB label
-#  define Gosub_(label) GOSUB label; REM #label
-#  define Goto(label) GOTO label; REM #label
-#  define If(expr) IF expr
-#  define Label(line, name) Concat(line, name)
-#  define Next(variable) NEXT variable
-#  define Print(any) PRINT any
-#  define PrintLn(any) PRINT any $13$10
-#  define Remark(comment) REM comment
-#  define Return RETURN
-#  define Step(expression) STEP expression
-#  define Subroutine(line, label, doc) Label(line, label) REM === #label === doc
-#  define Then THEN
-#  define To(expression) TO expression
-#  define Until(expression) UNTIL expression
-#endif
 
 #ifdef TREE_CHECK
 #  define CheckTree Gosub(Check)
 #else
 #  define CheckTree
 #endif
-
-// OS
-#define KeyBuffer #400
-#define KeyMask #F
-#define KeyOut #410
-#define KeyIn #411
-#define KeyEmpty ?KeyOut=?KeyIn
-#define KeyAvailable ?KeyOut<>?KeyIn
-#define KeyPeek ?(KeyBuffer+?KeyOut)
-#define KeyNext ?KeyOut=(?KeyOut+1)&KeyMask
-
-// Helpers
-#define Scan(x) x
-#define Concat(a,b) a ## b
 
 10 width=40
 20 height=21

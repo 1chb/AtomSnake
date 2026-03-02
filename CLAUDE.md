@@ -29,21 +29,23 @@ Files are under Git source control. Standard git workflow applies.
 2. The user must manually type any changes into the 6502 board, so minimize code size when possible
 3. Test changes thoroughly before the user invests time typing them in
 4. Use feature branches for experimental changes
-5. Snake.atom is generated from Snake.ab - regenerate after editing Snake.ab
+5. Snake.atom is generated from Snake.abp - regenerate after editing .abp files
 
 ### Source Files
 
 **Source → Generated relationship:**
-- `Snake.ab` - **SOURCE FILE** with C preprocessor macros for readability
-- `Snake.atom` - **GENERATED FILE** created by running `cpp -P Snake.ab`
-- `Snake.atom~` and `Snake.ab~` - Backup files (tilde suffix)
+- `AcornAtom.abp` - **COMMON MACROS** for Acorn Atom platform (VT100, BASIC language, OS keyboard)
+- `Snake.abp` - **SOURCE FILE** with game-specific code, includes AcornAtom.abp
+- `Snake.atom` - **GENERATED FILE** created by running `cpp -P Snake.abp`
+
+The `.abp` extension stands for "Atom BASIC Preprocessed" — indicating the file requires the C preprocessor.
 
 **Build Command:**
 ```bash
-cpp -P Snake.ab > Snake.atom
+cpp -P Snake.abp > Snake.atom
 ```
 
-The `.ab` file uses `#define` macros for:
+The `.abp` files use `#define` macros for:
 - Variable names (e.g., `#define width W`, `#define height H`)
 - Constants (e.g., `#define West 0`, `#define East 2`)
 - Control flow readability (e.g., `#define If(expr) IF expr`)
@@ -191,8 +193,8 @@ The game uses ANSI/VT100 escape codes:
 ## Development Notes
 
 ### Development Workflow
-1. Edit the **SOURCE** file: `Snake.ab`
-2. Generate the target file: `cpp -P Snake.ab > Snake.atom`
+1. Edit the **SOURCE** file: `Snake.abp` (or `AcornAtom.abp` for platform macros)
+2. Generate the target file: `cpp -P Snake.abp > Snake.atom`
 3. Review the generated `Snake.atom` for correctness
 4. User manually types the program into the 6502 board via VT100 terminal
 5. Test on actual hardware
