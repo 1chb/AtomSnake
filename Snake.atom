@@ -48,10 +48,10 @@
 2250 IF P>=L THEN J=J+M; P=P-L; I=I+I+3
 2260 UNTIL I>=O
 2300g; REM Linear search:
-2310 IF AA(J)&7 GOTO 2340; REM "2340"
+2310 IF AA(J)&7 GOTO j; REM "LocateSkip"
 2320 IF P=0 THEN RETURN
 2330 P=P-8
-2340 J=J+1
+2340j J=J+1
 2350 IF J>=Z THEN GOSUB z; Here
 2360 GOTO g; REM "LocateLinear"
 3000b REM === "Border" === P => AA : M N Q P PRINT $27"["P/W+3";"P%W+(42-W)/2"H"
@@ -151,11 +151,11 @@
 8170 RETURN
 9000x REM === "GameOver" === S X => B : I P
 9010 B=0; PRINT $27"["S/W+3";"S%W+(42-W)/2"H"
-9020 IF X>0 THEN GOTO 9100; REM "9100"
+9020 IF X>0 THEN GOTO m; REM "Lose"
 9030 PRINT $27"(0" "`" $27"(B"
 9040 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"You Win!"; NEXT I
 9050 RETURN
-9100 PRINT "X"
+9100m PRINT "X"
 9110 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"Loser!"; NEXT I
 9120 RETURN
 9800i REM === "Init" === W H => Z O U C B F AA : I J K

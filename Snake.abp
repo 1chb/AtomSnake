@@ -63,10 +63,10 @@
 #define LocateLinear g
 #define HomePage h
 #define Init i
-#define L___ j
-#define K___ k
+#define LocateSkip j
+#define CheckError k
 #define Locate l
-// m -- free (was MoveTo)
+#define Lose m
 #define InitGame n
 #define PauseLoop o
 #define Play p
@@ -149,10 +149,10 @@ Subroutine(2200, Locate, pos => J : I K L M pos)
 2250   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
 2260 Until(I>=nodes)
 Label(2300,LocateLinear); Remark(Linear search:)
-2310 If(AA(J)&FlagsMask) Goto(2340)
+2310 If(AA(J)&FlagsMask) Goto(LocateSkip)
 2320 If(pos=0) Then Return
 2330 pos=pos-CountBit
-2340 J=J+1
+Label(2340, LocateSkip) J=J+1
 2350 If(J>=size) Then Gosub(Error); Here
 2360 Goto(LocateLinear)
 
@@ -267,7 +267,7 @@ Subroutine(8000, HomePage, => AA : I M N P Q)
 #ifdef TREE_CHECK
 Subroutine(8500, Check, => : I J K L M N P)
 8510 For(I=0) To(nodes/2-1)
-8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8800)
+8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(CheckError)
 8530 Next(I)
 8550 Remark(Check leaf counts against actual empty cells)
 8560 Remark(Walk each cell to its leaf node)
@@ -282,18 +282,18 @@ Subroutine(8500, Check, => : I J K L M N P)
 8670   If(AA(J)&FlagsMask=0) Then K=K+CountBit; Remark(Count empty cells)
 8680 Next(J)
 8700 If (CellCount(L)=K) Then L=I; K=0; Return
-8800 PrintLn(" - Error:")
+Label(8800, CheckError) PrintLn(" - Error:")
 8810 For(P=0) To(Z-1); @=4; Print(AA(P)/8); @=1; Print("/"AA(P)&7); Next(P)
 8820 @=8; PrintLn(ShowCursor); End
 #endif
 
 Subroutine(9000, GameOver, head foodCount => alive : I P)
 9010 alive=0; Print(MoveToPos(head))
-9020 If(foodCount>0) Then Goto(9100) // Food remaining, not a win
+9020 If(foodCount>0) Then Goto(Lose) // Food remaining, not a win
 9030 Print(SnakeHead)
 9040 For(I=1) To(2); Print(Position(I,1)Double(I+2)"You Win!"); Next(I)
 9050 Return
-9100 Print("X")
+Label(9100, Lose) Print("X")
 9110 For(I=1) To(2); Print(Position(I,1)Double(I+2)"Loser!"); Next(I)
 9120 Return
 
