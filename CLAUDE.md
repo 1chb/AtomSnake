@@ -17,9 +17,7 @@ This is a Snake game implementation written in BBC BASIC for a custom 6502 board
 ### Hardware Setup
 - **Target System**: Custom 6502 board computer (modified Acorn Atom from 1980)
 - **Key Difference from Original**: Original Acorn Atom had built-in keyboard and TV output. This variant connects to a VT100 terminal via RS232 serial port.
-- **No Automatic Transfer**: Programs must be manually typed into the VT100 terminal character-by-character.
-- **Development Cycle**: Extremely slow due to manual entry requirement.
-- **Future Plan**: USB-to-serial connection for automatic transfer (separate project).
+- **Transfer**: Programs are uploaded to the board via USB-to-serial using `atom_transfer.py`.
 
 ### Source Control
 Files are under Git source control. Standard git workflow applies.
@@ -196,10 +194,23 @@ The game uses ANSI/VT100 escape codes:
 1. Edit the **SOURCE** file: `Snake.abp` (or `AcornAtom.abp` for platform macros)
 2. Generate the target file: `cpp -P Snake.abp > Snake.atom`
 3. Review the generated `Snake.atom` for correctness
-4. User manually types the program into the 6502 board via VT100 terminal
-5. Test on actual hardware
+4. Upload to the board and test on actual hardware
 
-**Remember**: Because of the manual typing requirement, favor smaller, cleaner code. Every character counts!
+**Deploy from a separate computer connected to the board via USB-to-serial:**
+```bash
+scp work:Documents/snake/{Snake,AcornAtom}.abp . && \
+  (cpp -DPROD=1 Snake.abp > Snake.atom || true) && \
+  python3 atom_transfer.py --port /dev/ttyUSB0 --upload Snake.atom && \
+  picocom /dev/ttyUSB0 -b 9600
+```
+
+This command:
+1. Copies the source files from the development machine (`work:` via SSH)
+2. Builds the production `.atom` file with PROD mode (abbreviated keywords, no comments)
+3. Uploads the program to the Acorn Atom board via USB-to-serial
+4. Opens an interactive terminal session to the board with `picocom`
+
+**Remember**: The `.atom` file has a 63-character line length limit. Favor smaller, cleaner code.
 
 ### Testing Considerations
 When modifying the code:
