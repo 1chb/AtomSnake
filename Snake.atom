@@ -3,11 +3,12 @@
 30 GOSUB i; REM "Init";
 40 R=0; GOSUB p; REM "Play"
 50 PRINT $27"["H+3";"1"H" $27"[?25h"
-60 END
+60 FOR N=1 TO 300; IF ?#410<>?#411 THEN ?#410=(?#410 +1)&#F
+70 NEXT N; END
 1000p REM === "Play" === => B A Y AA : D G I J K L M N P Q
 1010 GOSUB h; REM "HomePage";
 1020 GOSUB n; REM "InitGame";
-1030 A=20; REM Tick delay in loop iterations
+1030 A=28
 1040 Y=R+A; REM Next tick R
 1100q IF B=0 THEN RETURN
 1110 IF ?#410=?#411 THEN GOTO w; REM "WaitForTick"
@@ -156,7 +157,7 @@
 9040 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"You Win!"; NEXT I
 9050 RETURN
 9100m PRINT "X"
-9110 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"Loser!"; NEXT I
+9110 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"Game Over!"; NEXT I
 9120 RETURN
 9800i REM === "Init" === W H => Z O U C B F AA : I J K
 9810 @=0

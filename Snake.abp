@@ -3,6 +3,8 @@
 
 #include "AcornAtom.abp"
 
+#define SLOW_DOWN 28
+
 // Variables:
 #define tickDelay A
 #define alive B
@@ -97,12 +99,13 @@
 30 Gosub_(Init); CheckTree
 40 time=0; Gosub_(Play)
 50 Print(Position(height+3,1) ShowCursor)
-60 End
+60 For(N=1) To(300); If(KeyAvailable) Then KeyNext // Clean up key buffer
+70 Next(N); End
 
 Subroutine(1000, Play, => alive tickDelay nextTick AA : D G I J K L M N P Q)
 1010 Gosub_(HomePage); CheckTree
 1020 Gosub_(InitGame); CheckTree
-1030 tickDelay=20; Remark(Tick delay in loop iterations)
+1030 tickDelay=SLOW_DOWN
 1040 nextTick=time+tickDelay; Remark(Next tick time)
 Label(1100, GameLoop)If(alive=0) Then Return
 1110 If(KeyEmpty) Then Goto(WaitForTick)
@@ -295,7 +298,7 @@ Subroutine(9000, GameOver, head foodCount => alive : I P)
 9040 For(I=1) To(2); Print(Position(I,1)Double(I+2)"You Win!"); Next(I)
 9050 Return
 Label(9100, Lose) Print("X")
-9110 For(I=1) To(2); Print(Position(I,1)Double(I+2)"Loser!"); Next(I)
+9110 For(I=1) To(2); Print(Position(I,1)Double(I+2)"Game Over!"); Next(I)
 9120 Return
 
 Subroutine(9800, Init, width height => size nodes score turn alive snakeLUT AA : I J K)
