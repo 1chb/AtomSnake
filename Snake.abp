@@ -8,7 +8,7 @@
 // Variables:
 #define tickDelay A
 #define alive B
-#define turn C
+#define autoPlay C
 #define direction D
 #define lastDir E
 #define snakeLUT F
@@ -46,6 +46,7 @@
 #define DOWN  #32
 #define PAUSE #35
 #define QUIT  27
+#define AUTO  #30
 
 // Bits
 #define BorderBit 4
@@ -102,12 +103,13 @@
 60 For(N=1) To(300); If(KeyAvailable) THEN KeyNext // Clean up key buffer
 70 Next(N); End
 
-Subroutine(1000, Play, => alive tickDelay nextTick AA : D G I J K L M N P Q)
+Subroutine(1000, Play, => alive autoPlay tickDelay nextTick AA : D G I J K L M N P Q)
 1010 Gosub_(HomePage); CheckTree
 1020 Gosub_(InitGame); CheckTree
 1030 tickDelay=SLOW_DOWN
 1040 nextTick=time+tickDelay; Remark(Next tick time)
 Label(1100, GameLoop)If(alive=0) Then Return
+1105 If(autoPlay) Then Goto(1250)
 1110 If(KeyEmpty) Then Goto(WaitForTick)
 1120   N=KeyPeek; KeyNext
 1130   If(N=UP)    Then direction=North; Gosub(ChangeDirection);
@@ -121,10 +123,18 @@ Label(1200, WaitForTick) time=time+1
 1220 nextTick=time+tickDelay; Remark(Schedule next tick)
 1230 Gosub(AdvanceHead)
 1240 Goto(GameLoop)
-Subroutine(1300, PauseLoop, => : N)
+1250 If(KeyEmpty) Then Goto(1280); Remark(AutoInput)
+1260 N=KeyPeek; KeyNext
+1265 If(N=PAUSE) Then autoPlay=0; Gosub(PauseLoop);
+1270 If(N=QUIT) Then alive=0;
+1280 Gosub(7000); Remark(AutoStep)
+1290 Gosub(AdvanceHead)
+1295 Goto(GameLoop)
+Subroutine(1300, PauseLoop, => autoPlay : N)
 1310 DO; DO; Until(KeyAvailable)
 1320   N=KeyPeek; KeyNext
-1330 Until(N=PAUSE)
+1330 Until(N=PAUSE OR N=AUTO)
+1335 If(N=AUTO) Then autoPlay=1
 1340 Return
 
 Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
@@ -244,6 +254,20 @@ Subroutine(6500, MarkHead, G head => AA : D P)
 6540 Print(MoveToPos(head)); Remark(Reposition cursor)
 6550 Goto(Debug)
 
+// Step(pos,dir) = pos + (dir&2-1) * ((dir&1)*(width-1)+1)
+#define IsSafe(dir) AA(head+(dir&2-1)*((dir&1)*(width-1)+1))&BorderBit=0
+
+7000 direction=AA(head)&3; Remark(AutoStep: current direction)
+7020 K=ABS(RND)%19; Remark(Random 0-18)
+7030 If(IsSafe(direction) AND K>0) Then Return
+7040 N=K&2-1; Remark(Straight blocked or random turn: -1=left 1=right)
+7050 N=(direction+N)&3; Remark(Try first turn)
+7060 If(IsSafe(N)) Then direction=N; Gosub(ChangeDirection); Return
+7070 N=(N+2)&3; Remark(Try other turn)
+7080 If(IsSafe(N)) Then direction=N; Gosub(ChangeDirection); Return
+7085 If(IsSafe(direction)) Then Return; Remark(Straight is safe)
+7090 Gosub(ChangeDirection); Return; Remark(All blocked - go straight)
+
 Subroutine(8000, HomePage, => AA : I M N P Q)
 8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
@@ -301,7 +325,7 @@ Label(9100, Lose) Print("X")
 9110 For(I=1) To(2); Print(Position(I,1)Double(I+2)"Game Over!"); Next(I)
 9120 Return
 
-Subroutine(9800, Init, width height => size nodes score turn alive snakeLUT AA : I J K)
+Subroutine(9800, Init, width height => size nodes score autoPlay alive snakeLUT AA : I J K)
 9810 @=0
 9820 size=width*height; Remark(size<3 not supported !!!!)
 9830 DIM AA(size-1); Remark(Allocates (size cells, 0-based)!)
@@ -316,7 +340,7 @@ Subroutine(9800, Init, width height => size nodes score turn alive snakeLUT AA :
 9910   AA(I+1)=AA(J)-K
 9920 Next(I)
 9930 For(I=nodes) To(size-1); AA(I)=0; Next(I); Remark(Clear remaining nodes)
-9940 score=0; turn=Left; alive=1
+9940 score=0; autoPlay=0; alive=1
 9950 Remark(Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char)
 9955 Remark(Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus)
 9960 DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"

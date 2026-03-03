@@ -5,12 +5,13 @@
 50 PRINT $27"["H+3";"1"H" $27"[?25h"
 60 FOR N=1 TO 300; IF ?#410<>?#411 THEN ?#410=(?#410 +1)&#F
 70 NEXT N; END
-1000p REM === "Play" === => B A Y AA : D G I J K L M N P Q
+1000p REM === "Play" === => B C A Y AA : D G I J K L M N P Q
 1010 GOSUB h; REM "HomePage";
 1020 GOSUB n; REM "InitGame";
 1030 A=28
 1040 Y=R+A; REM Next tick R
 1100q IF B=0 THEN RETURN
+1105 IF C THEN GOTO 1250; REM "1250"
 1110 IF ?#410=?#411 THEN GOTO w; REM "WaitForTick"
 1120 N=#400?(?#410); ?#410=(?#410 +1)&#F
 1130 IF N=#38 THEN D=1; GOSUB d;
@@ -24,10 +25,18 @@
 1220 Y=R+A; REM Schedule next tick
 1230 GOSUB f
 1240 GOTO q; REM "GameLoop"
-1300o REM === "PauseLoop" === => : N
+1250 IF ?#410=?#411 THEN GOTO 1280; REM "1280"; REM AutoInput
+1260 N=#400?(?#410); ?#410=(?#410 +1)&#F
+1265 IF N=#35 THEN C=0; GOSUB o;
+1270 IF N=27 THEN B=0;
+1280 GOSUB 7000; REM AutoStep
+1290 GOSUB f
+1295 GOTO q; REM "GameLoop"
+1300o REM === "PauseLoop" === => C : N
 1310 DO; DO; UNTIL ?#410<>?#411
 1320 N=#400?(?#410); ?#410=(?#410 +1)&#F
-1330 UNTIL N=#35
+1330 UNTIL N=#35 OR N=#30
+1335 IF N=#30 THEN C=1
 1340 RETURN
 2000a REM === "Adjust" === P Q => AA : I M N P
 2010 I=0; M=Z;
@@ -131,6 +140,16 @@
 6530 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" "`" $27"(B"
 6540 PRINT $27"["S/W+3";"S%W+(42-W)/2"H"; REM Reposition cursor
 6550 GOTO y; REM "Debug"
+7000 D=AA(S)&3; REM AutoStep: current D
+7020 K=ABS(RND)%19; REM Random 0-18
+7030 IF AA(S+(D&2-1)*((D&1)*(W-1)+1))&4=0 AND K>0 THEN RETURN
+7040 N=K&2-1; REM Straight blocked or random turn: -1=left 1=right
+7050 N=(D+N)&3; REM Try first turn
+7060 IF AA(S+(N&2-1)*((N&1)*(W-1)+1))&4=0 THEN D=N; GOSUB d; RETURN
+7070 N=(N+2)&3; REM Try other turn
+7080 IF AA(S+(N&2-1)*((N&1)*(W-1)+1))&4=0 THEN D=N; GOSUB d; RETURN
+7085 IF AA(S+(D&2-1)*((D&1)*(W-1)+1))&4=0 THEN RETURN; REM Straight is safe
+7090 GOSUB d; RETURN; REM All blocked - go straight
 8000h REM === "HomePage" === => AA : I M N P Q
 8010 PRINT $12 $27"[?25l"
 8020 FOR I=1 TO 2; PRINT $27"["I ";"18"H"$27"#"I+2"Snake"; NEXT I
@@ -174,7 +193,7 @@
 9910 AA(I+1)=AA(J)-K
 9920 NEXT I
 9930 FOR I=O TO Z-1; AA(I)=0; NEXT I; REM Clear remaining O
-9940 U=0; C=-1; B=1
+9940 U=0; C=0; B=1
 9950 REM Snake body LUT: F?(E*4+D) => line drawing char
 9955 REM Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└. Food: @=1 *=2
 9960 DIM F(18); $F="qmnlkxlnnjqkjnmx@*"
