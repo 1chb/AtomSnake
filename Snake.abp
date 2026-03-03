@@ -99,7 +99,7 @@
 30 Gosub_(Init); CheckTree
 40 time=0; Gosub_(Play)
 50 Print(Position(height+3,1) ShowCursor)
-60 For(N=1) To(300); If(KeyAvailable) Then KeyNext // Clean up key buffer
+60 For(N=1) To(300); If(KeyAvailable) THEN KeyNext // Clean up key buffer
 70 Next(N); End
 
 Subroutine(1000, Play, => alive tickDelay nextTick AA : D G I J K L M N P Q)
@@ -186,14 +186,14 @@ Subroutine(5000, ChangeDirection, head direction => AA)
 
 Subroutine(5100, SpawnFood, => J foodCount bonusActive AA : I K L M N P Q)
 5110 If(AA(0)&CountMask=0) Then Return // Board full
-5120 pos=ABS(RND)%(AA(0)/CountBit)
-5130 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos"  ");Next(I)
+5120 pos=ABS(RND)%(AA(0)/CountBit); N=pos
+5130 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos":"bonusActive":"N%13" ");Next(I)
 5140 Gosub(Locate)
 5150 If(AA(J)&FlagsMask) Then Gosub(Error); Here
-5155 N=Mouse; Remark(Default: regular food)
-5157 If(bonusActive=0 AND J%13=5) Then N=Bonus; bonusActive=1
-5160 AA(J)=AA(J)+N
-5170 Print(MoveToPos(J) $(snakeLUT+15)?N)
+5155 K=Mouse; Remark(Default: regular food)
+5157 If(bonusActive=0 AND N%13=5) Then K=Bonus; bonusActive=1
+5160 AA(J)=AA(J)+K
+5170 Print(MoveToPos(J) $(snakeLUT+15)?K)
 5180 pos=J; quantity=-CountBit; Gosub(Adjust)
 5190 foodCount=foodCount+1; CheckTree
 5200 Goto(Debug)

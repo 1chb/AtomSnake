@@ -58,7 +58,7 @@
 #define KeyIn #411
 #define KeyEmpty ?KeyOut=?KeyIn
 #define KeyAvailable ?KeyOut<>?KeyIn
-#define KeyPeek ?(KeyBuffer+?KeyOut)
+#define KeyPeek KeyBuffer?(?KeyOut)
 #define KeyNext ?KeyOut=(?KeyOut+1)&KeyMask
 
 // Helpers

@@ -12,7 +12,7 @@
 1040 Y=R+A; REM Next tick R
 1100q IF B=0 THEN RETURN
 1110 IF ?#410=?#411 THEN GOTO w; REM "WaitForTick"
-1120 N=?(#400 +?#410); ?#410=(?#410 +1)&#F
+1120 N=#400?(?#410); ?#410=(?#410 +1)&#F
 1130 IF N=#38 THEN D=1; GOSUB d;
 1140 IF N=#34 THEN D=0; GOSUB d;
 1150 IF N=#36 THEN D=2; GOSUB d;
@@ -26,7 +26,7 @@
 1240 GOTO q; REM "GameLoop"
 1300o REM === "PauseLoop" === => : N
 1310 DO; DO; UNTIL ?#410<>?#411
-1320 N=?(#400 +?#410); ?#410=(?#410 +1)&#F
+1320 N=#400?(?#410); ?#410=(?#410 +1)&#F
 1330 UNTIL N=#35
 1340 RETURN
 2000a REM === "Adjust" === P Q => AA : I M N P
@@ -78,14 +78,14 @@
 5030 RETURN
 5100s REM === "SpawnFood" === => J X V AA : I K L M N P Q
 5110 IF AA(0)&-8=0 THEN RETURN
-5120 P=ABS(RND)%(AA(0)/8)
-5130 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2 P "  ";NEXT I
+5120 P=ABS(RND)%(AA(0)/8); N=P
+5130 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2 P ":"V ":"N%13" ";NEXT I
 5140 GOSUB l
 5150 IF AA(J)&7 THEN GOSUB z; Here
-5155 N=1; REM Default: regular food
-5157 IF V=0 AND J%13=5 THEN N=2; V=1
-5160 AA(J)=AA(J)+N
-5170 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $(F+15)?N
+5155 K=1; REM Default: regular food
+5157 IF V=0 AND N%13=5 THEN K=2; V=1
+5160 AA(J)=AA(J)+K
+5170 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $(F+15)?K
 5180 P=J; Q=-8; GOSUB a
 5190 X=X+1;
 5200 GOTO y; REM "Debug"
