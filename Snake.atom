@@ -58,7 +58,7 @@
 3040 Q=-8; GOSUB a
 3050 P=G; I=E; REM Restore the variables
 3060 RETURN
-4000n REM === "InitGame" === => S T D U E X AA : D G I J K L M N P Q
+4000n REM === "InitGame" === => S T D U E X V AA : D G I J K L M N P Q
 4010 S=(H+1)/2*W-W/2; REM Center of board
 4020 T=S-2
 4030 D=2; REM Go east
@@ -67,7 +67,7 @@
 4060 AA(J)=(AA(J)&-8)|4|D
 4070 P=J; Q=-8; GOSUB a
 4080 NEXT J
-4090 E=2; X=0
+4090 E=2; X=0; V=0
 4100 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" "`" $27"(B"
 4110 FOR G=1 TO 5; GOSUB s; NEXT G
 4120 GOTO y; REM "Debug"
@@ -75,14 +75,16 @@
 5010 IF (AA(S)&3)=D THEN RETURN; REM Dir not changed
 5020 AA(S)=(AA(S)&#FFFFFFFC)|D
 5030 RETURN
-5100s REM === "SpawnFood" === => J X AA : I K L M N P Q
+5100s REM === "SpawnFood" === => J X V AA : I K L M N P Q
 5110 IF AA(0)&-8=0 THEN RETURN
 5120 P=ABS(RND)%(AA(0)/8)
 5130 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2 P "  ";NEXT I
 5140 GOSUB l
 5150 IF AA(J)&7 THEN GOSUB z; Here
-5160 AA(J)=AA(J)+1
-5170 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" "@"
+5155 N=1; REM Default: regular food
+5157 IF V=0 AND J%13=5 THEN N=2; V=1
+5160 AA(J)=AA(J)+N
+5170 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $(F+15)?N
 5180 P=J; Q=-8; GOSUB a
 5190 X=X+1;
 5200 GOTO y; REM "Debug"
@@ -103,7 +105,7 @@
 6140 PRINT $27"["T/W+3";"T%W+(42-W)/2"H" " "
 6150 P=T; GOSUB t; T=P
 6160 RETURN
-6200f REM === "AdvanceHead" === => S T U B X AA E : D G I J K L M N P Q
+6200f REM === "AdvanceHead" === => S T U B X V AA E : D G I J K L M N P Q
 6210 D=AA(S)&3
 6220 N=F?(E*4+D)
 6230 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" $N $27"(B"
@@ -111,7 +113,7 @@
 6250 P=S; GOSUB t; S=P
 6260 IF AA(S)&4 THEN GOTO x; REM "GameOver"
 6270 G=D
-6280 IF AA(S)&7=1 THEN GOTO v; REM "Eat"
+6280 IF AA(S)&7 THEN GOTO v; REM "Eat"
 6290 GOSUB e
 6300 GOSUB u
 6310 P=S; Q=-8; GOSUB a
@@ -119,8 +121,9 @@
 6400v
 6410 X=X-1
 6420 U=U+1
-6430 FOR I=1 TO 2; PRINT $27"["I ";"36"H"$27"#"I+2 U;NEXT I
-6440 GOSUB s
+6430 IF AA(S)&7=2 THEN U=U+2; V=0
+6440 FOR I=1 TO 2; PRINT $27"["I ";"36"H"$27"#"I+2 U;NEXT I
+6450 GOSUB s
 6500u REM === "MarkHead" === G S => AA : D P
 6510 D=G
 6520 AA(S)=(AA(S)&-8)|4|D
@@ -172,6 +175,6 @@
 9930 FOR I=O TO Z-1; AA(I)=0; NEXT I; REM Clear remaining O
 9940 U=0; C=-1; B=1
 9950 REM Snake body LUT: F?(E*4+D) => line drawing char
-9955 REM Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└ n=┼
-9960 DIM F(16); $F="qmnlkxlnnjqkjnmx"
+9955 REM Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└. Food: @=1 *=2
+9960 DIM F(18); $F="qmnlkxlnnjqkjnmx@*"
 9970 RETURN

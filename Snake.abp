@@ -20,7 +20,7 @@
 #define head S
 #define tail T
 #define score U
-#define string V
+#define bonusActive V
 #define width W
 #define foodCount X
 #define nextTick Y
@@ -52,6 +52,7 @@
 // #FFFFFFF8 = -8
 #define CountMask -CountBit
 #define Mouse 1
+#define Bonus 2
 
 // Labels
 #define Adjust a
@@ -161,7 +162,7 @@ Subroutine(3010, BorderPrim, pos => AA : M N Q pos)Print(" ")
 3050 pos=G; I=E; Remark(Restore the variables)
 3060 Return
 
-Subroutine(4000, InitGame, => head tail direction score lastDir foodCount AA : D G I J K L M N P Q)
+Subroutine(4000, InitGame, => head tail direction score lastDir foodCount bonusActive AA : D G I J K L M N P Q)
 4010 head=(height+1)/2*width-width/2; Remark(Center of board)
 4020 tail=head-2
 4030 direction=East; Remark(Go east)
@@ -170,7 +171,7 @@ Subroutine(4000, InitGame, => head tail direction score lastDir foodCount AA : D
 4060   AA(J)=(AA(J)&CountMask)|BorderBit|direction
 4070   pos=J; quantity=-CountBit; Gosub(Adjust)
 4080 Next(J)
-4090 lastDir=East; foodCount=0
+4090 lastDir=East; foodCount=0; bonusActive=0
 4100 Print(MoveToPos(head) SnakeHead)
 4110 For(G=1) To(5); Gosub(SpawnFood); Next(G)
 4120 Goto(Debug)
@@ -180,14 +181,16 @@ Subroutine(5000, ChangeDirection, head direction => AA)
 5020 AA(head)=(AA(head)&#FFFFFFFC)|direction
 5030 Return
 
-Subroutine(5100, SpawnFood, => J foodCount AA : I K L M N P Q)
+Subroutine(5100, SpawnFood, => J foodCount bonusActive AA : I K L M N P Q)
 5110 If(AA(0)&CountMask=0) Then Return // Board full
 5120 pos=ABS(RND)%(AA(0)/CountBit)
 5130 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos"  ");Next(I)
 5140 Gosub(Locate)
 5150 If(AA(J)&FlagsMask) Then Gosub(Error); Here
-5160 AA(J)=AA(J)+Mouse
-5170 Print(MoveToPos(J) "@")
+5155 N=Mouse; Remark(Default: regular food)
+5157 If(bonusActive=0 AND J%13=5) Then N=Bonus; bonusActive=1
+5160 AA(J)=AA(J)+N
+5170 Print(MoveToPos(J) $(snakeLUT+15)?N)
 5180 pos=J; quantity=-CountBit; Gosub(Adjust)
 5190 foodCount=foodCount+1; CheckTree
 5200 Goto(Debug)
@@ -212,7 +215,7 @@ Subroutine(6100, EatTail, => tail AA : D I M N P Q)
 6150 pos=tail; Gosub(StepSub); tail=pos
 6160 Return
 
-Subroutine(6200, AdvanceHead, => head tail score alive foodCount AA lastDir : D G I J K L M N P Q)
+Subroutine(6200, AdvanceHead, => head tail score alive foodCount bonusActive AA lastDir : D G I J K L M N P Q)
 6210 direction=AA(head)&3
 6220 N=snakeLUT?(lastDir*4+direction)
 6230 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
@@ -220,7 +223,7 @@ Subroutine(6200, AdvanceHead, => head tail score alive foodCount AA lastDir : D 
 6250 pos=head; Gosub(StepSub); head=pos
 6260 If(AA(head)&BorderBit) Then Goto(GameOver)
 6270 G=direction
-6280 If(AA(head)&FlagsMask=Mouse) Then Goto(Eat)
+6280 If(AA(head)&FlagsMask) Then Goto(Eat)
 6290 Gosub(EatTail)
 6300 Gosub(MarkHead)
 6310 pos=head; quantity=-CountBit; Gosub(Adjust)
@@ -228,8 +231,9 @@ Subroutine(6200, AdvanceHead, => head tail score alive foodCount AA lastDir : D 
 Label(6400,Eat)
 6410 foodCount=foodCount-1
 6420 score=score+1
-6430 For(I=1) To(2); Print(Position(I,36)Double(I+2)score);Next(I)
-6440 Gosub(SpawnFood)
+6430 If(AA(head)&FlagsMask=Bonus) Then score=score+2; bonusActive=0
+6440 For(I=1) To(2); Print(Position(I,36)Double(I+2)score);Next(I)
+6450 Gosub(SpawnFood)
 Subroutine(6500, MarkHead, G head => AA : D P)
 6510 direction=G
 6520 AA(head)=(AA(head)&CountMask)|BorderBit|direction
@@ -311,6 +315,6 @@ Subroutine(9800, Init, width height => size nodes score turn alive snakeLUT AA :
 9930 For(I=nodes) To(size-1); AA(I)=0; Next(I); Remark(Clear remaining nodes)
 9940 score=0; turn=Left; alive=1
 9950 Remark(Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char)
-9955 Remark(Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└ n=┼)
-9960 DIM snakeLUT(16); $F="qmnlkxlnnjqkjnmx"
+9955 Remark(Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus)
+9960 DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"
 9970 Return
