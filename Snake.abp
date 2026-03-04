@@ -74,9 +74,9 @@
 #define HomePage h
 #define Init i
 #define LocateSkip j
-#define _K k
+#define TryDirSub k
 #define Locate l
-#define _M m
+#define AutoFallback m
 #define InitGame n
 #define PauseLoop o
 #define Play p
@@ -89,7 +89,7 @@
 #define WaitForTick w
 #define GameOver x
 #define AutoStep y
-#define _Z z
+#define AutoInput z
 
 #ifdef DEBUG
 #  define Debug 9600
@@ -120,11 +120,11 @@
 70 For(N=1)To(300);If(KeyAvailable) T.KeyNext
 80 Next(N);End
 
-Subroutine(1000, Play, => alive autoPlay tickDelay nextTick AA : D G I J K L M N P Q)
+Subroutine(1000, Play, => alive autoPlay tickDelay nextTick head tail score lastDir foodCount bonusActive time AA : D G I J K L M N P Q)
 1010 Gosub_(HomePage);Gosub_(InitGame);CheckTree
 1030 tickDelay=SLOW_DOWN-size/100;nextTick=time+tickDelay // Next tick time
 Label(1100, GameLoop)If(alive=0) Then Return
-1105 If(autoPlay) Then Goto(1250)
+1105 If(autoPlay) Then Goto(AutoInput)
 1110 If(KeyEmpty) Then Goto(WaitForTick)
 1120   N=KeyPeek;KeyNext
 1130   If(N=UP)    Then direction=North;Gosub(ChangeDirection)
@@ -136,7 +136,7 @@ Label(1100, GameLoop)If(alive=0) Then Return
 Label(1200, WaitForTick)time=time+1
 1210 If(time<nextTick) Then Goto(GameLoop)
 1220 nextTick=time+tickDelay;Gosub(AdvanceHead);Goto(GameLoop) // Schedule next tick
-1250 If(KeyEmpty) Then Goto(1280) // AutoInput
+Label(1250, AutoInput)If(KeyEmpty) Then Goto(1280) // AutoInput
 1260 N=KeyPeek;KeyNext
 1265 If(N=PAUSE) Then autoPlay=0;Gosub(PauseLoop)
 1270 If(N=QUIT) Then alive=0
@@ -165,13 +165,13 @@ Label(2300,LocateLinear) // Linear search:
 Label(2340, LocateSkip) J=J+1;Reject(J>=size)
 2350 Goto(LocateLinear)
 
-Subroutine(3000, Border, pos => AA : M N Q pos)Print(MoveToPos(pos))
-Subroutine(3010, BorderPrim, pos => AA : M N Q pos)Print(" ")
+Subroutine(3000, Border, pos => AA : E G M N Q)Print(MoveToPos(pos))
+Subroutine(3010, BorderPrim, pos => AA : E G M N Q)Print(" ")
 3020 AA(pos)=AA(pos)|BorderBit
 3030 E=I;G=pos;quantity=-CountBit;Gosub(Adjust) // Save I,pos
 3040 pos=G;I=E;Return // Restore
 
-Subroutine(4000, InitGame, => head tail direction score lastDir foodCount bonusActive AA : D G I J K L M N P Q)
+Subroutine(4000, InitGame, => head tail direction lastDir foodCount bonusActive AA : G I J K L M N P Q)
 4010 head=(height+1)/2*width-width/2 // Center of board
 4020 tail=head-2;direction=East // Go east
 4030 For(J=tail) To(head)
@@ -226,19 +226,19 @@ Label(6400,Eat)
 6420 score=score+1;If(AA(head)&FlagsMask=Bonus) Then score=score+2;bonusActive=0
 6440 For(I=1) To(2);Print(Position(I,36)Double(I+2)score);Next(I)
 6450 Gosub(SpawnFood)
-Subroutine(6500, MarkHead, G head => AA : D P)
+Subroutine(6500, MarkHead, G head => AA : D)
 6510 direction=G;AA(head)=(AA(head)&CountMask)|BorderBit|direction
 6530 Print(MoveToPos(head) SnakeHead)
 6540 Print(MoveToPos(head));DebugReturn
 
 // Step(pos,dir) = pos + (dir&2-1) * ((dir&1)*(width-1)+1)
 // TryDir(N): if dir N is safe, apply it. K=0 if safe, K=BorderBit if blocked.
-6800 K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit;If(K=0) Then direction=N;Gosub(ChangeDirection)
+Subroutine(6800, TryDirSub, N head => K direction AA)K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit;If(K=0) Then direction=N;Gosub(ChangeDirection)
 6810 Return
-#define TryDir Gosub(6800);If(K=0) Then Return
+#define TryDir Gosub(TryDirSub);If(K=0) Then Return
 
 // AutoStep: greedy - find nearest food, try both axes toward it, then fallback
-Subroutine(7000, AutoStep, ? => ? : ?)direction=AA(head)&3;If(foodCount=0) Then Goto(7060)
+Subroutine(7000, AutoStep, head foodCount => direction AA : I J K L M N)direction=AA(head)&3;If(foodCount=0) Then Goto(AutoFallback)
 7010 K=#7FFF;For(I=0) To(foodCount-1);J=FoodGet(I)
 7020 M=ABS(J/width-head/width)+ABS(J%width-head%width);If(M<K) Then K=M;L=J
 7030 Next(I) // L=nearest food
@@ -249,12 +249,12 @@ Subroutine(7000, AutoStep, ? => ? : ?)direction=AA(head)&3;If(foodCount=0) Then 
 7040 N=South;If(M<0) Then N=North // Try other axis: vertical
 7042 If(ABS(M)>ABS(K)) Then N=East;If(K<0) Then N=West // Override: horizontal if vertical was primary
 7044 TryDir
-7060 N=direction;TryDir // Fallback: straight
+Label(7060, AutoFallback)N=direction;TryDir // Fallback: straight
 7070 N=(direction+1)&3;TryDir
 7080 N=(direction-1)&3;TryDir
 7090 Return
 
-Subroutine(8000, HomePage, => AA : I M N P Q)
+Subroutine(8000, HomePage, => AA : E G I M N P Q)
 8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2);Print(Position(I,18)Double(I+2)"Snake");Next(I)
 8030 For(I=1) To(2);Print(Position(I,30)Double(I+2)"Score 0");Next(I)
@@ -297,7 +297,7 @@ Subroutine(8500, Check, => : I J K L M N P)
 8720 @=8;PrintLn(ShowCursor);End
 #endif
 
-Subroutine(9000, GameOver, head foodCount => alive : I P)
+Subroutine(9000, GameOver, head foodCount => alive : I)
 9010 alive=0;Print(MoveToPos(head))
 9020 If(foodCount>0) Then Goto(9100) // Food remaining, not a win
 9030 Print(SnakeHead)
