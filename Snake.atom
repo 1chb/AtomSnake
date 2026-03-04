@@ -1,200 +1,168 @@
+In file included from Snake.abp:4:
+AcornAtom.abp:26:29: warning: missing terminating ' character
+   26 | #  define PrintLn(any) P.any'
+      |                             ^
 10 W=40
 20 H=21
 30 GOSUB i; REM "Init";
-40 R=0; GOSUB p; REM "Play"
+40 R=0;GOSUB p; REM "Play"
 50 PRINT $27"["H+3";"1"H" $27"[?25h"
-60 FOR N=1 TO 300; IF ?#410<>?#411 THEN ?#410=(?#410 +1)&#F
-70 NEXT N; END
+60 FOR N=1 TO 300;IF ?#410<>?#411 T.?#410=(?#410 +1)&#F
+70 NEXT N;END
 1000p REM === "Play" === => B C A Y AA : D G I J K L M N P Q
 1010 GOSUB h; REM "HomePage";
 1020 GOSUB n; REM "InitGame";
-1030 A=28
-1040 Y=R+A; REM Next tick R
+1030 A=28;Y=R+A;REM Next tick R
 1100q IF B=0 THEN RETURN
 1105 IF C THEN GOTO 1250; REM "1250"
 1110 IF ?#410=?#411 THEN GOTO w; REM "WaitForTick"
-1120 N=#400?(?#410); ?#410=(?#410 +1)&#F
-1130 IF N=#38 THEN D=1; GOSUB d;
-1140 IF N=#34 THEN D=0; GOSUB d;
-1150 IF N=#36 THEN D=2; GOSUB d;
-1160 IF N=#32 THEN D=3; GOSUB d;
-1170 IF N=#35 THEN GOSUB o;
-1180 IF N=27 THEN B=0;
+1120 N=#400?(?#410);?#410=(?#410 +1)&#F
+1130 IF N=#38 THEN D=1;GOSUB d
+1140 IF N=#34 THEN D=0;GOSUB d
+1150 IF N=#36 THEN D=2;GOSUB d
+1160 IF N=#32 THEN D=3;GOSUB d
+1170 IF N=#35 THEN GOSUB o
+1180 IF N=27 THEN B=0
 1200w R=R+1
 1210 IF R<Y THEN GOTO q; REM "GameLoop"
-1220 Y=R+A; REM Schedule next tick
-1230 GOSUB f
-1240 GOTO q; REM "GameLoop"
-1250 IF ?#410=?#411 THEN GOTO 1280; REM "1280"; REM AutoInput
-1260 N=#400?(?#410); ?#410=(?#410 +1)&#F
-1265 IF N=#35 THEN C=0; GOSUB o;
-1270 IF N=27 THEN B=0;
-1280 GOSUB 7000; REM AutoStep
-1290 GOSUB f
-1295 GOTO q; REM "GameLoop"
+1220 Y=R+A;GOSUB f;GOTO q; REM "GameLoop"
+1250 IF ?#410=?#411 THEN GOTO 1280; REM "1280";REM AutoInput
+1260 N=#400?(?#410);?#410=(?#410 +1)&#F
+1265 IF N=#35 THEN C=0;GOSUB o
+1270 IF N=27 THEN B=0
+1280 GOSUB 7000;GOSUB f;GOTO q; REM "GameLoop"
 1300o REM === "PauseLoop" === => C : N
-1310 DO; DO; UNTIL ?#410<>?#411
-1320 N=#400?(?#410); ?#410=(?#410 +1)&#F
+1310 DO;DO;UNTIL ?#410<>?#411
+1320 N=#400?(?#410);?#410=(?#410 +1)&#F
 1330 UNTIL N=#35 OR N=#30
 1335 IF N=#30 THEN C=1
 1340 RETURN
 2000a REM === "Adjust" === P Q => AA : I M N P
-2010 I=0; M=Z;
-2020 DO; AA(I)=AA(I)+Q
-2030 N=M; M=M/2; I=I+I+1; REM Assume lower half
-2040 IF P>=M THEN P=P-M; M=N-M; I=I+1; REM Otherwise upper half
-2050 UNTIL I>=O
-2060 RETURN
+2010 I=0;M=Z;DO;AA(I)=AA(I)+Q
+2030 N=M;M=M/2;I=I+I+1;REM Assume lower half
+2040 IF P>=M THEN P=P-M;M=N-M;I=I+1;REM Otherwise upper half
+2050 UNTIL I>=O;RETURN
 2100y REM === "Debug" === AA(0) J => : I
 2130 RETURN
 2200l REM === "Locate" === P => J : I K L M P
-2210 P=P*8
-2220 I=1; J=0; K=Z; DO; REM Interval [J..K]; upper limit is not included
-2230 M=(K-J)/2; L=AA(I)&-8
-2240 IF P<L THEN K=J+M; I=I+I+1
-2250 IF P>=L THEN J=J+M; P=P-L; I=I+I+3
+2210 P=P*8;I=1;J=0;K=Z;DO;REM Interval [J..K];upper limit is not included
+2230 M=(K-J)/2;L=AA(I)&-8
+2240 IF P<L THEN K=J+M;I=I+I+1
+2250 IF P>=L THEN J=J+M;P=P-L;I=I+I+3
 2260 UNTIL I>=O
-2300g; REM Linear search:
+2300g;REM Linear search:
 2310 IF AA(J)&7 GOTO j; REM "LocateSkip"
 2320 IF P=0 THEN RETURN
 2330 P=P-8
-2340j J=J+1
-2350 IF J>=Z THEN GOSUB z; Here
-2360 GOTO g; REM "LocateLinear"
+2340j J=J+1;IF J>=Z THEN GOSUB z;Here
+2350 GOTO g; REM "LocateLinear"
 3000b REM === "Border" === P => AA : M N Q P PRINT $27"["P/W+3";"P%W+(42-W)/2"H"
 3010r REM === "BorderPrim" === P => AA : M N Q P PRINT " "
 3020 AA(P)=AA(P)|4
-3030 E=I; G=P; REM Save some variables
-3040 Q=-8; GOSUB a
-3050 P=G; I=E; REM Restore the variables
-3060 RETURN
+3030 E=I;G=P;Q=-8;GOSUB a
+3040 P=G;I=E;RETURN
 4000n REM === "InitGame" === => S T D U E X V AA : D G I J K L M N P Q
-4010 S=(H+1)/2*W-W/2; REM Center of board
-4020 T=S-2
-4030 D=2; REM Go east
-4040 FOR J=T TO S
+4010 S=(H+1)/2*W-W/2;REM Center of board
+4020 T=S-2;D=2;REM Go east
+4030 FOR J=T TO S
 4050 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $27"(0" "q" $27"(B"
 4060 AA(J)=(AA(J)&-8)|4|D
-4070 P=J; Q=-8; GOSUB a
+4070 P=J;Q=-8;GOSUB a
 4080 NEXT J
-4090 E=2; X=0; V=0
+4090 E=2;X=0;V=0
 4100 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" "`" $27"(B"
-4110 FOR G=1 TO 5; GOSUB s; NEXT G
+4110 FOR G=1 TO 5;GOSUB s;NEXT G
 4120 GOTO y; REM "Debug"
 5000d REM === "ChangeDirection" === S D => AA
-5010 IF (AA(S)&3)=D THEN RETURN; REM Dir not changed
-5020 AA(S)=(AA(S)&#FFFFFFFC)|D
-5030 RETURN
+5010 IF (AA(S)&3)=D THEN RETURN;REM Dir not changed
+5020 AA(S)=(AA(S)&#FFFFFFFC)|D;RETURN
 5100s REM === "SpawnFood" === => J X V AA : I K L M N P Q
 5110 IF AA(0)&-8=0 THEN RETURN
-5120 P=ABS(RND)%(AA(0)/8); N=P
-5130 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2 P ":"V ":"N%13" ";NEXT I
+5120 P=ABS(RND)%(AA(0)/8);N=P
 5140 GOSUB l
-5150 IF AA(J)&7 THEN GOSUB z; Here
-5155 K=1; REM Default: regular food
-5157 IF V=0 AND N%13=5 THEN K=2; V=1
-5160 AA(J)=AA(J)+K
-5170 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $(F+15)?K
-5180 P=J; Q=-8; GOSUB a
-5190 X=X+1;
-5200 GOTO y; REM "Debug"
+5150 IF AA(J)&7 THEN GOSUB z;Here
+5155 K=1;IF V=0 AND N%13=5 THEN K=2;V=1
+5160 AA(J)=AA(J)+K;PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $(F+15)?K
+5170 P=J;Q=-8;GOSUB a
+5185 AA(O+X)=(AA(O+X)&7)|(J*8);X=X+1;
+5190 GOTO y; REM "Debug"
 5300z REM === "Error" === => : M P
-5310 FOR P=0 TO Z-1
-5320 M=AA(P)&7
-5330 IF M>0 THEN PRINT $27"["P/W+3";"P%W+(42-W)/2"H" M
-5340 NEXT P
-5350 PRINT $27"[?25h"
-5360 RETURN
+5310 FOR P=0 TO Z-1;M=AA(P)&7
+5320 IF M>0 THEN PRINT $27"["P/W+3";"P%W+(42-W)/2"H" M
+5330 NEXT P;PRINT $27"[?25h";RETURN
 6000t REM === "StepSub" === P D => P
-6010 P=P+(D&2-1)*((D&1)*(W-1)+1)
-6020 RETURN
+6010 P=P+(D&2-1)*((D&1)*(W-1)+1);RETURN
 6100e REM === "EatTail" === => T AA : D I M N P Q
-6110 P=T; Q=8; GOSUB a
-6120 D=AA(T)
-6130 AA(T)=D&-8
+6110 P=T;Q=8;GOSUB a
+6120 D=AA(T);AA(T)=D&-8
 6140 PRINT $27"["T/W+3";"T%W+(42-W)/2"H" " "
-6150 P=T; GOSUB t; T=P
-6160 RETURN
+6150 P=T;GOSUB t;T=P;RETURN
 6200f REM === "AdvanceHead" === => S T U B X V AA E : D G I J K L M N P Q
-6210 D=AA(S)&3
-6220 N=F?(E*4+D)
+6210 D=AA(S)&3;N=F?(E*4+D)
 6230 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" $N $27"(B"
-6240 E=D
-6250 P=S; GOSUB t; S=P
+6240 E=D;P=S;GOSUB t;S=P
 6260 IF AA(S)&4 THEN GOTO x; REM "GameOver"
-6270 G=D
-6280 IF AA(S)&7 THEN GOTO v; REM "Eat"
-6290 GOSUB e
-6300 GOSUB u
-6310 P=S; Q=-8; GOSUB a
-6320 GOTO y; REM "Debug"
+6270 G=D;IF AA(S)&7 THEN GOTO v; REM "Eat"
+6280 GOSUB e;GOSUB u
+6290 P=S;Q=-8;GOSUB a;GOTO y; REM "Debug"
 6400v
-6410 X=X-1
-6420 U=U+1
-6430 IF AA(S)&7=2 THEN U=U+2; V=0
-6440 FOR I=1 TO 2; PRINT $27"["I ";"36"H"$27"#"I+2 U;NEXT I
+6410 X=X-1;I=0
+6412 IF (AA(O+I)/8)<>S THEN I=I+1;GOTO 6412; REM "6412"
+6414 AA(O+I)=(AA(O+I)&7)|(AA(O+X)&-8);REM Swap with last
+6420 U=U+1;IF AA(S)&7=2 THEN U=U+2;V=0
+6440 FOR I=1 TO 2;PRINT $27"["I ";"36"H"$27"#"I+2 U;NEXT I
 6450 GOSUB s
 6500u REM === "MarkHead" === G S => AA : D P
-6510 D=G
-6520 AA(S)=(AA(S)&-8)|4|D
+6510 D=G;AA(S)=(AA(S)&-8)|4|D
 6530 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" "`" $27"(B"
-6540 PRINT $27"["S/W+3";"S%W+(42-W)/2"H"; REM Reposition cursor
-6550 GOTO y; REM "Debug"
-7000 D=AA(S)&3; REM AutoStep: current D
-7020 K=ABS(RND)%19; REM Random 0-18
-7030 IF AA(S+(D&2-1)*((D&1)*(W-1)+1))&4=0 AND K>0 THEN RETURN
-7040 N=K&2-1; REM Straight blocked or random turn: -1=left 1=right
-7050 N=(D+N)&3; REM Try first turn
-7060 IF AA(S+(N&2-1)*((N&1)*(W-1)+1))&4=0 THEN D=N; GOSUB d; RETURN
-7070 N=(N+2)&3; REM Try other turn
-7080 IF AA(S+(N&2-1)*((N&1)*(W-1)+1))&4=0 THEN D=N; GOSUB d; RETURN
-7085 IF AA(S+(D&2-1)*((D&1)*(W-1)+1))&4=0 THEN RETURN; REM Straight is safe
-7090 GOSUB d; RETURN; REM All blocked - go straight
+6540 PRINT $27"["S/W+3";"S%W+(42-W)/2"H";GOTO y; REM "Debug"
+6050 K=AA(S+(N&2-1)*((N&1)*(W-1)+1))&4;IF K=0 THEN D=N;GOSUB d
+6055 RETURN
+7000 D=AA(S)&3;IF X=0 THEN GOTO 7060; REM "7060"
+7010 K=#7FFF;FOR I=0 TO X-1;J=(AA(O+I)/8)
+7020 M=ABS(J/W-S/W)+ABS(J%W-S%W);IF M<K THEN K=M;L=J
+7030 NEXT I
+7032 K=L%W-S%W;M=L/W-S/W
+7034 N=2;IF K<0 THEN N=0
+7036 IF ABS(M)>ABS(K) THEN N=3;IF M<0 THEN N=1
+7038 GOSUB 6050;IF K=0 THEN RETURN
+7040 N=3;IF M<0 THEN N=1
+7042 IF ABS(M)>ABS(K) THEN N=2;IF K<0 THEN N=0
+7044 GOSUB 6050;IF K=0 THEN RETURN
+7060 N=D;GOSUB 6050;IF K=0 THEN RETURN
+7070 N=(D+1)&3;GOSUB 6050;IF K=0 THEN RETURN
+7080 N=(D-1)&3;GOSUB 6050;IF K=0 THEN RETURN
+7090 RETURN
 8000h REM === "HomePage" === => AA : I M N P Q
 8010 PRINT $12 $27"[?25l"
-8020 FOR I=1 TO 2; PRINT $27"["I ";"18"H"$27"#"I+2"Snake"; NEXT I
-8030 FOR I=1 TO 2; PRINT $27"["I ";"30"H"$27"#"I+2"Score 0"; NEXT I
-8040 FOR I=1 TO H; PRINT $10$13$27"#6"; NEXT I
+8020 FOR I=1 TO 2;PRINT $27"["I ";"18"H"$27"#"I+2"Snake";NEXT I
+8030 FOR I=1 TO 2;PRINT $27"["I ";"30"H"$27"#"I+2"Score 0";NEXT I
+8040 FOR I=1 TO H;PRINT $10$13$27"#6";NEXT I
 8050 PRINT $27"[7m"
-8055 REM TopBorder
-8060 PRINT $27"["0/W+3";"0%W+(42-W)/2"H"
+8060 PRINT $27"["0/W+3";"0%W+(42-W)/2"H";REM TopBorder
 8070 FOR P=0 TO W-1;GOSUB r;NEXT P
-8075 REM SideBorders
-8080 FOR I=W TO Z-W-W STEP W
-8090 P=I; GOSUB b; REM LeftBorder
-8100 P=I+W-1; GOSUB b; REM RightBorder
+8080 FOR I=W TO Z-W-W STEP W;REM SideBorders
+8090 P=I;GOSUB b;REM LeftBorder
+8100 P=I+W-1;GOSUB b;REM RightBorder
 8110 NEXT I
-8115 REM BottomBorder
-8120 PRINT $27"["(Z-W)/W+3";"(Z-W)%W+(42-W)/2"H"
+8120 PRINT $27"["(Z-W)/W+3";"(Z-W)%W+(42-W)/2"H";REM BottomBorder
 8130 FOR P=Z-W TO Z-1;GOSUB r;NEXT P
 8140 PRINT $27"[m"
 8150 RETURN
 9000x REM === "GameOver" === S X => B : I P
-9010 B=0; PRINT $27"["S/W+3";"S%W+(42-W)/2"H"
+9010 B=0;PRINT $27"["S/W+3";"S%W+(42-W)/2"H"
 9020 IF X>0 THEN GOTO m; REM "Lose"
 9030 PRINT $27"(0" "`" $27"(B"
-9040 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"You Win!"; NEXT I
-9050 RETURN
+9040 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2"You Win!";NEXT I;RETURN
 9100m PRINT "X"
-9110 FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"Game Over!"; NEXT I
-9120 RETURN
+9110 FOR I=1 TO 2;PRINT $27"["I ";"1"H"$27"#"I+2"Game Over!";NEXT I;RETURN
 9800i REM === "Init" === W H => Z O U C B F AA : I J K
-9810 @=0
-9820 Z=W*H; REM Z<3 not supported !!!!
-9830 DIM AA(Z-1); REM Allocates (Z cells, 0-based)!
-9840 PRINT "Initializing..."
-9850 O=1;DO;O=O+O;UNTIL O+O>Z+1;O=O-1; REM Number of tree cells - O=2^n-1 - 3 7 15 31 ...
-9855 REM TODO: Consider reduce number of O; e.g. O=O/2
-9860 AA(0)=Z*8; REM See Bits above
-9870 FOR I=1 TO O-2 STEP 2
-9880 J=(I-1)/2
-9890 K=AA(J)/2&-8; REM AA(J)/2/8*8
-9900 AA(I)=K
-9910 AA(I+1)=AA(J)-K
-9920 NEXT I
-9930 FOR I=O TO Z-1; AA(I)=0; NEXT I; REM Clear remaining O
-9940 U=0; C=0; B=1
-9950 REM Snake body LUT: F?(E*4+D) => line drawing char
-9955 REM Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└. Food: @=1 *=2
-9960 DIM F(18); $F="qmnlkxlnnjqkjnmx@*"
-9970 RETURN
+9810 @=0;Z=W*H;REM Z<3 not supported !!!!
+9830 DIM AA(Z-1);PRINT "Initializing..."
+9850 O=1;DO;O=O+O;UNTIL O+O>Z+1;O=O/2-1;REM Halved tree: frees cells for food list
+9860 AA(0)=Z*8;FOR I=1 TO O-2 STEP 2
+9880 J=(I-1)/2;K=AA(J)/2&-8;REM AA(J)/2/8*8
+9900 AA(I)=K;AA(I+1)=AA(J)-K;NEXT I
+9930 FOR I=O TO Z-1;AA(I)=0;NEXT I;REM Clear remaining O
+9940 U=0;C=0;B=1
+9960 DIM F(18);$F="qmnlkxlnnjqkjnmx@*";RETURN

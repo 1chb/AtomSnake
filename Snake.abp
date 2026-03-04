@@ -57,6 +57,12 @@
 #define Mouse 1
 #define Bonus 2
 
+// Food list: stored in upper bits of AA(nodes..nodes+foodCount-1)
+// FoodGet(k) retrieves position of k-th food item
+// FoodSet(k,p) stores position p as k-th food item (preserves cell flags)
+#define FoodGet(k) (AA(nodes+k)/CountBit)
+#define FoodSet(k,p) AA(nodes+k)=(AA(nodes+k)&FlagsMask)|(p*CountBit)
+
 // Labels
 #define Adjust a
 #define Border b
@@ -68,9 +74,9 @@
 #define HomePage h
 #define Init i
 #define LocateSkip j
-#define CheckError k
+#define _K k
 #define Locate l
-#define Lose m
+#define _M m
 #define InitGame n
 #define PauseLoop o
 #define Play p
@@ -82,8 +88,18 @@
 #define Eat v
 #define WaitForTick w
 #define GameOver x
-#define Debug y
-#define Error z
+#define AutoStep y
+#define _Z z
+
+#ifdef DEBUG
+#  define Debug 9600
+#  define Error 9800
+#  define DebugReturn Goto(Debug)
+#  define Reject(condition) If(condition) Goto(Error)
+#else
+#  define DebugReturn Return
+#  define Reject(condition)
+#endif
 
 // Snake-specific macros
 #define SnakeHead GraphicsOn "`" GraphicsOff
@@ -97,193 +113,159 @@
 
 10 width=40
 20 height=21
-30 Gosub_(Init); CheckTree
-40 time=0; Gosub_(Play)
+30 Gosub_(Init);CheckTree
+40 time=0;Gosub_(Play)
 50 Print(Position(height+3,1) ShowCursor)
-60 For(N=1) To(300); If(KeyAvailable) THEN KeyNext // Clean up key buffer
-70 Next(N); End
+60 Remark(Clean up key buffer)
+70 For(N=1)To(300);If(KeyAvailable) T.KeyNext
+80 Next(N);End
 
 Subroutine(1000, Play, => alive autoPlay tickDelay nextTick AA : D G I J K L M N P Q)
-1010 Gosub_(HomePage); CheckTree
-1020 Gosub_(InitGame); CheckTree
-1030 tickDelay=SLOW_DOWN
-1040 nextTick=time+tickDelay; Remark(Next tick time)
+1010 Gosub_(HomePage);Gosub_(InitGame);CheckTree
+1030 tickDelay=SLOW_DOWN-size/100;nextTick=time+tickDelay // Next tick time
 Label(1100, GameLoop)If(alive=0) Then Return
 1105 If(autoPlay) Then Goto(1250)
 1110 If(KeyEmpty) Then Goto(WaitForTick)
-1120   N=KeyPeek; KeyNext
-1130   If(N=UP)    Then direction=North; Gosub(ChangeDirection);
-1140   If(N=LEFT)  Then direction=West; Gosub(ChangeDirection);
-1150   If(N=RIGHT) Then direction=East; Gosub(ChangeDirection);
-1160   If(N=DOWN)  Then direction=South; Gosub(ChangeDirection);
-1170   If(N=PAUSE) Then Gosub(PauseLoop);
-1180   If(N=QUIT)  Then alive=0;
-Label(1200, WaitForTick) time=time+1
+1120   N=KeyPeek;KeyNext
+1130   If(N=UP)    Then direction=North;Gosub(ChangeDirection)
+1140   If(N=LEFT)  Then direction=West;Gosub(ChangeDirection)
+1150   If(N=RIGHT) Then direction=East;Gosub(ChangeDirection)
+1160   If(N=DOWN)  Then direction=South;Gosub(ChangeDirection)
+1170   If(N=PAUSE) Then Gosub(PauseLoop)
+1180   If(N=QUIT)  Then alive=0
+Label(1200, WaitForTick)time=time+1
 1210 If(time<nextTick) Then Goto(GameLoop)
-1220 nextTick=time+tickDelay; Remark(Schedule next tick)
-1230 Gosub(AdvanceHead)
-1240 Goto(GameLoop)
-1250 If(KeyEmpty) Then Goto(1280); Remark(AutoInput)
-1260 N=KeyPeek; KeyNext
-1265 If(N=PAUSE) Then autoPlay=0; Gosub(PauseLoop);
-1270 If(N=QUIT) Then alive=0;
-1280 Gosub(7000); Remark(AutoStep)
-1290 Gosub(AdvanceHead)
-1295 Goto(GameLoop)
+1220 nextTick=time+tickDelay;Gosub(AdvanceHead);Goto(GameLoop) // Schedule next tick
+1250 If(KeyEmpty) Then Goto(1280) // AutoInput
+1260 N=KeyPeek;KeyNext
+1265 If(N=PAUSE) Then autoPlay=0;Gosub(PauseLoop)
+1270 If(N=QUIT) Then alive=0
+1280 Gosub(AutoStep);Gosub(AdvanceHead);Goto(GameLoop) // AutoStep
 Subroutine(1300, PauseLoop, => autoPlay : N)
-1310 DO; DO; Until(KeyAvailable)
-1320   N=KeyPeek; KeyNext
+1310 DO;DO;Until(KeyAvailable)
+1320   N=KeyPeek;KeyNext
 1330 Until(N=PAUSE OR N=AUTO)
 1335 If(N=AUTO) Then autoPlay=1
 1340 Return
 
 Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
-2010 I=0; M=size;
-2020 DO; AA(I)=AA(I)+quantity
-2030   N=M; M=M/2; I=I+I+1; Remark(Assume lower half)
-2040   If (pos>=M) Then pos=pos-M; M=N-M; I=I+1; Remark(Otherwise upper half)
-2050 Until(I>=nodes)
-2060 Return
+2010 I=0;M=size;DO;AA(I)=AA(I)+quantity;N=M;M=M/2;I=I+I+1 // Assume lower half
+2040   If (pos>=M) Then pos=pos-M;M=N-M;I=I+1 // Otherwise upper half
+2050 Until(I>=nodes);Return
 
-Subroutine(2100, Debug, AA(0) J => : I)
-#ifdef DEBUG
-2110 For(I=1) To(2)
-2120 Print(Position(I,5)Double(I+2)AA(0)/8":"J".");Next(I)
-#endif
-2130 Return
-
-Subroutine(2200, Locate, pos => J : I K L M pos)
-2210 pos=pos*CountBit
-2220 I=1; J=0; K=size; DO; Remark(Interval [J..K]; upper limit is not included)
-2230   M=(K-J)/2; L=AA(I)&CountMask
-2240   If(pos<L) Then K=J+M; I=I+I+1
-2250   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
+Subroutine(2200, Locate, pos => J : I K L M pos);pos=pos*CountBit;I=1;J=0;K=size // Interval [J..K]; upper limit is not included
+2210 DO;M=(K-J)/2;L=AA(I)&CountMask
+2240   If(pos<L) Then K=J+M;I=I+I+1
+2250   If(pos>=L) Then J=J+M;pos=pos-L;I=I+I+3
 2260 Until(I>=nodes)
-Label(2300,LocateLinear); Remark(Linear search:)
+Label(2300,LocateLinear) // Linear search:
 2310 If(AA(J)&FlagsMask) Goto(LocateSkip)
 2320 If(pos=0) Then Return
 2330 pos=pos-CountBit
-Label(2340, LocateSkip) J=J+1
-2350 If(J>=size) Then Gosub(Error); Here
-2360 Goto(LocateLinear)
+Label(2340, LocateSkip) J=J+1;Reject(J>=size)
+2350 Goto(LocateLinear)
 
 Subroutine(3000, Border, pos => AA : M N Q pos)Print(MoveToPos(pos))
 Subroutine(3010, BorderPrim, pos => AA : M N Q pos)Print(" ")
 3020 AA(pos)=AA(pos)|BorderBit
-3030 E=I; G=pos; Remark(Save some variables)
-3040 quantity=-CountBit; Gosub(Adjust)
-3050 pos=G; I=E; Remark(Restore the variables)
-3060 Return
+3030 E=I;G=pos;quantity=-CountBit;Gosub(Adjust) // Save I,pos
+3040 pos=G;I=E;Return // Restore
 
 Subroutine(4000, InitGame, => head tail direction score lastDir foodCount bonusActive AA : D G I J K L M N P Q)
-4010 head=(height+1)/2*width-width/2; Remark(Center of board)
-4020 tail=head-2
-4030 direction=East; Remark(Go east)
-4040 For(J=tail) To(head)
+4010 head=(height+1)/2*width-width/2 // Center of board
+4020 tail=head-2;direction=East // Go east
+4030 For(J=tail) To(head)
 4050   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
 4060   AA(J)=(AA(J)&CountMask)|BorderBit|direction
-4070   pos=J; quantity=-CountBit; Gosub(Adjust)
+4070   pos=J;quantity=-CountBit;Gosub(Adjust)
 4080 Next(J)
-4090 lastDir=East; foodCount=0; bonusActive=0
+4090 lastDir=East;foodCount=0;bonusActive=0
 4100 Print(MoveToPos(head) SnakeHead)
-4110 For(G=1) To(5); Gosub(SpawnFood); Next(G)
-4120 Goto(Debug)
+4110 For(G=1) To(5);Gosub(SpawnFood);Next(G)
+4120 DebugReturn
 
 Subroutine(5000, ChangeDirection, head direction => AA)
-5010 If((AA(head)&3)=direction) Then Return; Remark(Dir not changed)
-5020 AA(head)=(AA(head)&#FFFFFFFC)|direction
-5030 Return
+5010 If((AA(head)&3)=direction) Then Return // Dir not changed
+5020 AA(head)=(AA(head)&#FFFFFFFC)|direction;Return
 
 Subroutine(5100, SpawnFood, => J foodCount bonusActive AA : I K L M N P Q)
 5110 If(AA(0)&CountMask=0) Then Return // Board full
-5120 pos=ABS(RND)%(AA(0)/CountBit); N=pos
+5120 pos=ABS(RND)%(AA(0)/CountBit);N=pos
+#ifdef DEBUG
 5130 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos":"bonusActive":"N%13" ");Next(I)
+#endif
 5140 Gosub(Locate)
-5150 If(AA(J)&FlagsMask) Then Gosub(Error); Here
-5155 K=Mouse; Remark(Default: regular food)
-5157 If(bonusActive=0 AND N%13=5) Then K=Bonus; bonusActive=1
-5160 AA(J)=AA(J)+K
-5170 Print(MoveToPos(J) $(snakeLUT+15)?K)
-5180 pos=J; quantity=-CountBit; Gosub(Adjust)
-5190 foodCount=foodCount+1; CheckTree
-5200 Goto(Debug)
-
-Subroutine(5300, Error, => : M P)
-5310 For(pos=0) To(size-1)
-5320 M=AA(pos)&FlagsMask
-5330 If(M>0) Then Print(MoveToPos(pos) M)
-5340 Next(pos)
-5350 Print(ShowCursor)
-5360 Return
+5150 Reject(AA(J)&FlagsMask)
+5155 K=Mouse;If(bonusActive=0 AND N%13=5) Then K=Bonus;bonusActive=1 // Default: regular food
+5160 AA(J)=AA(J)+K;Print(MoveToPos(J) $(snakeLUT+15)?K)
+5170 pos=J;quantity=-CountBit;Gosub(Adjust)
+5185 FoodSet(foodCount,J);foodCount=foodCount+1;CheckTree // Add to food list
+5190 DebugReturn
 
 Subroutine(6000, StepSub, pos direction => pos)
-6010 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
-6020 Return
+6010 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1);Return
 
 Subroutine(6100, EatTail, => tail AA : D I M N P Q)
-6110 pos=tail; quantity=CountBit; Gosub(Adjust)
-6120 direction=AA(tail)
-6130 AA(tail)=direction&CountMask
+6110 pos=tail;quantity=CountBit;Gosub(Adjust)
+6120 direction=AA(tail);AA(tail)=direction&CountMask
 6140 Print(MoveToPos(tail) " ")
-6150 pos=tail; Gosub(StepSub); tail=pos
-6160 Return
+6150 pos=tail;Gosub(StepSub);tail=pos;Return
 
 Subroutine(6200, AdvanceHead, => head tail score alive foodCount bonusActive AA lastDir : D G I J K L M N P Q)
-6210 direction=AA(head)&3
-6220 N=snakeLUT?(lastDir*4+direction)
+6210 direction=AA(head)&3;N=snakeLUT?(lastDir*4+direction)
 6230 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
-6240 lastDir=direction
-6250 pos=head; Gosub(StepSub); head=pos
+6240 lastDir=direction;pos=head;Gosub(StepSub);head=pos
 6260 If(AA(head)&BorderBit) Then Goto(GameOver)
-6270 G=direction
-6280 If(AA(head)&FlagsMask) Then Goto(Eat)
-6290 Gosub(EatTail)
-6300 Gosub(MarkHead)
-6310 pos=head; quantity=-CountBit; Gosub(Adjust)
-6320 Goto(Debug)
+6270 G=direction;If(AA(head)&FlagsMask) Then Goto(Eat)
+6280 Gosub(EatTail);Gosub(MarkHead)
+6290 pos=head;quantity=-CountBit;Gosub(Adjust);DebugReturn
 Label(6400,Eat)
-6410 foodCount=foodCount-1
-6420 score=score+1
-6430 If(AA(head)&FlagsMask=Bonus) Then score=score+2; bonusActive=0
-6440 For(I=1) To(2); Print(Position(I,36)Double(I+2)score);Next(I)
+6410 foodCount=foodCount-1;I=0
+6412 If(FoodGet(I)<>head) Then I=I+1;Goto(6412)
+6414 AA(nodes+I)=(AA(nodes+I)&FlagsMask)|(AA(nodes+foodCount)&CountMask) // Swap with last
+6420 score=score+1;If(AA(head)&FlagsMask=Bonus) Then score=score+2;bonusActive=0
+6440 For(I=1) To(2);Print(Position(I,36)Double(I+2)score);Next(I)
 6450 Gosub(SpawnFood)
 Subroutine(6500, MarkHead, G head => AA : D P)
-6510 direction=G
-6520 AA(head)=(AA(head)&CountMask)|BorderBit|direction
+6510 direction=G;AA(head)=(AA(head)&CountMask)|BorderBit|direction
 6530 Print(MoveToPos(head) SnakeHead)
-6540 Print(MoveToPos(head)); Remark(Reposition cursor)
-6550 Goto(Debug)
+6540 Print(MoveToPos(head));DebugReturn
 
 // Step(pos,dir) = pos + (dir&2-1) * ((dir&1)*(width-1)+1)
-#define IsSafe(dir) AA(head+(dir&2-1)*((dir&1)*(width-1)+1))&BorderBit=0
+// TryDir(N): if dir N is safe, apply it. K=0 if safe, K=BorderBit if blocked.
+6800 K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit;If(K=0) Then direction=N;Gosub(ChangeDirection)
+6810 Return
+#define TryDir Gosub(6800);If(K=0) Then Return
 
-7000 direction=AA(head)&3; Remark(AutoStep: current direction)
-7020 K=ABS(RND)%19; Remark(Random 0-18)
-7030 If(IsSafe(direction) AND K>0) Then Return
-7040 N=K&2-1; Remark(Straight blocked or random turn: -1=left 1=right)
-7050 N=(direction+N)&3; Remark(Try first turn)
-7060 If(IsSafe(N)) Then direction=N; Gosub(ChangeDirection); Return
-7070 N=(N+2)&3; Remark(Try other turn)
-7080 If(IsSafe(N)) Then direction=N; Gosub(ChangeDirection); Return
-7085 If(IsSafe(direction)) Then Return; Remark(Straight is safe)
-7090 Gosub(ChangeDirection); Return; Remark(All blocked - go straight)
+// AutoStep: greedy - find nearest food, try both axes toward it, then fallback
+Subroutine(7000, AutoStep, ? => ? : ?)direction=AA(head)&3;If(foodCount=0) Then Goto(7060)
+7010 K=#7FFF;For(I=0) To(foodCount-1);J=FoodGet(I)
+7020 M=ABS(J/width-head/width)+ABS(J%width-head%width);If(M<K) Then K=M;L=J
+7030 Next(I) // L=nearest food
+7032 K=L%width-head%width;M=L/width-head/width // K=dx, M=dy
+7034 N=East;If(K<0) Then N=West // N=horizontal toward food
+7036 If(ABS(M)>ABS(K)) Then N=South;If(M<0) Then N=North // Override: vertical if |dy|>|dx|
+7038 TryDir
+7040 N=South;If(M<0) Then N=North // Try other axis: vertical
+7042 If(ABS(M)>ABS(K)) Then N=East;If(K<0) Then N=West // Override: horizontal if vertical was primary
+7044 TryDir
+7060 N=direction;TryDir // Fallback: straight
+7070 N=(direction+1)&3;TryDir
+7080 N=(direction-1)&3;TryDir
+7090 Return
 
 Subroutine(8000, HomePage, => AA : I M N P Q)
 8010 Print(ClearScreen HideCursor)
-8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
-8030 For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
-8040 For(I=1) To(height); Print($10$13$27"#6"); Next(I)
-8050 Print(ReverseVideo)
-8055 Remark(TopBorder)
-8060 Print(MoveToPos(0))
+8020 For(I=1) To(2);Print(Position(I,18)Double(I+2)"Snake");Next(I)
+8030 For(I=1) To(2);Print(Position(I,30)Double(I+2)"Score 0");Next(I)
+8040 For(I=1) To(height);Print($10$13$27"#6");Next(I)
+8050 Print(ReverseVideo);Print(MoveToPos(0)) // TopBorder
 8070 For(pos=0) To(width-1);Gosub(BorderPrim);Next(pos)
-8075 Remark(SideBorders)
-8080 For(I=width) To(size-width-width) Step(width)
-8090   pos=I; Gosub(Border); Remark(LeftBorder)
-8100   pos=I+width-1; Gosub(Border); Remark(RightBorder)
+8080 For(I=width) To(size-width-width) Step(width) // SideBorders
+8090   pos=I;Gosub(Border) // LeftBorder
+8100   pos=I+width-1;Gosub(Border) // RightBorder
 8110 Next(I)
-8115 Remark(BottomBorder)
-8120 Print(MoveToPos((size-width)))
+8120 Print(MoveToPos((size-width))) // BottomBorder
 8130 For(pos=size-width) To(size-1);Gosub(BorderPrim);Next(pos)
 8140 Print(NormalVideo)
 8150 Return
@@ -295,53 +277,55 @@ Subroutine(8000, HomePage, => AA : I M N P Q)
 #ifdef TREE_CHECK
 Subroutine(8500, Check, => : I J K L M N P)
 8510 For(I=0) To(nodes/2-1)
-8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(CheckError)
+8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8700)
 8530 Next(I)
 8540 Remark(Check leaf counts against actual empty cells)
 8545 Remark(Walk each cell to its leaf node)
-8550 L=0; K=CellCount(L); Remark(L: last leaf if any. But initially it is the root with K such valid)
+8550 L=0;K=CellCount(L) // L: last leaf if any. But initially it is the root with K such valid
 8560 For(J=0) To(size-1)
-8570   I=0; M=size; pos=J; DO
-8580     N=M; M=M/2; I=I+I+1; Remark(Assume left)
-8590     If(pos>=M) Then pos=pos-M; M=N-M; I=I+1; Remark(When right)
+8570   I=0;M=size;pos=J;DO
+8580     N=M;M=M/2;I=I+I+1 // Assume left
+8590     If(pos>=M) Then pos=pos-M;M=N-M;I=I+1 // When right
 8600   Until(I>=nodes/2)
 8605   Remark(I is the leaf for cell J)
-8610   If(I>L) Then Gosub(8650); Remark(Validate when new leaf)
-8620   If(AA(J)&FlagsMask=0) Then K=K+CountBit; Remark(Count empty cells)
+8610   If(I>L) Then Gosub(8650) // Validate when new leaf
+8620   If(AA(J)&FlagsMask=0) Then K=K+CountBit // Count empty cells
 8630 Next(J)
-8650 If (CellCount(L)=K) Then L=I; K=0; Return
-Label(8700, CheckError) PrintLn(" - Error:")
-8710 For(P=0) To(Z-1); @=4; Print(AA(P)/8); @=1; Print("/"AA(P)&7); Next(P)
-8720 @=8; PrintLn(ShowCursor); End
+8650 If (CellCount(L)=K) Then L=I;K=0;Return
+8700 PrintLn(" - Error:")
+8710 For(P=0) To(Z-1);@=4;Print(AA(P)/8);@=1;Print("/"AA(P)&7);Next(P)
+8720 @=8;PrintLn(ShowCursor);End
 #endif
 
 Subroutine(9000, GameOver, head foodCount => alive : I P)
-9010 alive=0; Print(MoveToPos(head))
-9020 If(foodCount>0) Then Goto(Lose) // Food remaining, not a win
+9010 alive=0;Print(MoveToPos(head))
+9020 If(foodCount>0) Then Goto(9100) // Food remaining, not a win
 9030 Print(SnakeHead)
-9040 For(I=1) To(2); Print(Position(I,1)Double(I+2)"You Win!"); Next(I)
-9050 Return
-Label(9100, Lose) Print("X")
-9110 For(I=1) To(2); Print(Position(I,1)Double(I+2)"Game Over!"); Next(I)
-9120 Return
+9040 For(I=1) To(2);Print(Position(I,1)Double(I+2)"You Win!");Next(I);Return
+9100 Print("X")
+9110 For(I=1) To(2);Print(Position(I,1)Double(I+2)"Game Over!");Next(I);Return
 
-Subroutine(9800, Init, width height => size nodes score autoPlay alive snakeLUT AA : I J K)
-9810 @=0
-9820 size=width*height; Remark(size<3 not supported !!!!)
-9830 DIM AA(size-1); Remark(Allocates (size cells, 0-based)!)
-9840 Print("Initializing...")
-9850 nodes=1;DO;nodes=nodes+nodes;Until(nodes+nodes>size+1);nodes=nodes-1; Remark(Number of tree cells - nodes=2^n-1 - 3 7 15 31 ...)
-9855 Remark(TODO: Consider reduce number of nodes; e.g. nodes=nodes/2)
-9860 AA(0)=size*CountBit; Remark(See Bits above)
-9870 For(I=1) To(nodes-2) Step(2)
-9880   J=(I-1)/2
-9890   K=AA(J)/2&CountMask; Remark(AA(J)/2/CountBit*CountBit)
-9900   AA(I)=K
-9910   AA(I+1)=AA(J)-K
-9920 Next(I)
-9930 For(I=nodes) To(size-1); AA(I)=0; Next(I); Remark(Clear remaining nodes)
-9940 score=0; autoPlay=0; alive=1
-9950 Remark(Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char)
-9955 Remark(Directions: W=0 N=1 E=2 S=3. Graphics: q=─ x=│ j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus)
-9960 DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"
-9970 Return
+Subroutine(9200, Init, width height => size nodes score autoPlay alive snakeLUT AA : I J K)
+9210 @=0;size=width*height // size<3 not supported !!!!
+9220 DIM AA(size-1);Print("Initializing...") // Allocates size cells, 0-based
+9230 nodes=1;DO;nodes=nodes+nodes;Until(nodes+nodes>size+1);nodes=nodes/2-1 // Halved tree: frees cells for food list
+9240 AA(0)=size*CountBit;For(I=1) To(nodes-2) Step(2) // See Bits above
+9250   J=(I-1)/2;K=AA(J)/2&CountMask // AA(J)/2/CountBit*CountBit
+9260   AA(I)=K;AA(I+1)=AA(J)-K;Next(I)
+9270 For(I=nodes) To(size-1);AA(I)=0;Next(I) // Clear remaining nodes
+9280 score=0;autoPlay=0;alive=1
+// Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
+// Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus
+9290 DIM snakeLUT(18);$F="qmnlkxlnnjqkjnmx@*";Return
+
+
+#ifdef DEBUG
+Debug AA(0) // J => : I
+9610 For(I=1) To(2)
+9620 Print(Position(I,5)Double(I+2)AA(0)/8":"J".");Next(I)
+9630 Return
+
+Error For(pos=0) To(size-1);M=AA(pos)&FlagsMask // size, AA => : M pos
+9810   If(M>0) Then Print(MoveToPos(pos) M)
+9820 Next(pos);Print(ShowCursor);Return
+#endif

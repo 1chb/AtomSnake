@@ -212,6 +212,10 @@ This command:
 
 **Remember**: The `.atom` file has a 63-character line length limit. Favor smaller, cleaner code.
 
+**CRITICAL**: Never use `GOTO` or `GOSUB` to jump to a line that only contains `Remark(...)`. In PROD mode, `Remark` expands to nothing, so the line is deleted entirely and the jump target becomes invalid. Always ensure jump targets have at least one executable statement. If needed, move the remark to the end of the next executable line.
+
+**Code size tips**: Use `//` cpp comments instead of `Remark(...)` for documentation that doesn't need to appear in the `.atom` output — cpp strips them entirely (zero bytes). `Remark(...)` costs vary by context: `...; Remark(text)` appended to a line costs 6+len(text) bytes in non-PROD (expands to `; REM text`) and 1 byte in PROD (just the `;`). A standalone `Remark(text)` line costs 8+len(text) bytes in non-PROD (line number, space, `REM `, text, newline) but zero bytes in PROD (the line is deleted entirely).
+
 ### Testing Considerations
 When modifying the code:
 - The binary indexed tree logic (Init, Adjust, Locate) is critical and fragile

@@ -19,7 +19,7 @@
 #  define Gosub(label) GOS.label
 #  define Gosub_(label) GOS.label
 #  define Goto(label) G.label
-#  define If(expr) IF expr
+#  define If(expr) I.expr
 #  define Label(line, name) Concat(line, name)
 #  define Next(variable) N.
 #  define Print(any) P.any
