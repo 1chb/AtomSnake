@@ -127,24 +127,24 @@ Label(1100, GameLoop)If(alive=0) Then Return
 1105 If(autoPlay) Then Goto(AutoInput)
 1110 If(KeyEmpty) Then Goto(WaitForTick)
 1120   N=KeyPeek;KeyNext
-1130   If(N=UP)    Then direction=North;Gosub(ChangeDirection)
-1140   If(N=LEFT)  Then direction=West;Gosub(ChangeDirection)
-1150   If(N=RIGHT) Then direction=East;Gosub(ChangeDirection)
-1160   If(N=DOWN)  Then direction=South;Gosub(ChangeDirection)
-1170   If(N=PAUSE) Then Gosub(PauseLoop)
+1130   If(N=PAUSE) Then Gosub(PauseLoop)
+1140   If(N=UP)    Then direction=North;Gosub(ChangeDirection)
+1150   If(N=LEFT)  Then direction=West;Gosub(ChangeDirection)
+1160   If(N=RIGHT) Then direction=East;Gosub(ChangeDirection)
+1170   If(N=DOWN)  Then direction=South;Gosub(ChangeDirection)
 1180   If(N=QUIT)  Then alive=0
 Label(1200, WaitForTick)time=time+1
 1210 If(time<nextTick) Then Goto(GameLoop)
 1220 nextTick=time+tickDelay;Gosub(AdvanceHead);Goto(GameLoop) // Schedule next tick
 Label(1250, AutoInput)If(KeyEmpty) Then Goto(1280) // AutoInput
 1260 N=KeyPeek;KeyNext
-1265 If(N=PAUSE) Then autoPlay=0;Gosub(PauseLoop)
+1265 If(N=PAUSE) Then autoPlay=0;Gosub(PauseLoop);If(autoPlay=0) Then Goto(1140)
 1270 If(N=QUIT) Then alive=0
 1280 Gosub(AutoStep);Gosub(AdvanceHead);Goto(GameLoop) // AutoStep
 Subroutine(1300, PauseLoop, => autoPlay : N)
 1310 DO;DO;Until(KeyAvailable)
 1320   N=KeyPeek;KeyNext
-1330 Until(N=PAUSE OR N=AUTO)
+1330 Until(N=PAUSE OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
 1335 If(N=AUTO) Then autoPlay=1
 1340 Return
 
