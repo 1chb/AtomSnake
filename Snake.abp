@@ -237,18 +237,20 @@ Subroutine(6800, TryDirSub, N head => K direction AA)K=AA(head+(N&2-1)*((N&1)*(w
 6810 Return
 #define TryDir Gosub(TryDirSub);If(K=0) Then Return
 
-// AutoStep: greedy - find nearest food, try both axes toward it, then fallback
+// AutoStep: greedy - find nearest food, try both axes toward it, then away
 Subroutine(7000, AutoStep, head foodCount => direction AA : I J K L M N)direction=AA(head)&3;If(foodCount=0) Then Goto(AutoFallback)
 7010 K=#7FFF;For(I=0) To(foodCount-1);J=FoodGet(I)
 7020 M=ABS(J/width-head/width)+ABS(J%width-head%width);If(M<K) Then K=M;L=J
 7030 Next(I) // L=nearest food
-7032 K=L%width-head%width;M=L/width-head/width // K=dx, M=dy
-7034 N=East;If(K<0) Then N=West // N=horizontal toward food
-7036 If(ABS(M)>ABS(K)) Then N=South;If(M<0) Then N=North // Override: vertical if |dy|>|dx|
-7038 TryDir
-7040 N=South;If(M<0) Then N=North // Try other axis: vertical
-7042 If(ABS(M)>ABS(K)) Then N=East;If(K<0) Then N=West // Override: horizontal if vertical was primary
+7032 J=L%width-head%width;M=L/width-head/width // J=dx, M=dy
+7034 N=East;If(J<0) Then N=West // N=horizontal toward food
+7036 If(ABS(M)>ABS(J)) Then N=South;If(M<0) Then N=North // Override: vertical if |dy|>|dx|
+7038 L=N;TryDir // L=primary direction toward food
+7040 N=South;If(M<0) Then N=North // Try other axis: vertical toward food
+7042 If(ABS(M)>ABS(J)) Then N=East;If(J<0) Then N=West // Override: horizontal if vertical was primary
 7044 TryDir
+7046 N=N:2;TryDir // Try secondary axis AWAY from food
+7048 N=L:2;TryDir // Try primary axis AWAY from food (opposite of desired)
 Label(7060, AutoFallback)N=direction;TryDir // Fallback: straight
 7070 N=(direction+1)&3;TryDir
 7080 N=(direction-1)&3;TryDir
