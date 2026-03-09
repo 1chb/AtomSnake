@@ -71,7 +71,7 @@ AcornAtom.abp:26:29: warning: missing terminating ' character
 4120 RETURN
 5000d REM === "ChangeDirection" === S D => AA
 5010 IF (AA(S)&3)=D THEN RETURN
-5020 AA(S)=(AA(S)&#FFFFFFFC)|D;RETURN
+5020 AA(S)=(AA(S)&-4)|D;RETURN
 5100s REM === "SpawnFood" === => J X V AA : I K L M N P Q
 5110 IF AA(0)&-8=0 THEN RETURN
 5120 P=ABS(RND)%(AA(0)/8);N=P

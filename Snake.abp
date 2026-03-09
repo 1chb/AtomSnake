@@ -49,6 +49,7 @@
 #define AUTO  #30
 
 // Bits
+#define DirMask -4
 #define BorderBit 4
 #define FlagsMask 7
 #define CountBit 8
@@ -186,17 +187,17 @@ Subroutine(4000, InitGame, => head tail direction lastDir foodCount bonusActive 
 
 Subroutine(5000, ChangeDirection, head direction => AA)
 5010 If((AA(head)&3)=direction) Then Return // Dir not changed
-5020 AA(head)=(AA(head)&#FFFFFFFC)|direction;Return
+5020 AA(head)=(AA(head)&DirMask)|direction;Return
 
 Subroutine(5100, SpawnFood, => J foodCount bonusActive AA : I K L M N P Q)
 5110 If(AA(0)&CountMask=0) Then Return // Board full
-5120 pos=ABS(RND)%(AA(0)/CountBit);N=pos
+5120 pos=Abs(Rnd)%(AA(0)/CountBit);N=pos
 #ifdef DEBUG
 5130 For(I=1) To(2);Print(Position(I,1)Double(I+2)pos":"bonusActive":"N%13" ");Next(I)
 #endif
 5140 Gosub(Locate)
 5150 Reject(AA(J)&FlagsMask)
-5155 K=Mouse;If(bonusActive=0 AND N%13=5) Then K=Bonus;bonusActive=1 // Default: regular food
+5155 K=Mouse;If(bonusActive=0 And N%13=5) Then K=Bonus;bonusActive=1 // Default: regular food
 5160 AA(J)=AA(J)+K;Print(MoveToPos(J) $(snakeLUT+15)?K)
 5170 pos=J;quantity=-CountBit;Gosub(Adjust)
 5185 FoodSet(foodCount,J);foodCount=foodCount+1;CheckTree // Add to food list
@@ -240,14 +241,14 @@ Subroutine(6800, TryDirSub, N head => K direction AA)K=AA(head+(N&2-1)*((N&1)*(w
 // AutoStep: greedy - find nearest food, try both axes toward it, then away
 Subroutine(7000, AutoStep, head foodCount => direction AA : I J K L M N)direction=AA(head)&3;If(foodCount=0) Then Goto(AutoFallback)
 7010 K=#7FFF;For(I=0) To(foodCount-1);J=FoodGet(I)
-7020 M=ABS(J/width-head/width)+ABS(J%width-head%width);If(M<K) Then K=M;L=J
+7020 M=Abs(J/width-head/width)+Abs(J%width-head%width);If(M<K) Then K=M;L=J
 7030 Next(I) // L=nearest food
 7032 J=L%width-head%width;M=L/width-head/width // J=dx, M=dy
 7034 N=East;If(J<0) Then N=West // N=horizontal toward food
-7036 If(ABS(M)>ABS(J)) Then N=South;If(M<0) Then N=North // Override: vertical if |dy|>|dx|
+7036 If(Abs(M)>Abs(J)) Then N=South;If(M<0) Then N=North // Override: vertical if |dy|>|dx|
 7038 L=N;TryDir // L=primary direction toward food
 7040 N=South;If(M<0) Then N=North // Try other axis: vertical toward food
-7042 If(ABS(M)>ABS(J)) Then N=East;If(J<0) Then N=West // Override: horizontal if vertical was primary
+7042 If(Abs(M)>Abs(J)) Then N=East;If(J<0) Then N=West // Override: horizontal if vertical was primary
 7044 TryDir
 7046 N=N:2;TryDir // Try secondary axis AWAY from food
 7048 N=L:2;TryDir // Try primary axis AWAY from food (opposite of desired)

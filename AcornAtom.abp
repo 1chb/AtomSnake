@@ -14,6 +14,8 @@
 
 // BASIC language macros
 #ifdef PROD
+#  define Abs A.
+#  define And A.
 #  define End E.
 #  define For(init) F.init
 #  define Gosub(label) GOS.label
@@ -26,12 +28,15 @@
 #  define PrintLn(any) P.any'
 #  define Remark(comment)
 #  define Return R.
+#  define Rnd R.
 #  define Step(expression) S.expression
 #  define Subroutine(line, label, doc) Label(line, label)
 #  define Then
 #  define To(expression) T.expression
 #  define Until(expression) U.expression
 #else
+#  define Abs ABS
+#  define And AND
 #  define End END
 #  define For(init) FOR init
 #  define Gosub(label) GOSUB label
@@ -44,6 +49,7 @@
 #  define PrintLn(any) PRINT any $13$10
 #  define Remark(comment) REM comment
 #  define Return RETURN
+#  define Rnd RND
 #  define Step(expression) STEP expression
 #  define Subroutine(line, label, doc) Label(line, label) REM === #label === doc
 #  define Then THEN
