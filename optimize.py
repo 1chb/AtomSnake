@@ -4,13 +4,15 @@
 Reads a .atom file (PROD preprocessed) and applies size optimizations:
 1. Strip cpp warnings from output
 2. Remove trailing semicolons
-3. Remove spaces after labels (letter suffixes on line numbers)
+3. Remove spaces after line numbers (and label suffixes)
 4. Remove spaces after abbreviated commands (I. F. G. P. N. etc.)
-5. Remove spaces after THEN (which is empty in PROD)
-6. Merge consecutive short lines (respecting 63-char limit), except:
-   - Lines that are GOTO/GOSUB targets (by line number)
-   - Don't append to a line whose last statement is IF (THEN gates rest of line)
-7. Remove empty lines
+5. Remove spaces after semicolons
+6. Remove spaces after digits (when next char is non-digit)
+7. Remove spaces after THEN (which is empty in PROD)
+8. Merge consecutive short lines (respecting 63-char limit), except:
+    - Lines that are GOTO/GOSUB targets (by line number)
+    - Don't append to a line whose last statement is IF (THEN gates rest of line)
+9. Remove empty lines
 
 Usage: python3 optimize.py < input.atom > output.atom
        python3 optimize.py input.atom [output.atom]
@@ -79,8 +81,9 @@ def remove_unnecessary_spaces(line):
     
     - Space after label: '1100q I.' -> '1100qI.'
     - Space after abbreviated commands: 'I. ', 'G. ', 'GOS. ', 'F. ', 'P. ',
-      'N. ', 'R. ', 'T. ', 'S. ', 'U. ', 'E. ', 'DIM '
-    - But NOT inside strings or after commands where the space is meaningful
+      'N. ', 'R. ', 'T. ', 'S. ', 'U. ', 'E. '
+    - Spaces around OR: ' OR ' -> 'OR'
+    - But NOT inside strings
     """
     result = []
     i = 0
@@ -100,9 +103,34 @@ def remove_unnecessary_spaces(line):
             i += 1
             continue
         
-        # After line number + label, remove space before first statement
-        # This is handled by the merge logic, but also catch standalone:
-        # e.g., '1100q I.B=0' -> '1100qI.B=0'
+        # Remove spaces around OR: ' OR ' -> 'OR', ' OR' -> 'OR', 'OR ' -> 'OR'
+        if (c == ' ' and i + 3 <= len(line) and line[i+1:i+3] == 'OR'
+                and (i + 3 >= len(line) or not line[i+3].isalpha())):
+            # Skip space before OR
+            i += 1
+            continue
+        if (c == 'O' and i + 2 <= len(line) and line[i+1] == 'R'
+                and i + 2 < len(line) and line[i+2] == ' '
+                and (i == 0 or not line[i-1].isalpha())):
+            # Emit OR, skip space after
+            result.append('O')
+            result.append('R')
+            i += 3  # skip 'OR '
+            continue
+        
+        # Remove space after semicolons
+        if c == ' ' and i > 0 and line[i-1] == ';':
+            i += 1
+            continue
+        
+        # Remove space after digit when next char is not a hex digit
+        # (0-9, A-F).  Keeps hex literals like #10 AND safe (#10A is
+        # a valid hex digit sequence).
+        if (c == ' ' and i > 0 and line[i-1].isdigit()
+                and i + 1 < len(line)
+                and line[i+1] not in '0123456789ABCDEF'):
+            i += 1
+            continue
         
         # Remove space after abbreviated commands ending in '.'
         # Pattern: letter(s) + '.' + space -> letter(s) + '.'
@@ -125,13 +153,14 @@ def remove_unnecessary_spaces(line):
     return ''.join(result)
 
 
-def remove_label_space(line):
-    """Remove space or semicolon between label and first statement.
+def remove_line_number_space(line):
+    """Remove space or semicolon after line number (with or without label).
     
     '1100q I.B=0 R.' -> '1100qI.B=0 R.'
     '2200l;P=P*8'    -> '2200lP=P*8'
+    '10 W=40'        -> '10W=40'
     """
-    m = re.match(r'^(\d+[a-z])[ ;](.*)', line)
+    m = re.match(r'^(\d+[a-z]?)[ ;](.*)', line)
     if m:
         return m.group(1) + m.group(2)
     return line
@@ -158,8 +187,8 @@ def optimize(text):
         # Remove trailing semicolons
         line = remove_trailing_semicolons(line)
         
-        # Remove space after label
-        line = remove_label_space(line)
+        # Remove space after line number / label
+        line = remove_line_number_space(line)
         
         # Remove unnecessary spaces
         line = remove_unnecessary_spaces(line)
