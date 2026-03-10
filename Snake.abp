@@ -320,8 +320,8 @@ Label(6400, Eat)
 6420 I=0
 6430 If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
 6440 AA(nodes+I)=(AA(nodes+I)&FlagsMask)|(AA(nodes+foodCount)&CountMask) // Swap with last
-6450 score=score+1
-6460 If(AA(head)&FlagsMask=Bonus) Then score=score-1+(score+4)/10; clear(BonusBit)
+6450 If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
+6460 score=score+1
 6470 For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
 6480 Gosub(SpawnFood)
 
@@ -346,12 +346,14 @@ Subroutine(6800, TryDirSub, N head => K direction AA)
 
 // === AutoStep: greedy AI - find nearest food, try directions ===
 
-Subroutine(7000, AutoStep, head foodCount => direction AA : I J K L M N)
+Subroutine(7000, AutoStep, head foodCount score => direction AA : I J K L M N)
 7010 direction=AA(head)&3
 7020 If(foodCount=0) Then Goto(AutoFallback)
 7030 K=#7FFF
 7040 For(I=0) To(foodCount-1); J=FoodGet(I)
+7045 If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(7070)
 7050 M=Abs(J/width-head/width)+Abs(J%width-head%width)
+7055 If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
 7060 If(M<K) Then K=M; L=J
 7070 Next(I) // L=nearest food
 7080 J=L%width-head%width; M=L/width-head/width // J=dx, M=dy
