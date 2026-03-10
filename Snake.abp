@@ -85,7 +85,7 @@
 #define AdvanceHead f
 #define LocateLinear g
 #define HomePage h
-#define Init i
+#define Quit i
 #define LocateSkip j
 #define TryDirSub k
 #define Locate l
@@ -100,7 +100,7 @@
 #define MarkHead u
 #define Eat v
 #define WaitForTick w
-#define GameOver x
+#define NewGame x
 #define AutoStep y
 #define AutoInput z
 
@@ -138,29 +138,31 @@
 
 10 width=40
 20 height=21
-30 Gosub_(Init)
+30 Gosub(9200)
 40 flags=AutoBit; nextTick=0; highScore=0
 // NewGame: re-init tree and play
-50 Gosub(9500); time=0; Gosub_(Play)
-60 If(nextTick=QUIT) Then Goto(300)
+Label(50, NewGame)
+51 Gosub(9500); time=0; Gosub_(Play)
+60 If(nextTick=QUIT) Then Goto(Quit)
 70 If(isAuto=0) Then Goto(200)
 // Auto mode: delay then restart. Any key switches to manual.
 80 N=1800; DO; N=N-1; Until(N=0 OR KeyAvailable)
-90 If(KeyEmpty) Then nextTick=0; Goto(50)
+90 If(KeyEmpty) Then nextTick=0; Goto(NewGame)
 100 N=KeyPeek; KeyNext
-110 If(N=QUIT) Then Goto(300)
-120 If(N=PAUSE) Then clear(AutoBit); nextTick=0; Goto(50)
-130 If(N=AUTO) Then Goto(50)
-140 clear(AutoBit); nextTick=N; Goto(50)
+110 If(N=QUIT) Then Goto(Quit)
+120 If(N=PAUSE) Then clear(AutoBit); nextTick=0; Goto(NewGame)
+130 If(N=AUTO) Then Goto(NewGame)
+140 clear(AutoBit); nextTick=N; Goto(NewGame)
 
 // Manual mode: wait for any valid key to restart, Quit to exit.
 200 Gosub(PauseLoop)
-210 If(N=QUIT) Then Goto(300)
+210 If(N=QUIT) Then Goto(Quit)
 220 If(N=AUTO) Then set(AutoBit)
-230 nextTick=N; Goto(50)
+230 nextTick=N; Goto(NewGame)
 
 // Exit
-300 Print(Position(height+3,1) ShowCursor)
+Label(300, Quit)
+301 Print(Position(height+3,1) ShowCursor)
 310 For(N=1)To(300); If(KeyAvailable) T.KeyNext
 320 Next(N); End
 
@@ -182,7 +184,7 @@ Label(1100, GameLoop)
 1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then set(AutoBit); Goto(DirKey)
 1160 If(N=AUTO) Then toggle(AutoBit)
 Label(1170, DirKey)
-1170 If(N=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
+1171 If(N=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
 1180 If(N=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
 1190 If(N=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
 1200 If(N=DOWN) Then clear(AutoBit); direction=South; Gosub(ChangeDirection)
@@ -310,7 +312,7 @@ Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : D 
 6230 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
 6240 lastDir=direction
 6250 pos=head; Gosub(StepSub); head=pos
-6260 If(AA(head)&BorderBit) Then Goto(GameOver)
+6260 If(AA(head)&BorderBit) Then Goto(9000)
 6270 G=direction
 6280 If(AA(head)&FlagsMask) Then Goto(Eat)
 6290 Gosub(EatTail)
@@ -421,8 +423,8 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 
 // === GameOver ===
 
-Subroutine(9000, GameOver, head foodCount score => flags nextTick highScore : I)
-9010 clear(AliveBit); nextTick=0
+// === GameOver === head foodCount score => flags nextTick highScore : I
+9000 clear(AliveBit); nextTick=0
 9020 Print(MoveToPos(head))
 9030 If(foodCount=0) Then Print(SnakeHead); Goto(9050)
 9040 Print("X")
@@ -436,8 +438,8 @@ Subroutine(9000, GameOver, head foodCount score => flags nextTick highScore : I)
 
 // === Init: one-time setup (DIMs, LUT) ===
 
-Subroutine(9200, Init, width height => size nodes snakeLUT AA : I J K)
-9210 @=0
+// === Init === width height => size nodes snakeLUT AA : I J K
+9200 @=0
 9220 size=width*height
 9230 DIM AA(size-1); Print("Initializing...")
 9240 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
