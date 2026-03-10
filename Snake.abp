@@ -114,39 +114,50 @@
 
 10 width=40
 20 height=21
-30 Gosub_(Init);CheckTree
-40 time=0;Gosub_(Play)
-50 Print(Position(height+3,1) ShowCursor)
-60 Remark(Clean up key buffer)
-70 For(N=1)To(300);If(KeyAvailable) T.KeyNext
+30 Gosub_(Init);autoPlay=1;nextTick=0
+40 Gosub(9240);time=0;Gosub_(Play) // Re-init tree, play
+45 If(nextTick=QUIT) Then Goto(70)
+50 If(autoPlay=0) Then Goto(60)
+// Auto mode: delay then restart. Any key switches to manual and restarts.
+55 N=3000;DO;N=N-1;Until(N=0 OR KeyAvailable)
+56 If(KeyEmpty) Then nextTick=0;Goto(40) // Timeout: auto restart
+57 N=KeyPeek;KeyNext;If(N=QUIT) Then Goto(70)
+58 autoPlay=0;nextTick=N;Goto(40) // Key pressed: switch to manual
+// Manual mode: wait for any valid key to restart, Quit to exit.
+60 DO;DO;Until(KeyAvailable);N=KeyPeek;KeyNext
+65 Until(N=PAUSE OR N=QUIT OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
+67 If(N=QUIT) Then Goto(70)
+68 If(N=AUTO) Then autoPlay=1-autoPlay
+69 nextTick=N;Goto(40)
+70 Print(Position(height+3,1) ShowCursor)
+75 For(N=1)To(300);If(KeyAvailable) T.KeyNext
 80 Next(N);End
 
-Subroutine(1000, Play, => alive autoPlay tickDelay nextTick head tail score lastDir foodCount bonusActive time AA : D G I J K L M N P Q)
-1010 Gosub_(HomePage);Gosub_(InitGame);CheckTree
+Subroutine(1000, Play, => alive tickDelay nextTick head tail score lastDir foodCount bonusActive time AA : D G I J K L M N P Q)
+1010 score=0;alive=1;Gosub_(HomePage);Gosub_(InitGame);CheckTree
+1020 N=nextTick // Saved key from game-over screen
 1030 tickDelay=SLOW_DOWN-size/100;nextTick=time+tickDelay // Next tick time
+1035 If(N=UP OR N=LEFT OR N=RIGHT OR N=DOWN) Then Goto(1150) // Process saved direction key
 Label(1100, GameLoop)If(alive=0) Then Return
 1105 If(autoPlay) Then Goto(AutoInput)
 1110 If(KeyEmpty) Then Goto(WaitForTick)
 1120   N=KeyPeek;KeyNext
 1130   If(N=PAUSE) Then Gosub(PauseLoop)
-1140   If(N=UP)    Then direction=North;Gosub(ChangeDirection)
-1150   If(N=LEFT)  Then direction=West;Gosub(ChangeDirection)
-1160   If(N=RIGHT) Then direction=East;Gosub(ChangeDirection)
-1170   If(N=DOWN)  Then direction=South;Gosub(ChangeDirection)
-1180   If(N=QUIT)  Then alive=0
+1140   If(N=AUTO)  Then autoPlay=1-autoPlay
+1150   If(N=UP)    Then autoPlay=0;direction=North;Gosub(ChangeDirection)
+1160   If(N=LEFT)  Then autoPlay=0;direction=West;Gosub(ChangeDirection)
+1170   If(N=RIGHT) Then autoPlay=0;direction=East;Gosub(ChangeDirection)
+1180   If(N=DOWN)  Then autoPlay=0;direction=South;Gosub(ChangeDirection)
+1190   If(N=QUIT)  Then alive=0;nextTick=N
 Label(1200, WaitForTick)time=time+1
 1210 If(time<nextTick) Then Goto(GameLoop)
 1220 nextTick=time+tickDelay;Gosub(AdvanceHead);Goto(GameLoop) // Schedule next tick
-Label(1250, AutoInput)If(KeyEmpty) Then Goto(1280) // AutoInput
-1260 N=KeyPeek;KeyNext
-1265 If(N=PAUSE) Then autoPlay=0;Gosub(PauseLoop);If(autoPlay=0) Then Goto(1140)
-1270 If(N=QUIT) Then alive=0
+Label(1250, AutoInput)If(KeyAvailable) Then N=KeyPeek;KeyNext;Goto(1130)
 1280 Gosub(AutoStep);Gosub(AdvanceHead);Goto(GameLoop) // AutoStep
-Subroutine(1300, PauseLoop, => autoPlay : N)
+Subroutine(1300, PauseLoop, => : N)
 1310 DO;DO;Until(KeyAvailable)
 1320   N=KeyPeek;KeyNext
 1330 Until(N=PAUSE OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
-1335 If(N=AUTO) Then autoPlay=1
 1340 Return
 
 Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
@@ -308,18 +319,19 @@ Subroutine(9000, GameOver, head foodCount => alive : I)
 9100 Print("X")
 9110 For(I=1) To(2);Print(Position(I,1)Double(I+2)"Game Over!");Next(I);Return
 
-Subroutine(9200, Init, width height => size nodes score autoPlay alive snakeLUT AA : I J K)
+Subroutine(9200, Init, width height => size nodes snakeLUT AA : I J K)
 9210 @=0;size=width*height // size<3 not supported !!!!
 9220 DIM AA(size-1);Print("Initializing...") // Allocates size cells, 0-based
 9230 nodes=1;DO;nodes=nodes+nodes;Until(nodes+nodes>size+1);nodes=nodes/2-1 // Halved tree: frees cells for food list
+// Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
+// Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus
+9235 DIM snakeLUT(18);$F="qmnlkxlnnjqkjnmx@*";Return
+// InitTree: reset binary indexed tree to all-empty. Called before each game.
 9240 AA(0)=size*CountBit;For(I=1) To(nodes-2) Step(2) // See Bits above
 9250   J=(I-1)/2;K=AA(J)/2&CountMask // AA(J)/2/CountBit*CountBit
 9260   AA(I)=K;AA(I+1)=AA(J)-K;Next(I)
 9270 For(I=nodes) To(size-1);AA(I)=0;Next(I) // Clear remaining nodes
-9280 score=0;autoPlay=0;alive=1
-// Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
-// Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus
-9290 DIM snakeLUT(18);$F="qmnlkxlnnjqkjnmx@*";Return
+9280 Return
 
 
 #ifdef DEBUG
