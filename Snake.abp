@@ -79,7 +79,7 @@
 // Labels
 #define Adjust a
 #define Border b
-#define Check c
+#define DirKey c
 #define ChangeDirection d
 #define EatTail e
 #define AdvanceHead f
@@ -119,7 +119,7 @@
 #define MoveToPos(p) Position(p/width+3, p%width+(42-width)/2)
 
 #ifdef TREE_CHECK
-#  define CheckTree Gosub(Check)
+#  define CheckTree Gosub(8500)
 #else
 #  define CheckTree
 #endif
@@ -173,14 +173,15 @@ Subroutine(1000, Play, => flags tickDelay nextTick head tail score lastDir foodC
 1040 N=nextTick // Saved key from game-over screen
 1050 tickDelay=SLOW_DOWN-size/100
 1060 nextTick=time+tickDelay
-1070 If(N=UP OR N=LEFT OR N=RIGHT OR N=DOWN) Then Goto(1170) // Process saved direction key
+1070 If(N=UP OR N=LEFT OR N=RIGHT OR N=DOWN) Then Goto(DirKey) // Process saved direction key
 Label(1100, GameLoop)
 1110 If(isAlive=0) Then Return
 1120 If(isAuto) Then Goto(AutoInput)
 1130 If(KeyEmpty) Then Goto(WaitForTick)
 1140 N=KeyPeek; KeyNext
-1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then set(AutoBit); Goto(1170)
+1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then set(AutoBit); Goto(DirKey)
 1160 If(N=AUTO) Then toggle(AutoBit)
+Label(1170, DirKey)
 1170 If(N=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
 1180 If(N=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
 1190 If(N=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
@@ -397,11 +398,11 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 #define ChildB(i) i+i+2
 
 #ifdef TREE_CHECK
-Subroutine(8500, Check, => : I J K L M N P)
-8510 For(I=0) To(nodes/2-1)
+// === Check === AA => : I J K L M N P
+8500 For(I=0) To(nodes/2-1)
 8520 If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8700)
 8530 Next(I)
-8540 Remark(Check leaf counts against actual empty cells)
+8540 Remark(Verify leaf counts against actual empty cells)
 8545 Remark(Walk each cell to its leaf node)
 8550 L=0; K=CellCount(L)
 8560 For(J=0) To(size-1)
