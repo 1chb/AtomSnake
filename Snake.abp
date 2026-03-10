@@ -198,11 +198,12 @@ Label(1400, AutoInput)
 // === PauseLoop ===
 
 Subroutine(1500, PauseLoop, => : N)
-1510 DO
-1520   DO;  Until(KeyAvailable)
-1530   N=KeyPeek; KeyNext
-1540 Until(N=PAUSE OR N=QUIT OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
-1550 Return
+1510 For(N=1)To(300); If(KeyAvailable) T.KeyNext
+1520 Next(N); DO
+1530   DO;  Until(KeyAvailable)
+1540   N=KeyPeek; KeyNext
+1550 Until(N=PAUSE OR N=QUIT OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
+1560 Return
 
 // === Adjust: update binary indexed tree ===
 

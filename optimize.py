@@ -7,13 +7,14 @@ Reads a .atom file (PROD preprocessed) and applies size optimizations:
 3. Evaluate constant parenthesized expressions: (-1-2) -> -3
 4. Remove spaces after line numbers (and label suffixes)
 5. Remove spaces after abbreviated commands (I. F. G. P. N. etc.)
-6. Remove spaces after semicolons
-7. Remove spaces after digits (when next char is non-digit)
-8. Remove spaces after THEN (which is empty in PROD)
-9. Merge consecutive short lines (respecting 63-char limit), except:
+6. Remove spaces after semicolons, closing parens, and string literals
+7. Merge adjacent string literals ("A" "B" -> "AB")
+8. Remove spaces after digits (when next char is non-digit)
+9. Remove spaces after THEN (which is empty in PROD)
+10. Merge consecutive short lines (respecting 63-char limit), except:
     - Lines that are GOTO/GOSUB targets (by line number)
     - Don't append to a line whose last statement is IF (THEN gates rest of line)
-10. Remove empty lines
+11. Remove empty lines
 
 Usage: python3 optimize.py < input.atom > output.atom
        python3 optimize.py input.atom [output.atom]
@@ -119,8 +120,13 @@ def remove_unnecessary_spaces(line):
             i += 3  # skip 'OR '
             continue
         
-        # Remove space after semicolons
-        if c == ' ' and i > 0 and line[i-1] == ';':
+        # Remove space after semicolons, closing parens, and string literals
+        if c == ' ' and i > 0 and line[i-1] in ';)"':
+            i += 1
+            continue
+        
+        # Remove space before opening quote
+        if c == ' ' and i + 1 < len(line) and line[i+1] == '"':
             i += 1
             continue
         
@@ -143,7 +149,7 @@ def remove_unnecessary_spaces(line):
             while j >= 0 and line[j].isalpha():
                 j -= 1
             cmd = line[j+1:i-1]  # the letters before the dot
-            if cmd in ('I', 'G', 'GOS', 'F', 'P', 'N', 'R', 'T', 'S', 'U', 'E'):
+            if cmd in ('A', 'I', 'G', 'GOS', 'F', 'P', 'N', 'R', 'T', 'S', 'U', 'E'):
                 # Skip the space
                 i += 1
                 continue
@@ -151,6 +157,75 @@ def remove_unnecessary_spaces(line):
         result.append(c)
         i += 1
     
+    return ''.join(result)
+
+
+def merge_adjacent_strings(line):
+    """Merge adjacent string literals separated by space.
+    
+    '"AB" "CD"' -> '"ABCD"'
+    '" "' is left alone (string containing a space)
+    '"A""B"' is left alone ("" is escaped quote in Atom BASIC)
+    Must run BEFORE space removal.
+    
+    On VT100 lines (containing $27), also fold decimal integer
+    constants between adjacent strings: '";"36"H"' -> '";36H"'
+    """
+    is_vt100 = '$27' in line
+    result = []
+    i = 0
+    while i < len(line):
+        if line[i] == '"':
+            # Collect string content
+            i += 1
+            content = []
+            while i < len(line) and line[i] != '"':
+                content.append(line[i])
+                i += 1
+            if i >= len(line):
+                # Unterminated string — emit as-is
+                result.append('"')
+                result.extend(content)
+                break
+            # i is at closing quote
+            i += 1  # skip closing quote
+            merged = True
+            while merged:
+                merged = False
+                # Merge space-separated adjacent string: "A" "B"
+                if (i < len(line) and line[i] == ' '
+                        and i + 1 < len(line) and line[i+1] == '"'):
+                    j = i + 2
+                    while j < len(line) and line[j] != '"':
+                        j += 1
+                    if j < len(line):
+                        next_content = line[i+2:j]
+                        if content or next_content:
+                            content.append(next_content)
+                            i = j + 1
+                            merged = True
+                # Fold constant integer into string: "A"36"B" (VT100 only)
+                if (is_vt100 and not merged
+                        and i < len(line) and line[i].isdigit()):
+                    j = i
+                    while j < len(line) and line[j].isdigit():
+                        j += 1
+                    if j < len(line) and line[j] == '"':
+                        content.append(line[i:j])
+                        i = j + 1  # skip opening quote of next string
+                        # Read next string's content into ours
+                        while i < len(line) and line[i] != '"':
+                            content.append(line[i])
+                            i += 1
+                        if i < len(line):
+                            i += 1  # skip closing quote
+                        merged = True
+            result.append('"')
+            result.extend(content)
+            result.append('"')
+        else:
+            result.append(line[i])
+            i += 1
     return ''.join(result)
 
 
@@ -232,6 +307,9 @@ def optimize(text):
         
         # Evaluate constant parenthesized expressions
         line = eval_const_parens(line)
+        
+        # Merge adjacent string literals ("A" "B" -> "AB")
+        line = merge_adjacent_strings(line)
         
         # Remove unnecessary spaces
         line = remove_unnecessary_spaces(line)
