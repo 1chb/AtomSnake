@@ -8,7 +8,7 @@
 // Variables:
 #define tickDelay A
 #define flags B
-// C -- Free
+#define highScore C
 #define direction D
 #define lastDir E
 #define snakeLUT F
@@ -139,7 +139,7 @@
 10 width=40
 20 height=21
 30 Gosub_(Init)
-40 flags=AutoBit; nextTick=0
+40 flags=AutoBit; nextTick=0; highScore=0
 // NewGame: re-init tree and play
 50 Gosub(9500); time=0; Gosub_(Play)
 60 If(nextTick=QUIT) Then Goto(300)
@@ -371,22 +371,23 @@ Label(7200, AutoFallback)
 
 // === HomePage: draw title and borders ===
 
-Subroutine(8000, HomePage, => AA : E G I M N P Q)
+Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
 8030 For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
-8040 For(I=1) To(height); Print($10$13$27"#6"); Next(I)
-8050 Print(ReverseVideo)
-8060 Print(MoveToPos(0)) // TopBorder
-8070 For(pos=0) To(width-1); Gosub(BorderPrim); Next(pos)
-8080 For(I=width) To(size-width-width) Step(width) // SideBorders
-8090 pos=I; Gosub(Border) // LeftBorder
-8100 pos=I+width-1; Gosub(Border) // RightBorder
-8110 Next(I)
-8120 Print(MoveToPos((size-width))) // BottomBorder
-8130 For(pos=size-width) To(size-1); Gosub(BorderPrim); Next(pos)
-8140 Print(NormalVideo)
-8150 Return
+8040 If(highScore) Then For(I=1) To(2); Print(Position(I,1)Double(I+2)"High "highScore); Next(I)
+8050 For(I=1) To(height); Print($10$13$27"#6"); Next(I)
+8060 Print(ReverseVideo)
+8070 Print(MoveToPos(0)) // TopBorder
+8080 For(pos=0) To(width-1); Gosub(BorderPrim); Next(pos)
+8090 For(I=width) To(size-width-width) Step(width) // SideBorders
+8100 pos=I; Gosub(Border) // LeftBorder
+8110 pos=I+width-1; Gosub(Border) // RightBorder
+8120 Next(I)
+8130 Print(MoveToPos((size-width))) // BottomBorder
+8140 For(pos=size-width) To(size-1); Gosub(BorderPrim); Next(pos)
+8150 Print(NormalVideo)
+8160 Return
 
 #define CellCount(i) (AA(i)&CountMask)
 #define ChildA(i) i+i+1
@@ -416,16 +417,18 @@ Subroutine(8500, Check, => : I J K L M N P)
 
 // === GameOver ===
 
-Subroutine(9000, GameOver, head foodCount => flags nextTick : I)
+Subroutine(9000, GameOver, head foodCount score => flags nextTick highScore : I)
 9010 clear(AliveBit); nextTick=0
 9020 Print(MoveToPos(head))
-9030 If(foodCount>0) Then Goto(9100) // Food remaining, not a win
-9040 Print(SnakeHead)
-9050 For(I=1) To(2); Print(Position(I,1)Double(I+2)"You Win!"); Next(I)
-9060 Return
-9100 Print("X")
-9110 For(I=1) To(2); Print(Position(I,1)Double(I+2)"Game Over!"); Next(I)
-9120 Return
+9030 If(foodCount=0) Then Print(SnakeHead); Goto(9050)
+9040 Print("X")
+9050 If(score<=highScore) Then Return
+9060 highScore=score
+9070 For(I=1) To(2)
+9080   Print(Position(I,1)Double(I+2)"High "highScore" ")
+9090   If(foodCount=0) Then Print("(Win)")
+9095   If(foodCount>0) Then Print("(You)")
+9100 Next(I); Return
 
 // === Init: one-time setup (DIMs, LUT) ===
 

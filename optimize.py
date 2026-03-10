@@ -169,6 +169,11 @@ def eval_const_parens(line):
         if c == '"':
             in_string = not in_string
         if not in_string and c == '(':
+            # Skip if preceded by letter/$ (array access, DIM, function)
+            if i > 0 and (line[i-1].isalpha() or line[i-1] == '$'):
+                result.append(c)
+                i += 1
+                continue
             # Find matching close paren
             j = i + 1
             while j < len(line) and line[j] != ')':
