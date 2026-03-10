@@ -35,7 +35,7 @@
 #define isAlive isSet(AliveBit)
 #define isAuto isSet(AutoBit)
 #define isBonus isSet(BonusBit)
-#define isSet(bit) (flags&bit)
+#define isSet(bit) flags&bit
 #define set(bit) flags=flags|bit
 #define clear(bit) flags=flags&(-1-bit)
 #define toggle(bit) flags=flags:bit
@@ -73,8 +73,8 @@
 // Food list: stored in upper bits of AA(nodes..nodes+foodCount-1)
 // FoodGet(k) retrieves position of k-th food item
 // FoodSet(k,p) stores position p as k-th food item (preserves cell flags)
-#define FoodGet(k) (AA(nodes+k)/CountBit)
-#define FoodSet(k,p) AA(nodes+k)=(AA(nodes+k)&FlagsMask)|(p*CountBit)
+#define FoodGet(k) AA(nodes+k)/CountBit
+#define FoodSet(k,p) AA(nodes+k)=AA(nodes+k)&FlagsMask|p*CountBit
 
 // Labels
 #define Adjust a
@@ -249,7 +249,7 @@ Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G
 4030 direction=East
 4040 For(J=tail) To(head)
 4050 Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
-4060 AA(J)=(AA(J)&CountMask)|BorderBit|direction
+4060 AA(J)=AA(J)&CountMask|BorderBit|direction
 4070 pos=J; quantity=-CountBit; Gosub(Adjust)
 4080 Next(J)
 4090 lastDir=East; foodCount=0; clear(BonusBit)
@@ -260,8 +260,8 @@ Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G
 // === ChangeDirection ===
 
 Subroutine(5000, ChangeDirection, head direction => AA)
-5010 If((AA(head)&3)=direction) Then Return // Dir not changed
-5020 AA(head)=(AA(head)&DirMask)|direction
+5010 If(AA(head)&3=direction) Then Return // Dir not changed
+5020 AA(head)=AA(head)&DirMask|direction
 5030 Return
 
 // === SpawnFood: place food on random empty cell ===
@@ -320,7 +320,7 @@ Label(6400, Eat)
 6410 foodCount=foodCount-1
 6420 I=0
 6430 If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
-6440 AA(nodes+I)=(AA(nodes+I)&FlagsMask)|(AA(nodes+foodCount)&CountMask) // Swap with last
+6440 AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
 6450 If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
 6460 score=score+1
 6470 For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
@@ -330,7 +330,7 @@ Label(6400, Eat)
 
 Subroutine(6500, MarkHead, G head => AA : D)
 6510 direction=G
-6520 AA(head)=(AA(head)&CountMask)|BorderBit|direction
+6520 AA(head)=AA(head)&CountMask|BorderBit|direction
 6530 Print(MoveToPos(head) SnakeHead)
 6540 Print(MoveToPos(head))
 6550 DebugReturn
@@ -392,7 +392,7 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 8150 Print(NormalVideo)
 8160 Return
 
-#define CellCount(i) (AA(i)&CountMask)
+#define CellCount(i) AA(i)&CountMask
 #define ChildA(i) i+i+1
 #define ChildB(i) i+i+2
 
@@ -428,10 +428,10 @@ Subroutine(9000, GameOver, head foodCount score => flags nextTick highScore : I)
 9050 If(score<=highScore) Then Return
 9060 highScore=score
 9070 For(I=1) To(2)
-9080   Print(Position(I,1)Double(I+2)"High "highScore" ")
-9090   If(foodCount=0) Then Print("(Win)")
-9095   If(foodCount>0) Then Print("(You)")
-9100 Next(I); Return
+9080   Print(Position(I,1)Double(I+2)"High "highScore" (You")
+9090   If(foodCount=0) Then Print(" Win")
+9100   Print(")")
+9110 Next(I); Return
 
 // === Init: one-time setup (DIMs, LUT) ===
 
