@@ -7,8 +7,8 @@
 
 // Variables:
 #define tickDelay A
-#define alive B
-#define autoPlay C
+#define flags B
+// C -- Free
 #define direction D
 #define lastDir E
 #define snakeLUT F
@@ -22,11 +22,23 @@
 #define head S
 #define tail T
 #define score U
-#define bonusActive V
+// V -- Free
 #define width W
 #define foodCount X
 #define nextTick Y
 #define size Z
+
+// Packed flags in B: bit 0=alive, bit 1=autoPlay, bit 2=bonusActive
+#define AliveBit 1
+#define AutoBit 2
+#define BonusBit 4
+#define isAlive isSet(AliveBit)
+#define isAuto isSet(AutoBit)
+#define isBonus isSet(BonusBit)
+#define isSet(bit) (flags&bit)
+#define set(bit) flags=flags|bit
+#define clear(bit) flags=flags&(-1-bit)
+#define toggle(bit) flags=flags:bit
 
 // Turns
 #define Left -1
@@ -127,24 +139,24 @@
 10 width=40
 20 height=21
 30 Gosub_(Init)
-40 autoPlay=1; nextTick=0
+40 flags=AutoBit; nextTick=0
 // NewGame: re-init tree and play
 50 Gosub(9500); time=0; Gosub_(Play)
 60 If(nextTick=QUIT) Then Goto(300)
-70 If(autoPlay=0) Then Goto(200)
+70 If(isAuto=0) Then Goto(200)
 // Auto mode: delay then restart. Any key switches to manual.
 80 N=1800; DO; N=N-1; Until(N=0 OR KeyAvailable)
 90 If(KeyEmpty) Then nextTick=0; Goto(50)
 100 N=KeyPeek; KeyNext
 110 If(N=QUIT) Then Goto(300)
-120 If(N=PAUSE) Then autoPlay=0; nextTick=0; Goto(50)
+120 If(N=PAUSE) Then clear(AutoBit); nextTick=0; Goto(50)
 130 If(N=AUTO) Then Goto(50)
-140 autoPlay=0; nextTick=N; Goto(50)
+140 clear(AutoBit); nextTick=N; Goto(50)
 
 // Manual mode: wait for any valid key to restart, Quit to exit.
 200 Gosub(PauseLoop)
 210 If(N=QUIT) Then Goto(300)
-220 If(N=AUTO) Then autoPlay=1
+220 If(N=AUTO) Then set(AutoBit)
 230 nextTick=N; Goto(50)
 
 // Exit
@@ -154,8 +166,8 @@
 
 // === Play: one game ===
 
-Subroutine(1000, Play, => alive tickDelay nextTick head tail score lastDir foodCount bonusActive time AA : D G I J K L M N P Q)
-1010 score=0; alive=1
+Subroutine(1000, Play, => flags tickDelay nextTick head tail score lastDir foodCount time AA : D G I J K L M N P Q)
+1010 score=0; flags=isAuto|AliveBit
 1020 Gosub_(HomePage)
 1030 Gosub_(InitGame); CheckTree
 1040 N=nextTick // Saved key from game-over screen
@@ -163,17 +175,17 @@ Subroutine(1000, Play, => alive tickDelay nextTick head tail score lastDir foodC
 1060 nextTick=time+tickDelay
 1070 If(N=UP OR N=LEFT OR N=RIGHT OR N=DOWN) Then Goto(1170) // Process saved direction key
 Label(1100, GameLoop)
-1110 If(alive=0) Then Return
-1120 If(autoPlay) Then Goto(AutoInput)
+1110 If(isAlive=0) Then Return
+1120 If(isAuto) Then Goto(AutoInput)
 1130 If(KeyEmpty) Then Goto(WaitForTick)
 1140 N=KeyPeek; KeyNext
-1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then autoPlay=1; Goto(1170)
-1160 If(N=AUTO) Then autoPlay=1-autoPlay
-1170 If(N=UP) Then autoPlay=0; direction=North; Gosub(ChangeDirection)
-1180 If(N=LEFT) Then autoPlay=0; direction=West; Gosub(ChangeDirection)
-1190 If(N=RIGHT) Then autoPlay=0; direction=East; Gosub(ChangeDirection)
-1200 If(N=DOWN) Then autoPlay=0; direction=South; Gosub(ChangeDirection)
-1220 If(N=QUIT) Then alive=0; nextTick=N
+1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then set(AutoBit); Goto(1170)
+1160 If(N=AUTO) Then toggle(AutoBit)
+1170 If(N=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
+1180 If(N=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
+1190 If(N=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
+1200 If(N=DOWN) Then clear(AutoBit); direction=South; Gosub(ChangeDirection)
+1220 If(N=QUIT) Then clear(AliveBit); nextTick=N
 Label(1300, WaitForTick)
 1310 time=time+1
 1320 If(time<nextTick) Then Goto(GameLoop)
@@ -230,7 +242,7 @@ Subroutine(3020, BorderPrim, pos => AA : E G M N Q)
 
 // === InitGame: set up snake and food ===
 
-Subroutine(4000, InitGame, => head tail direction lastDir foodCount bonusActive AA : G I J K L M N P Q)
+Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G I J K L M N P Q)
 4010 head=(height+1)/2*width-width/2 // Center of board
 4020 tail=head-2
 4030 direction=East
@@ -239,7 +251,7 @@ Subroutine(4000, InitGame, => head tail direction lastDir foodCount bonusActive 
 4060 AA(J)=(AA(J)&CountMask)|BorderBit|direction
 4070 pos=J; quantity=-CountBit; Gosub(Adjust)
 4080 Next(J)
-4090 lastDir=East; foodCount=0; bonusActive=0
+4090 lastDir=East; foodCount=0; clear(BonusBit)
 4100 Print(MoveToPos(head) SnakeHead)
 4110 For(G=1) To(5); Gosub(SpawnFood); Next(G)
 4120 DebugReturn
@@ -253,17 +265,17 @@ Subroutine(5000, ChangeDirection, head direction => AA)
 
 // === SpawnFood: place food on random empty cell ===
 
-Subroutine(5100, SpawnFood, => J foodCount bonusActive AA : I K L M N P Q)
+Subroutine(5100, SpawnFood, => J foodCount flags AA : I K L M N P Q)
 5110 If(AA(0)&CountMask=0) Then Return // Board full
 5120 pos=Abs(Rnd)%(AA(0)/CountBit)
 5130 N=pos
 #ifdef DEBUG
-5140 For(I=1) To(2); Print(Position(I,1)Double(I+2)pos":"bonusActive":"N%13" "); Next(I)
+5140 For(I=1) To(2); Print(Position(I,1)Double(I+2)pos":"isBonus":"N%13" "); Next(I)
 #endif
 5150 Gosub(Locate)
 5160 Reject(AA(J)&FlagsMask)
 5170 K=Mouse
-5180 If(bonusActive=0 And N%13=5) Then K=Bonus; bonusActive=1
+5180 If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
 5190 AA(J)=AA(J)+K
 5200 Print(MoveToPos(J) $(snakeLUT+15)?K)
 5210 pos=J; quantity=-CountBit; Gosub(Adjust)
@@ -290,7 +302,7 @@ Subroutine(6100, EatTail, => tail AA : D I M N P Q)
 
 // === AdvanceHead: move snake forward one step ===
 
-Subroutine(6200, AdvanceHead, => head tail score alive foodCount bonusActive AA lastDir : D G I J K L M N P Q)
+Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : D G I J K L M N P Q)
 6210 direction=AA(head)&3
 6220 N=snakeLUT?(lastDir*4+direction)
 6230 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
@@ -309,7 +321,7 @@ Label(6400, Eat)
 6430 If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
 6440 AA(nodes+I)=(AA(nodes+I)&FlagsMask)|(AA(nodes+foodCount)&CountMask) // Swap with last
 6450 score=score+1
-6460 If(AA(head)&FlagsMask=Bonus) Then score=score-1+(score+4)/10; bonusActive=0
+6460 If(AA(head)&FlagsMask=Bonus) Then score=score-1+(score+4)/10; clear(BonusBit)
 6470 For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
 6480 Gosub(SpawnFood)
 
@@ -404,8 +416,8 @@ Subroutine(8500, Check, => : I J K L M N P)
 
 // === GameOver ===
 
-Subroutine(9000, GameOver, head foodCount => alive nextTick : I)
-9010 alive=0; nextTick=0
+Subroutine(9000, GameOver, head foodCount => flags nextTick : I)
+9010 clear(AliveBit); nextTick=0
 9020 Print(MoveToPos(head))
 9030 If(foodCount>0) Then Goto(9100) // Food remaining, not a win
 9040 Print(SnakeHead)

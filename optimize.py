@@ -4,15 +4,16 @@
 Reads a .atom file (PROD preprocessed) and applies size optimizations:
 1. Strip cpp warnings from output
 2. Remove trailing semicolons
-3. Remove spaces after line numbers (and label suffixes)
-4. Remove spaces after abbreviated commands (I. F. G. P. N. etc.)
-5. Remove spaces after semicolons
-6. Remove spaces after digits (when next char is non-digit)
-7. Remove spaces after THEN (which is empty in PROD)
-8. Merge consecutive short lines (respecting 63-char limit), except:
+3. Evaluate constant parenthesized expressions: (-1-2) -> -3
+4. Remove spaces after line numbers (and label suffixes)
+5. Remove spaces after abbreviated commands (I. F. G. P. N. etc.)
+6. Remove spaces after semicolons
+7. Remove spaces after digits (when next char is non-digit)
+8. Remove spaces after THEN (which is empty in PROD)
+9. Merge consecutive short lines (respecting 63-char limit), except:
     - Lines that are GOTO/GOSUB targets (by line number)
     - Don't append to a line whose last statement is IF (THEN gates rest of line)
-9. Remove empty lines
+10. Remove empty lines
 
 Usage: python3 optimize.py < input.atom > output.atom
        python3 optimize.py input.atom [output.atom]
@@ -153,6 +154,40 @@ def remove_unnecessary_spaces(line):
     return ''.join(result)
 
 
+def eval_const_parens(line):
+    """Evaluate parenthesized constant integer expressions.
+    
+    '(-1-2)' -> '-3', '(-1-4)' -> '-5'
+    Only evaluates parens containing just integers and +-*/.
+    Respects strings.
+    """
+    result = []
+    i = 0
+    in_string = False
+    while i < len(line):
+        c = line[i]
+        if c == '"':
+            in_string = not in_string
+        if not in_string and c == '(':
+            # Find matching close paren
+            j = i + 1
+            while j < len(line) and line[j] != ')':
+                j += 1
+            if j < len(line):
+                inner = line[i+1:j]
+                if re.fullmatch(r'[-+*/\d ]+', inner):
+                    try:
+                        val = int(eval(inner))  # noqa: S307
+                        result.append(str(val))
+                        i = j + 1
+                        continue
+                    except Exception:
+                        pass
+        result.append(c)
+        i += 1
+    return ''.join(result)
+
+
 def remove_line_number_space(line):
     """Remove space or semicolon after line number (with or without label).
     
@@ -189,6 +224,9 @@ def optimize(text):
         
         # Remove space after line number / label
         line = remove_line_number_space(line)
+        
+        # Evaluate constant parenthesized expressions
+        line = eval_const_parens(line)
         
         # Remove unnecessary spaces
         line = remove_unnecessary_spaces(line)
