@@ -309,7 +309,7 @@ Label(6400, Eat)
 6430 If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
 6440 AA(nodes+I)=(AA(nodes+I)&FlagsMask)|(AA(nodes+foodCount)&CountMask) // Swap with last
 6450 score=score+1
-6460 If(AA(head)&FlagsMask=Bonus) Then score=score+2; bonusActive=0
+6460 If(AA(head)&FlagsMask=Bonus) Then score=score-1+(score+4)/10; bonusActive=0
 6470 For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
 6480 Gosub(SpawnFood)
 
