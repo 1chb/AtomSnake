@@ -138,33 +138,52 @@
 
 10 width=40
 20 height=21
-30 Gosub(9200)
-40 flags=AutoBit; nextTick=0; highScore=0
+// --- Init (inlined) --- width height => size nodes colOffset snakeLUT AA : I J K
+30 @=0; colOffset=(42-width)/2
+40 size=width*height
+50 DIM AA(size-1); Print("Initializing...")
+60 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
+70 nodes=nodes/2-1 // Halved tree: frees cells for food list
+// Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
+// Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus
+80 DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"
+// --- end Init ---
+90 flags=AutoBit; nextTick=0; highScore=0
 // NewGame: re-init tree and play
-Label(50, NewGame)
-51 Gosub(9500); time=0; Gosub_(Play)
-60 If(nextTick=QUIT) Then Goto(Quit)
-70 If(isAuto=0) Then Goto(200)
+Label(100, NewGame)
+// --- InitTree (inlined) --- size nodes => AA : I J K
+110 AA(0)=size*CountBit
+120 For(I=1) To(nodes-2) Step(2)
+130   J=(I-1)/2; K=AA(J)/2&CountMask
+140   AA(I)=K; AA(I+1)=AA(J)-K
+150 Next(I)
+160 For(I=nodes) To(size-1); AA(I)=0; Next(I)
+// --- end InitTree ---
+170 time=0; Gosub_(Play)
+180 If(nextTick=QUIT) Then Goto(Quit)
+190 If(isAuto=0) Then Goto(300)
 // Auto mode: delay then restart. Any key switches to manual.
-80 N=1800; DO; N=N-1; Until(N=0 OR KeyAvailable)
-90 If(KeyEmpty) Then nextTick=0; Goto(NewGame)
-100 N=KeyPeek; KeyNext
-110 If(N=QUIT) Then Goto(Quit)
-120 If(N=PAUSE) Then clear(AutoBit); nextTick=0; Goto(NewGame)
-130 If(N=AUTO) Then Goto(NewGame)
-140 clear(AutoBit); nextTick=N; Goto(NewGame)
+200 N=1800; DO; N=N-1; Until(N=0 OR KeyAvailable)
+210 If(KeyEmpty) Then nextTick=0; Goto(NewGame)
+220 N=KeyPeek; KeyNext
+230 If(N=QUIT) Then Goto(Quit)
+240 If(N=PAUSE) Then clear(AutoBit); nextTick=0; Goto(NewGame)
+250 If(N=AUTO) Then Goto(NewGame)
+260 clear(AutoBit); nextTick=N; Goto(NewGame)
 
 // Manual mode: wait for any valid key to restart, Quit to exit.
-200 Gosub(PauseLoop)
-210 If(N=QUIT) Then Goto(Quit)
-220 If(N=AUTO) Then set(AutoBit)
-230 nextTick=N; Goto(NewGame)
+300 Gosub(PauseLoop)
+310 If(N=QUIT) Then Goto(Quit)
+320 If(N=AUTO) Then set(AutoBit)
+330 nextTick=N; Goto(NewGame)
 
 // Exit
-Label(300, Quit)
-301 Print(Position(height+3,1) ShowCursor)
-310 For(N=1)To(300); If(KeyAvailable) T.KeyNext
-320 Next(N); End
+Label(400, Quit)
+410 Print(Position(height+3,1) ShowCursor)
+420 For(N=1) To(300)
+430   If(KeyAvailable) T.KeyNext
+440 Next(N)
+450 End
 
 // === Play: one game ===
 
@@ -201,20 +220,22 @@ Label(1400, AutoInput)
 // === PauseLoop ===
 
 Subroutine(1500, PauseLoop, => : N)
-1510 For(N=1)To(300); If(KeyAvailable) T.KeyNext
-1520 Next(N); DO
-1530   DO;  Until(KeyAvailable)
-1540   N=KeyPeek; KeyNext
-1550 Until(N=PAUSE OR N=QUIT OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
-1560 Return
+1510 For(N=1)To(300)
+1520   If(KeyAvailable) T.KeyNext
+1530 Next(N)
+1540 DO
+1550   DO; Until(KeyAvailable)
+1560   N=KeyPeek; KeyNext
+1570 Until(N=PAUSE OR N=QUIT OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
+1580 Return
 
 // === Adjust: update binary indexed tree ===
 
 Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
 2010 I=0; M=size
 2020 DO; AA(I)=AA(I)+quantity
-2030 N=M; M=M/2; I=I+I+1 // Assume lower half
-2040 If (pos>=M) Then pos=pos-M; M=N-M; I=I+1 // Otherwise upper half
+2030   N=M; M=M/2; I=I+I+1 // Assume lower half
+2040   If (pos>=M) Then pos=pos-M; M=N-M; I=I+1 // Otherwise upper half
 2050 Until(I>=nodes)
 2060 Return
 
@@ -223,8 +244,8 @@ Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
 Subroutine(2200, Locate, pos => J : I K L M pos)
 2210 pos=pos*CountBit; I=1; J=0; K=size // Interval [J..K)
 2220 DO; M=(K-J)/2; L=AA(I)&CountMask
-2230 If(pos<L) Then K=J+M; I=I+I+1
-2240 If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
+2230   If(pos<L) Then K=J+M; I=I+I+1
+2240   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
 2250 Until(I>=nodes)
 Label(2300, LocateLinear) // Linear search:
 2310 If(AA(J)&FlagsMask) Goto(LocateSkip)
@@ -251,9 +272,9 @@ Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G
 4020 tail=head-2
 4030 direction=East
 4040 For(J=tail) To(head)
-4050 Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
-4060 AA(J)=AA(J)&CountMask|BorderBit|direction
-4070 pos=J; quantity=-CountBit; Gosub(Adjust)
+4050   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
+4060   AA(J)=AA(J)&CountMask|BorderBit|direction
+4070   pos=J; quantity=-CountBit; Gosub(Adjust)
 4080 Next(J)
 4090 lastDir=East; foodCount=0; clear(BonusBit)
 4100 Print(MoveToPos(head) SnakeHead)
@@ -355,10 +376,10 @@ Subroutine(7000, AutoStep, head foodCount score => direction AA : I J K L M N)
 7020 If(foodCount=0) Then Goto(AutoFallback)
 7030 K=#7FFF
 7040 For(I=0) To(foodCount-1); J=FoodGet(I)
-7045 If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(7070)
-7050 M=Abs(J/width-head/width)+Abs(J%width-head%width)
-7055 If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
-7060 If(M<K) Then K=M; L=J
+7045   If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(7070)
+7050   M=Abs(J/width-head/width)+Abs(J%width-head%width)
+7055   If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
+7060   If(M<K) Then K=M; L=J
 7070 Next(I) // L=nearest food
 7080 J=L%width-head%width; M=L/width-head/width // J=dx, M=dy
 7090 N=East; If(J<0) Then N=West // N=horizontal toward food
@@ -387,8 +408,8 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 8070 Print(Position(3, colOffset)) // TopBorder
 8080 For(pos=0) To(width-1); Gosub(BorderPrim); Next(pos)
 8090 For(I=width) To(size-width-width) Step(width) // SideBorders
-8100 pos=I; Gosub(Border) // LeftBorder
-8110 pos=I+width-1; Gosub(Border) // RightBorder
+8100   pos=I; Gosub(Border) // LeftBorder
+8110   pos=I+width-1; Gosub(Border) // RightBorder
 8120 Next(I)
 8130 Print(Position(height+2, colOffset)) // BottomBorder
 8140 For(pos=size-width) To(size-1); Gosub(BorderPrim); Next(pos)
@@ -402,18 +423,18 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 #ifdef TREE_CHECK
 // === Check === AA => : I J K L M N P
 8500 For(I=0) To(nodes/2-1)
-8520 If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8700)
+8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8700)
 8530 Next(I)
 8540 Remark(Verify leaf counts against actual empty cells)
 8545 Remark(Walk each cell to its leaf node)
 8550 L=0; K=CellCount(L)
 8560 For(J=0) To(size-1)
-8570 I=0; M=size; pos=J
-8580 DO; N=M; M=M/2; I=I+I+1 // Assume left
-8590 If(pos>=M) Then pos=pos-M; M=N-M; I=I+1 // When right
-8600 Until(I>=nodes/2)
-8610 If(I>L) Then Gosub(8650) // Validate when new leaf
-8620 If(AA(J)&FlagsMask=0) Then K=K+CountBit // Count empty cells
+8570   I=0; M=size; pos=J
+8580   DO; N=M; M=M/2; I=I+I+1 // Assume left
+8590     If(pos>=M) Then pos=pos-M; M=N-M; I=I+1 // When right
+8600   Until(I>=nodes/2)
+8610   If(I>L) Then Gosub(8650) // Validate when new leaf
+8620   If(AA(J)&FlagsMask=0) Then K=K+CountBit // Count empty cells
 8630 Next(J)
 8650 If (CellCount(L)=K) Then L=I; K=0; Return
 8700 PrintLn(" - Error:")
@@ -436,36 +457,17 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 9100   Print(")")
 9110 Next(I); Return
 
-// === Init: one-time setup (DIMs, LUT) ===
+// Init subroutine inlined at lines 30-35
 
-// === Init === width height => size nodes snakeLUT AA : I J K
-9200 @=0; colOffset=(42-width)/2
-9220 size=width*height
-9230 DIM AA(size-1); Print("Initializing...")
-9240 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
-9250 nodes=nodes/2-1 // Halved tree: frees cells for food list
-// Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
-// Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus
-9260 DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"
-9270 Return
-
-// === InitTree: reset binary indexed tree to all-empty. Called before each game. ===
-
-9500 AA(0)=size*CountBit
-9510 For(I=1) To(nodes-2) Step(2)
-9520 J=(I-1)/2; K=AA(J)/2&CountMask
-9530 AA(I)=K; AA(I+1)=AA(J)-K
-9540 Next(I)
-9550 For(I=nodes) To(size-1); AA(I)=0; Next(I)
-9560 Return
+// InitTree subroutine inlined at lines 51-56
 
 #ifdef DEBUG
 Debug AA(0) // J => : I
 9610 For(I=1) To(2)
-9620 Print(Position(I,5)Double(I+2)AA(0)/8":"J"."); Next(I)
+9620   Print(Position(I,5)Double(I+2)AA(0)/8":"J"."); Next(I)
 9630 Return
 
 Error For(pos=0) To(size-1); M=AA(pos)&FlagsMask // size, AA => : M pos
-9810 If(M>0) Then Print(MoveToPos(pos) M)
+9810   If(M>0) Then Print(MoveToPos(pos) M)
 9820 Next(pos); Print(ShowCursor); Return
 #endif
