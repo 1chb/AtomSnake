@@ -22,7 +22,7 @@
 #define head S
 #define tail T
 #define score U
-// V -- Free
+#define colOffset V
 #define width W
 #define foodCount X
 #define nextTick Y
@@ -116,7 +116,7 @@
 
 // Snake-specific macros
 #define SnakeHead GraphicsOn "`" GraphicsOff
-#define MoveToPos(p) Position(p/width+3, p%width+(42-width)/2)
+#define MoveToPos(p) Position(p/width+3, p%width+colOffset)
 
 #ifdef TREE_CHECK
 #  define CheckTree Gosub(8500)
@@ -182,7 +182,7 @@ Label(1100, GameLoop)
 1130 If(KeyEmpty) Then Goto(WaitForTick)
 1140 N=KeyPeek; KeyNext
 1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then set(AutoBit); Goto(DirKey)
-1160 If(N=AUTO) Then toggle(AutoBit)
+1160 If(N=AUTO) Then toggle(AutoBit) // What is this line for? Isn't it dead code?
 Label(1170, DirKey)
 1171 If(N=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
 1180 If(N=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
@@ -384,13 +384,13 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 8040 If(highScore) Then For(I=1) To(2); Print(Position(I,1)Double(I+2)"High "highScore); Next(I)
 8050 For(I=1) To(height); Print($10$13$27"#6"); Next(I)
 8060 Print(ReverseVideo)
-8070 Print(MoveToPos(0)) // TopBorder
+8070 Print(Position(3, colOffset)) // TopBorder
 8080 For(pos=0) To(width-1); Gosub(BorderPrim); Next(pos)
 8090 For(I=width) To(size-width-width) Step(width) // SideBorders
 8100 pos=I; Gosub(Border) // LeftBorder
 8110 pos=I+width-1; Gosub(Border) // RightBorder
 8120 Next(I)
-8130 Print(MoveToPos((size-width))) // BottomBorder
+8130 Print(Position(height+2, colOffset)) // BottomBorder
 8140 For(pos=size-width) To(size-1); Gosub(BorderPrim); Next(pos)
 8150 Print(NormalVideo)
 8160 Return
@@ -439,7 +439,7 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 // === Init: one-time setup (DIMs, LUT) ===
 
 // === Init === width height => size nodes snakeLUT AA : I J K
-9200 @=0
+9200 @=0; colOffset=(42-width)/2
 9220 size=width*height
 9230 DIM AA(size-1); Print("Initializing...")
 9240 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)

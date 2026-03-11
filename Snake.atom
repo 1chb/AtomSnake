@@ -78,7 +78,7 @@
 2410 J=J+1;
 2420 GOTO g; REM "LocateLinear"
 3000b REM === "Border" === P => AA : E G M N Q
-3010 PRINT $27"["P/W+3";"P%W+(42-W)/2"H"
+3010 PRINT $27"["P/W+3";"P%W+V "H"
 3020r REM === "BorderPrim" === P => AA : E G M N Q
 3030 PRINT " "
 3040 AA(P)=AA(P)|4
@@ -89,12 +89,12 @@
 4020 T=S-2
 4030 D=2
 4040 FOR J=T TO S
-4050 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $27"(0" "q" $27"(B"
+4050 PRINT $27"["J/W+3";"J%W+V "H" $27"(0" "q" $27"(B"
 4060 AA(J)=AA(J)&-8|4|D
 4070 P=J; Q=-8; GOSUB a
 4080 NEXT J
 4090 E=2; X=0; B=B&(-1-4)
-4100 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" "`" $27"(B"
+4100 PRINT $27"["S/W+3";"S%W+V "H" $27"(0" "`" $27"(B"
 4110 FOR G=1 TO 5; GOSUB s; NEXT G
 4120 RETURN
 5000d REM === "ChangeDirection" === S D => AA
@@ -110,7 +110,7 @@
 5170 K=1
 5180 IF B&4=0 AND N%13=5 THEN K=2; B=B|4
 5190 AA(J)=AA(J)+K
-5200 PRINT $27"["J/W+3";"J%W+(42-W)/2"H" $(F+15)?K
+5200 PRINT $27"["J/W+3";"J%W+V "H" $(F+15)?K
 5210 P=J; Q=-8; GOSUB a
 5220 AA(O+X)=AA(O+X)&7|J*8
 5230 X=X+1;
@@ -122,14 +122,14 @@
 6110 P=T; Q=8; GOSUB a
 6120 D=AA(T)
 6130 AA(T)=D&-8
-6140 PRINT $27"["T/W+3";"T%W+(42-W)/2"H" " "
+6140 PRINT $27"["T/W+3";"T%W+V "H" " "
 6150 P=T; GOSUB t
 6160 T=P
 6170 RETURN
 6200f REM === "AdvanceHead" === => S T U B X AA E : D G I J K L M N P Q
 6210 D=AA(S)&3
 6220 N=F?(E*4+D)
-6230 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" $N $27"(B"
+6230 PRINT $27"["S/W+3";"S%W+V "H" $27"(0" $N $27"(B"
 6240 E=D
 6250 P=S; GOSUB t; S=P
 6260 IF AA(S)&4 THEN GOTO 9000; REM "9000"
@@ -151,8 +151,8 @@
 6500u REM === "MarkHead" === G S => AA : D
 6510 D=G
 6520 AA(S)=AA(S)&-8|4|D
-6530 PRINT $27"["S/W+3";"S%W+(42-W)/2"H" $27"(0" "`" $27"(B"
-6540 PRINT $27"["S/W+3";"S%W+(42-W)/2"H"
+6530 PRINT $27"["S/W+3";"S%W+V "H" $27"(0" "`" $27"(B"
+6540 PRINT $27"["S/W+3";"S%W+V "H"
 6550 RETURN
 6800k REM === "TryDirSub" === N S => K D AA
 6810 K=AA(S+(N&2-1)*((N&1)*(W-1)+1))&4
@@ -189,18 +189,18 @@
 8040 IF C THEN FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"High "C; NEXT I
 8050 FOR I=1 TO H; PRINT $10$13$27"#6"; NEXT I
 8060 PRINT $27"[7m"
-8070 PRINT $27"["0/W+3";"0%W+(42-W)/2"H"
+8070 PRINT $27"["3";"V "H"
 8080 FOR P=0 TO W-1; GOSUB r; NEXT P
 8090 FOR I=W TO Z-W-W STEP W
 8100 P=I; GOSUB b
 8110 P=I+W-1; GOSUB b
 8120 NEXT I
-8130 PRINT $27"["(Z-W)/W+3";"(Z-W)%W+(42-W)/2"H"
+8130 PRINT $27"["H+2";"V "H"
 8140 FOR P=Z-W TO Z-1; GOSUB r; NEXT P
 8150 PRINT $27"[m"
 8160 RETURN
 9000 B=B&(-1-1); Y=0
-9020 PRINT $27"["S/W+3";"S%W+(42-W)/2"H"
+9020 PRINT $27"["S/W+3";"S%W+V "H"
 9030 IF X=0 THEN PRINT $27"(0" "`" $27"(B"; GOTO 9050; REM "9050"
 9040 PRINT "X"
 9050 IF U<=C THEN RETURN
@@ -210,7 +210,7 @@
 9090 IF X=0 THEN PRINT " Win"
 9100 PRINT ")"
 9110 NEXT I; RETURN
-9200 @=0
+9200 @=0; V=(42-W)/2
 9220 Z=W*H
 9230 DIM AA(Z-1); PRINT "Initializing..."
 9240 O=1; DO; O=O+O; UNTIL O+O>Z+1
