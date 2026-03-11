@@ -4,17 +4,18 @@
 Reads a .atom file (PROD preprocessed) and applies size optimizations:
 1. Strip cpp warnings from output
 2. Remove trailing semicolons
-3. Evaluate constant parenthesized expressions: (-1-2) -> -3
-4. Remove spaces after line numbers (and label suffixes)
-5. Remove spaces after abbreviated commands (I. F. G. P. N. etc.)
-6. Remove spaces after semicolons, closing parens, and string literals
-7. Merge adjacent string literals ("A" "B" -> "AB")
-8. Remove spaces after digits (when next char is non-digit)
-9. Remove spaces after THEN (which is empty in PROD)
-10. Merge consecutive short lines (respecting 63-char limit), except:
+3. Convert hex literals to decimal: #38 -> 56, #410 -> 1040
+4. Evaluate constant parenthesized expressions: (-1-2) -> -3
+5. Remove spaces after line numbers (and label suffixes)
+6. Remove spaces after abbreviated commands (I. F. G. P. N. etc.)
+7. Remove spaces after semicolons, closing parens, and string literals
+8. Merge adjacent string literals ("A" "B" -> "AB")
+9. Remove spaces after digits (when next char is non-digit)
+10. Remove spaces after THEN (which is empty in PROD)
+11. Merge consecutive short lines (respecting 63-char limit), except:
     - Lines that are GOTO/GOSUB targets (by line number)
     - Don't append to a line whose last statement is IF (THEN gates rest of line)
-11. Remove empty lines
+12. Remove empty lines
 
 Usage: python3 optimize.py < input.atom > output.atom
        python3 optimize.py input.atom [output.atom]
@@ -71,6 +72,41 @@ def contains_if(line):
             if i == 0 or not line[i - 1].isupper():
                 return True
     return False
+
+
+def convert_hex_to_decimal(line):
+    """Convert hex literals (#XX) to decimal equivalents.
+
+    '#38' -> '56', '#410' -> '1040', '#7FFF' -> '32767'
+    Skips content inside strings. This enables the space-after-digit
+    rule to be simplified (no more A-F hex digit concerns).
+    """
+    result = []
+    i = 0
+    in_string = False
+    while i < len(line):
+        c = line[i]
+        if c == '"':
+            in_string = not in_string
+            result.append(c)
+            i += 1
+            continue
+        if in_string:
+            result.append(c)
+            i += 1
+            continue
+        if c == '#' and i + 1 < len(line) and line[i + 1] in '0123456789ABCDEFabcdef':
+            # Collect hex digits
+            j = i + 1
+            while j < len(line) and line[j] in '0123456789ABCDEFabcdef':
+                j += 1
+            hex_str = line[i + 1:j]
+            result.append(str(int(hex_str, 16)))
+            i = j
+            continue
+        result.append(c)
+        i += 1
+    return ''.join(result)
 
 
 def remove_trailing_semicolons(line):
@@ -130,12 +166,12 @@ def remove_unnecessary_spaces(line):
             i += 1
             continue
         
-        # Remove space after digit when next char is not a hex digit
-        # (0-9, A-F).  Keeps hex literals like #10 AND safe (#10A is
-        # a valid hex digit sequence).
+        # Remove space after digit when next char is not a digit.
+        # (Hex literals are already converted to decimal, so A-F
+        # no longer need special handling.)
         if (c == ' ' and i > 0 and line[i-1].isdigit()
                 and i + 1 < len(line)
-                and line[i+1] not in '0123456789ABCDEF'):
+                and not line[i+1].isdigit()):
             i += 1
             continue
         
@@ -301,6 +337,9 @@ def optimize(text):
         
         # Remove trailing semicolons
         line = remove_trailing_semicolons(line)
+        
+        # Convert hex literals to decimal
+        line = convert_hex_to_decimal(line)
         
         # Remove space after line number / label
         line = remove_line_number_space(line)
