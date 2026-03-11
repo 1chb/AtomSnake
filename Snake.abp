@@ -81,7 +81,6 @@
 #define Border b
 #define DirKey c
 #define ChangeDirection d
-#define EatTail e
 #define AdvanceHead f
 #define LocateLinear g
 #define HomePage h
@@ -135,7 +134,6 @@
 //  End Auto    exit        to manual   restart     to manual+dir
 //  End Manual  exit        restart     to auto     restart+dir
 // In End Auto pause, play will resume automatically after a delay.
-
 10 width=40
 20 height=21
 // --- Init (inlined) --- width height => size nodes colOffset snakeLUT AA : I J K
@@ -186,7 +184,6 @@ Label(400, Quit)
 450 End
 
 // === Play: one game ===
-
 Subroutine(1000, Play, => flags tickDelay nextTick head tail score lastDir foodCount time AA : D G I J K L M N P Q)
 1010 score=0; flags=isAuto|AliveBit
 1020 Gosub_(HomePage)
@@ -218,7 +215,6 @@ Label(1400, AutoInput)
 1420 Gosub(AutoStep); Gosub(AdvanceHead); Goto(GameLoop)
 
 // === PauseLoop ===
-
 Subroutine(1500, PauseLoop, => : N)
 1510 For(N=1)To(300)
 1520   If(KeyAvailable) T.KeyNext
@@ -230,7 +226,6 @@ Subroutine(1500, PauseLoop, => : N)
 1580 Return
 
 // === Adjust: update binary indexed tree ===
-
 Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
 2010 I=0; M=size
 2020 DO; AA(I)=AA(I)+quantity
@@ -240,7 +235,6 @@ Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
 2060 Return
 
 // === Locate: find Nth empty cell in tree ===
-
 Subroutine(2200, Locate, pos => J : I K L M pos)
 2210 pos=pos*CountBit; I=1; J=0; K=size // Interval [J..K)
 2220 DO; M=(K-J)/2; L=AA(I)&CountMask
@@ -256,7 +250,6 @@ Label(2400, LocateSkip)
 2420 Goto(LocateLinear)
 
 // === Border: draw and mark border cell ===
-
 Subroutine(3000, Border, pos => AA : E G M N Q)
 3010 Print(MoveToPos(pos))
 Subroutine(3020, BorderPrim, pos => AA : E G M N Q)
@@ -266,7 +259,6 @@ Subroutine(3020, BorderPrim, pos => AA : E G M N Q)
 3060 pos=G; I=E; Return // Restore
 
 // === InitGame: set up snake and food ===
-
 Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G I J K L M N P Q)
 4010 head=(height+1)/2*width-width/2 // Center of board
 4020 tail=head-2
@@ -282,14 +274,12 @@ Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G
 4120 DebugReturn
 
 // === ChangeDirection ===
-
 Subroutine(5000, ChangeDirection, head direction => AA)
 5010 If(AA(head)&3=direction) Then Return // Dir not changed
 5020 AA(head)=AA(head)&DirMask|direction
 5030 Return
 
 // === SpawnFood: place food on random empty cell ===
-
 Subroutine(5100, SpawnFood, => J foodCount flags AA : I K L M N P Q)
 5110 If(AA(0)&CountMask=0) Then Return // Board full
 5120 pos=Abs(Rnd)%(AA(0)/CountBit)
@@ -309,24 +299,11 @@ Subroutine(5100, SpawnFood, => J foodCount flags AA : I K L M N P Q)
 5240 DebugReturn
 
 // === StepSub: advance position one step in direction ===
-
 Subroutine(6000, StepSub, pos direction => pos)
 6010 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
 6020 Return
 
-// === EatTail: remove tail segment ===
-
-Subroutine(6100, EatTail, => tail AA : D I M N P Q)
-6110 pos=tail; quantity=CountBit; Gosub(Adjust)
-6120 direction=AA(tail)
-6130 AA(tail)=direction&CountMask
-6140 Print(MoveToPos(tail) " ")
-6150 pos=tail; Gosub(StepSub)
-6160 tail=pos
-6170 Return
-
 // === AdvanceHead: move snake forward one step ===
-
 Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : D G I J K L M N P Q)
 6210 direction=AA(head)&3
 6220 N=snakeLUT?(lastDir*4+direction)
@@ -336,10 +313,17 @@ Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : D 
 6260 If(AA(head)&BorderBit) Then Goto(9000)
 6270 G=direction
 6280 If(AA(head)&FlagsMask) Then Goto(Eat)
-6290 Gosub(EatTail)
-6300 Gosub(MarkHead)
-6310 pos=head; quantity=-CountBit; Gosub(Adjust)
-6320 DebugReturn
+// EatTail (inlined): remove tail segment
+6290 pos=tail; quantity=CountBit; Gosub(Adjust)
+6300 direction=AA(tail)
+6310 AA(tail)=direction&CountMask
+6320 Print(MoveToPos(tail) " ")
+6330 pos=tail; Gosub(StepSub)
+6340 tail=pos
+// end EatTail
+6350 Gosub(MarkHead)
+6360 pos=head; quantity=-CountBit; Gosub(Adjust)
+6370 DebugReturn
 Label(6400, Eat)
 6410 foodCount=foodCount-1
 6420 I=0
@@ -351,7 +335,6 @@ Label(6400, Eat)
 6480 Gosub(SpawnFood)
 
 // === MarkHead: draw snake head at current position ===
-
 Subroutine(6500, MarkHead, G head => AA : D)
 6510 direction=G
 6520 AA(head)=AA(head)&CountMask|BorderBit|direction
@@ -370,7 +353,6 @@ Subroutine(6800, TryDirSub, N head => K direction AA)
 #define TryDir Gosub(TryDirSub); If(K=0) Then Return
 
 // === AutoStep: greedy AI - find nearest food, try directions ===
-
 Subroutine(7000, AutoStep, head foodCount score => direction AA : I J K L M N)
 7010 direction=AA(head)&3
 7020 If(foodCount=0) Then Goto(AutoFallback)
@@ -397,7 +379,6 @@ Label(7200, AutoFallback)
 7240 Return
 
 // === HomePage: draw title and borders ===
-
 Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
@@ -442,8 +423,6 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 8720 @=8; PrintLn(ShowCursor); End
 #endif
 
-// === GameOver ===
-
 // === GameOver === head foodCount score => flags nextTick highScore : I
 9000 clear(AliveBit); nextTick=0
 9020 Print(MoveToPos(head))
@@ -456,10 +435,6 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 9090   If(foodCount=0) Then Print(" Win")
 9100   Print(")")
 9110 Next(I); Return
-
-// Init subroutine inlined at lines 30-35
-
-// InitTree subroutine inlined at lines 51-56
 
 #ifdef DEBUG
 Debug AA(0) // J => : I
