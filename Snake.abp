@@ -87,7 +87,7 @@
 #define Quit i
 #define LocateSkip j
 #define TryDirSub k
-#define Locate l
+#define LocateDone l
 #define AutoFallback m
 #define InitGame n
 #define PauseLoop o
@@ -234,21 +234,6 @@ Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
 2050 Until(I>=nodes)
 2060 Return
 
-// === Locate: find Nth empty cell in tree ===
-Subroutine(2200, Locate, pos => J : I K L M pos)
-2210 pos=pos*CountBit; I=1; J=0; K=size // Interval [J..K)
-2220 DO; M=(K-J)/2; L=AA(I)&CountMask
-2230   If(pos<L) Then K=J+M; I=I+I+1
-2240   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
-2250 Until(I>=nodes)
-Label(2300, LocateLinear) // Linear search:
-2310 If(AA(J)&FlagsMask) Goto(LocateSkip)
-2320 If(pos=0) Then Return
-2330 pos=pos-CountBit
-Label(2400, LocateSkip)
-2410 J=J+1; Reject(J>=size)
-2420 Goto(LocateLinear)
-
 // === Border: draw and mark border cell ===
 Subroutine(3000, Border, pos => AA : E G M N Q)
 3010 Print(MoveToPos(pos))
@@ -287,16 +272,30 @@ Subroutine(5100, SpawnFood, => J foodCount flags AA : I K L M N P Q)
 #ifdef DEBUG
 5140 For(I=1) To(2); Print(Position(I,1)Double(I+2)pos":"isBonus":"N%13" "); Next(I)
 #endif
-5150 Gosub(Locate)
-5160 Reject(AA(J)&FlagsMask)
-5170 K=Mouse
-5180 If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
-5190 AA(J)=AA(J)+K
-5200 Print(MoveToPos(J) $(snakeLUT+15)?K)
-5210 pos=J; quantity=-CountBit; Gosub(Adjust)
-5220 FoodSet(foodCount,J)
-5230 foodCount=foodCount+1; CheckTree
-5240 DebugReturn
+// Locate (inlined): find Nth empty cell in tree
+5150 pos=pos*CountBit; I=1; J=0; K=size // Interval [J..K)
+5160 DO; M=(K-J)/2; L=AA(I)&CountMask
+5170   If(pos<L) Then K=J+M; I=I+I+1
+5180   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
+5190 Until(I>=nodes)
+Label(5200, LocateLinear) // Linear search:
+5210 If(AA(J)&FlagsMask) Goto(LocateSkip)
+5220 If(pos=0) Then Goto(LocateDone)
+5230 pos=pos-CountBit
+Label(5240, LocateSkip)
+5250 J=J+1; Reject(J>=size)
+5260 Goto(LocateLinear)
+// end Locate
+Label(5300, LocateDone)
+5310 Reject(AA(J)&FlagsMask)
+5320 K=Mouse
+5330 If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
+5340 AA(J)=AA(J)+K
+5350 Print(MoveToPos(J) $(snakeLUT+15)?K)
+5360 pos=J; quantity=-CountBit; Gosub(Adjust)
+5370 FoodSet(foodCount,J)
+5380 foodCount=foodCount+1; CheckTree
+5390 DebugReturn
 
 // === StepSub: advance position one step in direction ===
 Subroutine(6000, StepSub, pos direction => pos)
