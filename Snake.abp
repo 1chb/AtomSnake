@@ -99,7 +99,7 @@
 #define Eat v
 #define WaitForTick w
 #define NewGame x
-#define AutoStep y
+#define AutoDone y
 #define AutoInput z
 
 #ifdef DEBUG
@@ -114,6 +114,7 @@
 // Snake-specific macros
 #define SnakeHead GraphicsOn "`" GraphicsOff
 #define MoveToPos(p) Position(p/width+3, p%width+colOffset)
+#define TryDir Gosub(TryDirSub); If(K=0) Then Goto(AutoDone)
 
 #ifdef TREE_CHECK
 #  define CheckTree Gosub(8500)
@@ -210,18 +211,43 @@ Label(1300, WaitForTick)
 1340 Gosub(AdvanceHead); Goto(GameLoop)
 Label(1400, AutoInput)
 1410 If(KeyAvailable) Then N=KeyPeek; KeyNext; Goto(1150)
-1420 Gosub(AutoStep); Gosub(AdvanceHead); Goto(GameLoop)
+// AutoStep (inlined): greedy AI - find nearest food, try directions
+1420 direction=AA(head)&3
+1430 If(foodCount=0) Then Goto(AutoFallback)
+1440 K=#7FFF
+1450 For(I=0) To(foodCount-1); J=FoodGet(I)
+1455   If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(1470)
+1460   M=Abs(J/width-head/width)+Abs(J%width-head%width)
+1465   If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
+1467   If(M<K) Then K=M; L=J
+1470 Next(I) // L=nearest food
+1480 J=L%width-head%width; M=L/width-head/width // J=dx, M=dy
+1490 N=East; If(J<0) Then N=West // N=horizontal toward food
+1500 If(Abs(M)>Abs(J)) Then N=South; If(M<0) Then N=North // Override: vertical if |dy|>|dx|
+1510 L=N; TryDir // L=primary direction toward food
+1520 N=South; If(M<0) Then N=North // Try other axis: vertical toward food
+1530 If(Abs(M)>Abs(J)) Then N=East; If(J<0) Then N=West // Override: horizontal if vertical was primary
+1540 TryDir
+1550 N=N:2; TryDir // Try secondary axis AWAY from food
+1560 N=L:2; TryDir // Try primary axis AWAY from food (opposite of desired)
+Label(1600, AutoFallback)
+1610 N=direction; TryDir // Fallback: straight
+1620 N=(direction+1)&3; TryDir
+1630 N=(direction-1)&3; TryDir
+// end AutoStep
+Label(1640, AutoDone)
+1650 Gosub(AdvanceHead); Goto(GameLoop)
 
 // === PauseLoop ===
-Subroutine(1500, PauseLoop, => : N)
-1510 For(N=1)To(300)
-1520   If(KeyAvailable) T.KeyNext
-1530 Next(N)
-1540 DO
-1550   DO; Until(KeyAvailable)
-1560   N=KeyPeek; KeyNext
-1570 Until(N=PAUSE OR N=QUIT OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
-1580 Return
+Subroutine(1700, PauseLoop, => : N)
+1710 For(N=1)To(300)
+1720   If(KeyAvailable) T.KeyNext
+1730 Next(N)
+1740 DO
+1750   DO; Until(KeyAvailable)
+1760   N=KeyPeek; KeyNext
+1770 Until(N=PAUSE OR N=QUIT OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
+1780 Return
 
 // === Adjust: update binary indexed tree ===
 Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
@@ -342,33 +368,6 @@ Subroutine(6800, TryDirSub, N head => K direction AA)
 6810 K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit
 6820 If(K=0) Then direction=N; Gosub(ChangeDirection)
 6830 Return
-#define TryDir Gosub(TryDirSub); If(K=0) Then Return
-
-// === AutoStep: greedy AI - find nearest food, try directions ===
-Subroutine(7000, AutoStep, head foodCount score => direction AA : I J K L M N)
-7010 direction=AA(head)&3
-7020 If(foodCount=0) Then Goto(AutoFallback)
-7030 K=#7FFF
-7040 For(I=0) To(foodCount-1); J=FoodGet(I)
-7045   If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(7070)
-7050   M=Abs(J/width-head/width)+Abs(J%width-head%width)
-7055   If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
-7060   If(M<K) Then K=M; L=J
-7070 Next(I) // L=nearest food
-7080 J=L%width-head%width; M=L/width-head/width // J=dx, M=dy
-7090 N=East; If(J<0) Then N=West // N=horizontal toward food
-7100 If(Abs(M)>Abs(J)) Then N=South; If(M<0) Then N=North // Override: vertical if |dy|>|dx|
-7110 L=N; TryDir // L=primary direction toward food
-7120 N=South; If(M<0) Then N=North // Try other axis: vertical toward food
-7130 If(Abs(M)>Abs(J)) Then N=East; If(J<0) Then N=West // Override: horizontal if vertical was primary
-7140 TryDir
-7150 N=N:2; TryDir // Try secondary axis AWAY from food
-7160 N=L:2; TryDir // Try primary axis AWAY from food (opposite of desired)
-Label(7200, AutoFallback)
-7210 N=direction; TryDir // Fallback: straight
-7220 N=(direction+1)&3; TryDir
-7230 N=(direction-1)&3; TryDir
-7240 Return
 
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
