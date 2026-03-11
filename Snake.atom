@@ -51,6 +51,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 1120 IF B&2 THEN GOTO z; REM "AutoInput"
 1130 IF ?#410=?#411 THEN GOTO w; REM "WaitForTick"
 1140 N=#400?(?#410); ?#410=(?#410 +1)&#F
+1145l
 1150 IF N=#35 THEN GOSUB o; IF N=#30 THEN B=B&(-1-2)
 1160 IF N=#30 THEN B=B:2
 1170c
@@ -65,7 +66,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 1330 Y=R+A
 1340 GOSUB f; GOTO q; REM "GameLoop"
 1400z
-1410 IF ?#410<>?#411 THEN N=#400?(?#410); ?#410=(?#410 +1)&#F; GOTO 1150; REM "1150"
+1410 IF ?#410<>?#411 THEN N=#400?(?#410); ?#410=(?#410 +1)&#F; GOTO l; REM "KeyDispatch"
 1420 D=AA(S)&3
 1430 IF X=0 THEN GOTO m; REM "AutoFallback"
 1440 K=#7FFF
@@ -160,7 +161,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 6230 PRINT $27"["S/W+3";"S%W+V "H" $27"(0" $N $27"(B"
 6240 E=D
 6250 P=S; GOSUB t; S=P
-6260 IF AA(S)&4 THEN GOTO 9000; REM "9000"
+6260 IF AA(S)&4 THEN GOTO j; REM "Clash"
 6270 G=D
 6280 IF AA(S)&7 THEN GOTO v; REM "Eat"
 6290 P=T; Q=8; GOSUB a
@@ -208,7 +209,8 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 8140 FOR P=Z-W TO Z-1; GOSUB r; NEXT P
 8150 PRINT $27"[m"
 8160 RETURN
-9000 B=B&(-1-1); Y=0
+9000j
+9010 B=B&(-1-1); Y=0
 9020 PRINT $27"["S/W+3";"S%W+V "H"
 9030 IF X=0 THEN PRINT $27"(0" "`" $27"(B"; GOTO 9050; REM "9050"
 9040 PRINT "X"

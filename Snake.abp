@@ -86,7 +86,9 @@
 #define LocateLinear g
 #define HomePage h
 #define Quit i
+#define Clash j
 #define TryDirSub k
+#define KeyDispatch l
 #define AutoFallback m
 #define InitGame n
 #define PauseLoop o
@@ -196,6 +198,7 @@ Label(1100, GameLoop)
 1120 If(isAuto) Then Goto(AutoInput)
 1130 If(KeyEmpty) Then Goto(WaitForTick)
 1140 N=KeyPeek; KeyNext
+Label(1145, KeyDispatch)
 1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then clear(AutoBit) // will toggle on the next line
 1160 If(N=AUTO) Then toggle(AutoBit)
 Label(1170, DirKey)
@@ -210,7 +213,7 @@ Label(1300, WaitForTick)
 1330 nextTick=time+tickDelay
 1340 Gosub(AdvanceHead); Goto(GameLoop)
 Label(1400, AutoInput)
-1410 If(KeyAvailable) Then N=KeyPeek; KeyNext; Goto(1150)
+1410 If(KeyAvailable) Then N=KeyPeek; KeyNext; Goto(KeyDispatch)
 // AutoStep (inlined): greedy AI - find nearest food, try directions
 1420 direction=AA(head)&3
 1430 If(foodCount=0) Then Goto(AutoFallback)
@@ -328,7 +331,7 @@ Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : D 
 6230 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
 6240 lastDir=direction
 6250 pos=head; Gosub(StepSub); head=pos
-6260 If(AA(head)&BorderBit) Then Goto(9000)
+6260 If(AA(head)&BorderBit) Then Goto(Clash)
 6270 G=direction
 6280 If(AA(head)&FlagsMask) Then Goto(Eat)
 // EatTail (inlined): remove tail segment
@@ -415,7 +418,8 @@ Subroutine(8000, HomePage, highScore => AA : E G I M N P Q)
 #endif
 
 // === GameOver === head foodCount score => flags nextTick highScore : I
-9000 clear(AliveBit); nextTick=0
+Label(9000, Clash)
+9010 clear(AliveBit); nextTick=0
 9020 Print(MoveToPos(head))
 9030 If(foodCount=0) Then Print(SnakeHead); Goto(9050)
 9040 Print("X")
