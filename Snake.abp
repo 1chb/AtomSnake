@@ -81,13 +81,12 @@
 #define Border b
 #define DirKey c
 #define ChangeDirection d
+#define AssertSub e
 #define AdvanceHead f
 #define LocateLinear g
 #define HomePage h
 #define Quit i
-#define LocateSkip j
 #define TryDirSub k
-#define LocateDone l
 #define AutoFallback m
 #define InitGame n
 #define PauseLoop o
@@ -105,12 +104,11 @@
 
 #ifdef DEBUG
 #  define Debug 9600
-#  define Error 9800
 #  define DebugReturn Goto(Debug)
-#  define Reject(condition) If(condition) Goto(Error)
+#  define Assert(condition) K=condition; Gosub(AssertSub)
 #else
 #  define DebugReturn Return
-#  define Reject(condition)
+#  define Assert(condition)
 #endif
 
 // Snake-specific macros
@@ -279,15 +277,10 @@ Subroutine(5100, SpawnFood, => J foodCount flags AA : I K L M N P Q)
 5180   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
 5190 Until(I>=nodes)
 Label(5200, LocateLinear) // Linear search:
-5210 If(AA(J)&FlagsMask) Goto(LocateSkip)
-5220 If(pos=0) Then Goto(LocateDone)
-5230 pos=pos-CountBit
-Label(5240, LocateSkip)
-5250 J=J+1; Reject(J>=size)
-5260 Goto(LocateLinear)
+5210 If(AA(J)&FlagsMask) J=J+1; Assert(J<size); Goto(LocateLinear)
+5220 If(pos>0) Then pos=pos-CountBit; J=J+1; Assert(J<size); Goto(LocateLinear)
 // end Locate
-Label(5300, LocateDone)
-5310 Reject(AA(J)&FlagsMask)
+5300 Assert(pos=0 AND AA(J)&FlagsMask=0)
 5320 K=Mouse
 5330 If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
 5340 AA(J)=AA(J)+K
@@ -441,7 +434,10 @@ Debug AA(0) // J => : I
 9620   Print(Position(I,5)Double(I+2)AA(0)/8":"J"."); Next(I)
 9630 Return
 
-Error For(pos=0) To(size-1); M=AA(pos)&FlagsMask // size, AA => : M pos
-9810   If(M>0) Then Print(MoveToPos(pos) M)
-9820 Next(pos); Print(ShowCursor); Return
+Subroutine(9800, AssertSub, K => : M pos)
+9810 If(K) Then Return
+// Error: dump board flags and halt
+9820 For(pos=0) To(size-1); M=AA(pos)&FlagsMask // size, AA => : M pos
+9830   If(M>0) Then Print(MoveToPos(pos) M)
+9840 Next(pos); Print(ShowCursor); End
 #endif

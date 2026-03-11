@@ -113,14 +113,9 @@
 5180 IF P>=L THEN J=J+M; P=P-L; I=I+I+3
 5190 UNTIL I>=O
 5200g
-5210 IF AA(J)&7 GOTO j; REM "LocateSkip"
-5220 IF P=0 THEN GOTO l; REM "LocateDone"
-5230 P=P-8
-5240j
-5250 J=J+1;
-5260 GOTO g; REM "LocateLinear"
-5300l
-5310
+5210 IF AA(J)&7 J=J+1; ; GOTO g; REM "LocateLinear"
+5220 IF P>0 THEN P=P-8; J=J+1; ; GOTO g; REM "LocateLinear"
+5300
 5320 K=1
 5330 IF B&4=0 AND N%13=5 THEN K=2; B=B|4
 5340 AA(J)=AA(J)+K
