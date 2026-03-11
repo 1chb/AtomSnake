@@ -181,8 +181,8 @@ Label(1100, GameLoop)
 1120 If(isAuto) Then Goto(AutoInput)
 1130 If(KeyEmpty) Then Goto(WaitForTick)
 1140 N=KeyPeek; KeyNext
-1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then set(AutoBit); Goto(DirKey)
-1160 If(N=AUTO) Then toggle(AutoBit) // What is this line for? Isn't it dead code?
+1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then clear(AutoBit) // will toggle on the next line
+1160 If(N=AUTO) Then toggle(AutoBit)
 Label(1170, DirKey)
 1171 If(N=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
 1180 If(N=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
