@@ -150,20 +150,15 @@ The array implements a binary indexed tree that efficiently tracks empty cells f
 
 ### Variables
 
-Global state is stored in single-letter variables:
-- `AA` - Area array (binary indexed tree)
-- `C` - Turn (-1=Left, 0=Ahead, 1=Right)
-- `D` - Direction (0=West, 1=North, 2=East, 3=South)
-- `H` - Height (3-22, default 22)
-- `S` - Snake head position
-- `T` - Snake tail position
-- `U` - Score
-- `V` - String buffer for drawing
-- `W` - Width (5-40, default 40)
-- `Z` - Grid size (H×W)
-- `I,J,K,L,M,N,P,Q` - Temporary variables (reused across functions)
+Global state is stored in single-letter variables (A-Z). See `Snake.abp` for the complete variable list and their `#define` macro names. Key variables include `AA` (area array / binary indexed tree), `W` (width), `H` (height), `Z` (grid size W×H), `S` (snake head), `T` (snake tail), `D` (direction). Variables `I,J,K,L,M,N,P,Q` are temporaries reused across functions.
 
 ## Key Implementation Details
+
+### Acorn Atom BASIC: IF Semantics
+**CRITICAL**: When an `IF` condition is **false**, the **entire rest of the line** is skipped — all statements after `THEN` to the end of the line, including those separated by `;`. There is no way to escape the THEN scope on the same line. A second `IF` on the same line creates a nested condition — its THEN scope also extends to end of line.
+
+### Labels vs Variables
+Labels (lowercase a-z) and variables (uppercase A-Z) are **completely separate namespaces** in Acorn Atom BASIC. There is no relationship between `i` (a label) and `I` (a variable). Labels are assigned at program load time: a line like `1000p` sets `p=1000` when the program is loaded into memory, not when the line executes. `GOSUB p` then jumps to line 1000.
 
 ### Direction Encoding
 Directions use 2 bits with a clever encoding that simplifies calculations:
@@ -219,14 +214,25 @@ This command:
 ### Testing Considerations
 When modifying the code:
 - The binary indexed tree logic (Init, Adjust, Locate) is critical and fragile
-- Test boundary conditions: minimum grid (5×3), maximum grid (40×22)
+- Test boundary conditions: minimum grid (5×3), maximum grid (40×21)
 - Verify snake collision detection at borders and self-collision
 - Check that food placement never overlaps snake or borders
 - Ensure terminal escape sequences render correctly on target system
 
+### Memory Layout
+- **Total RAM**: 8192 bytes (8KB)
+- **System/BASIC workspace**: ~1282 bytes (from address 0)
+- **Program**: ~3442 bytes in memory (optimized PROD)
+- **`DIM AA(Z-1)`**: Z × 4 bytes (integer array; double-letter DIM = 4-byte integers)
+- **`DIM F(18)`**: 19 bytes (string buffer; single-letter DIM = 1-byte ASCII characters)
+- **For 40×21 board**: 840 × 4 + 19 = 3379 bytes for arrays, leaving ~89 bytes free
+- **For 40×22 board**: 880 × 4 + 19 = 3539 bytes — does NOT fit (exceeds available memory)
+
+Note: `DIM` with single-letter variable names allocates byte strings (1 byte per element).
+`DIM` with double-letter variable names allocates integer arrays (4 bytes per element).
+
 ### Performance Characteristics
 - Tree operations: O(log n) for both Adjust and Locate
-- Memory usage: 2×(W×H) words for tree array
 - Display updates: Direct cursor positioning (no full redraws)
 
 ## Common Modifications
