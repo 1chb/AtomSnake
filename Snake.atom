@@ -45,7 +45,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 1040 N=Y
 1050 A=28 -Z/100
 1060 Y=R+A
-1070 IF N=#38 OR N=#34 OR N=#36 OR N=#32 THEN GOTO c; REM "DirKey"
+1070 IF (N-2)&-7=48 THEN GOTO c; REM "DirKey"
 1100q
 1110 IF B&1=0 THEN RETURN
 1120 IF B&2 THEN GOTO z; REM "AutoInput"
@@ -98,7 +98,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 1740 DO
 1750 DO; UNTIL ?#410<>?#411
 1760 N=#400?(?#410); ?#410=(?#410 +1)&#F
-1770 UNTIL N=#35 OR N=27 OR N=#30 OR N=#38 OR N=#34 OR N=#36 OR N=#32
+1770 UNTIL N=#35 OR N=27 OR N=#30 OR (N-2)&-7=48
 1780 RETURN
 2000a REM === "Adjust" === P Q => AA : I M N P
 2010 I=0; M=Z

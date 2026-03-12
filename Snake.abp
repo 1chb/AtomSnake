@@ -59,6 +59,7 @@
 #define PAUSE #35
 #define QUIT  27
 #define AUTO  #30
+#define IsDirKey(n) (n-2)&-7=48
 
 // Bits
 #define DirMask -4
@@ -192,7 +193,7 @@ Subroutine(1000, Play, => flags tickDelay nextTick head tail score lastDir foodC
 1040 N=nextTick // Saved key from game-over screen
 1050 tickDelay=SLOW_DOWN-size/100
 1060 nextTick=time+tickDelay
-1070 If(N=UP OR N=LEFT OR N=RIGHT OR N=DOWN) Then Goto(DirKey) // Process saved direction key
+1070 If(IsDirKey(N)) Then Goto(DirKey) // Process saved direction key
 Label(1100, GameLoop)
 1110 If(isAlive=0) Then Return
 1120 If(isAuto) Then Goto(AutoInput)
@@ -249,7 +250,7 @@ Subroutine(1700, PauseLoop, => : N)
 1740 DO
 1750   DO; Until(KeyAvailable)
 1760   N=KeyPeek; KeyNext
-1770 Until(N=PAUSE OR N=QUIT OR N=AUTO OR N=UP OR N=LEFT OR N=RIGHT OR N=DOWN)
+1770 Until(N=PAUSE OR N=QUIT OR N=AUTO OR IsDirKey(N))
 1780 Return
 
 // === Adjust: update binary indexed tree ===
