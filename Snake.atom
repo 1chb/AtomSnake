@@ -171,8 +171,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 6330 P=T; GOSUB t
 6340 T=P
 6350 GOSUB u
-6360 P=S; Q=-8; GOSUB a
-6370 RETURN
+6360 P=S; Q=-8; GOTO a; REM "Adjust"
 6400v
 6410 X=X-1
 6420 I=0
@@ -190,7 +189,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 6550 RETURN
 6800k REM === "TryDirSub" === N S => K D AA
 6810 K=AA(S+(N&2-1)*((N&1)*(W-1)+1))&4
-6820 IF K=0 THEN D=N; GOSUB d
+6820 IF K=0 THEN D=N; GOTO d; REM "ChangeDirection"
 6830 RETURN
 8000h REM === "HomePage" === C => AA : E G I M N P Q
 8010 PRINT $12 $27"[?25l"

@@ -344,8 +344,7 @@ Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : D 
 6340 tail=pos
 // end EatTail
 6350 Gosub(MarkHead)
-6360 pos=head; quantity=-CountBit; Gosub(Adjust)
-6370 DebugReturn
+6360 pos=head; quantity=-CountBit; Goto(Adjust) // Tail-call optimization
 Label(6400, Eat)
 6410 foodCount=foodCount-1
 6420 I=0
@@ -361,7 +360,7 @@ Subroutine(6500, MarkHead, G head => AA : D)
 6510 direction=G
 6520 AA(head)=AA(head)&CountMask|BorderBit|direction
 6530 Print(MoveToPos(head) SnakeHead)
-6540 Print(MoveToPos(head))
+6540 Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
 6550 DebugReturn
 
 // === TryDirSub: test if direction N is safe, apply if so ===
@@ -370,7 +369,7 @@ Subroutine(6500, MarkHead, G head => AA : D)
 
 Subroutine(6800, TryDirSub, N head => K direction AA)
 6810 K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit
-6820 If(K=0) Then direction=N; Gosub(ChangeDirection)
+6820 If(K=0) Then direction=N; Goto(ChangeDirection) // Tail-call optimization
 6830 Return
 
 // === HomePage: draw title and borders ===
