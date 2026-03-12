@@ -30,7 +30,7 @@
 
 // Call Graph (depth-first, showing call relationships):
 // Main Program
-// ├─→ Play (1000)  B C F H O R V W Y Z AA => A B E R S T U X Y AA : D I J K L M N
+// ├─→ Play (1000)  B C D F H O R V W Y Z AA => A B D E R S T U X Y AA : I J K L M N
 // │   ├─→ HomePage (8000)  C H O V W Z AA => AA : G I J M N P Q
 // │   │   ├─→ BorderPrim (3020)  O P Z AA => AA : I M N P Q
 // │   │   │   └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
@@ -40,7 +40,7 @@
 // │   │   ├─→ Adjust (2000)  O P Q Z AA => AA : I M N P
 // │   │   └─→ SpawnFood (5100) [x5 in loop]  B F O V W X Z AA => B J X AA : I K L M N P Q
 // │   │       └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
-// │   ├─→ PauseLoop (1700)  => N :
+// │   ├─→ PauseLoop (1700)  => Y : N
 // │   ├─→ ChangeDirection (5000) [x4]  D S AA => AA :
 // │   ├─→ AdvanceHead (6200)  B E F O S T U V W X Z AA => B E S T U X AA : D G I K L M N P Q
 // │   │   ├─→ StepSub (6000) [x2]  D P W => P :
@@ -49,7 +49,7 @@
 // │   │   └─→ SpawnFood (5100)  B F O V W X Z AA => B J X AA : I K L M N P Q
 // │   └─→ TryDirSub (6800) [x7]  N S W AA => D K AA :
 // │       └─→ ChangeDirection (5000) [TAIL CALL]  D S AA => AA :
-// └─→ PauseLoop (1700)  => N :
+// └─→ PauseLoop (1700)  => Y : N
 
 // Packed flags in B: bit 0=alive, bit 1=autoPlay, bit 2=bonusActive
 #define AliveBit 1
@@ -196,9 +196,9 @@ Label(100, NewGame)
 
 // Manual mode: wait for any valid key to restart, Quit to exit.
 300 Gosub(PauseLoop)
-310 If(N=QUIT) Then Goto(Quit)
-320 If(N=AUTO) Then set(AutoBit)
-330 lastKey=N; Goto(NewGame)
+310 If(lastKey=QUIT) Then Goto(Quit)
+320 If(lastKey=AUTO) Then set(AutoBit)
+330 Goto(NewGame)
 
 // Exit
 Label(400, Quit)
@@ -209,35 +209,34 @@ Label(400, Quit)
 450 End
 
 // === Play: one game ===
-Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT AA => flags tickDelay lastKey head tail score lastDir foodCount time AA : D I J K L M N)
+Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : I J K L M N)
 1010 score=0; flags=isAuto|AliveBit
 1020 Gosub_(HomePage)
 1030 Gosub_(InitGame); CheckTree
-1040 N=lastKey // Saved key from game-over screen
 1050 tickDelay=SLOW_DOWN-size/100
 1060 K=time+tickDelay // Next tick time (temp)
-1070 If(IsDirKey(N)) Then Goto(DirKey) // Process saved direction key
+1070 If(IsDirKey(lastKey)) Then Goto(DirKey) // Process saved direction key
 Label(1100, GameLoop)
 1110 If(isAlive=0) Then Return
 1120 If(isAuto) Then Goto(AutoInput)
 1130 If(KeyEmpty) Then Goto(WaitForTick)
-1140 N=KeyPeek; KeyNext
+1140 lastKey=KeyPeek; KeyNext
 Label(1145, KeyDispatch)
-1150 If(N=PAUSE) Then Gosub(PauseLoop); If(N=AUTO) Then clear(AutoBit) // will toggle on the next line
-1160 If(N=AUTO) Then toggle(AutoBit)
+1150 If(lastKey=PAUSE) Then Gosub(PauseLoop); If(lastKey=AUTO) Then clear(AutoBit) // will toggle on the next line
+1160 If(lastKey=AUTO) Then toggle(AutoBit)
 Label(1170, DirKey)
-1171 If(N=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
-1180 If(N=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
-1190 If(N=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
-1200 If(N=DOWN) Then clear(AutoBit); direction=South; Gosub(ChangeDirection)
-1220 If(N=QUIT) Then clear(AliveBit); lastKey=N
+1171 If(lastKey=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
+1180 If(lastKey=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
+1190 If(lastKey=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
+1200 If(lastKey=DOWN) Then clear(AutoBit); direction=South; Gosub(ChangeDirection)
+1220 If(lastKey=QUIT) Then clear(AliveBit)
 Label(1300, WaitForTick)
 1310 time=time+1
 1320 If(time<K) Then Goto(GameLoop)
 1330 K=time+tickDelay
 1340 Gosub(AdvanceHead); Goto(GameLoop)
 Label(1400, AutoInput)
-1410 If(KeyAvailable) Then N=KeyPeek; KeyNext; Goto(KeyDispatch)
+1410 If(KeyAvailable) Then lastKey=KeyPeek; KeyNext; Goto(KeyDispatch)
 // AutoStep (inlined): greedy AI - find nearest food, try directions
 1420 direction=AA(head)&3
 1430 If(foodCount=0) Then Goto(AutoFallback)
@@ -266,14 +265,14 @@ Label(1640, AutoDone)
 1650 Gosub(AdvanceHead); Goto(GameLoop)
 
 // === PauseLoop ===
-Subroutine(1700, PauseLoop, => N :)
+Subroutine(1700, PauseLoop, => lastKey : N)
 1710 For(N=1)To(300)
 1720   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
 1730 Next(N)
 1740 DO
 1750   DO; Until(KeyAvailable)
-1760   N=KeyPeek; KeyNext
-1770 Until(N=PAUSE OR N=QUIT OR N=AUTO OR IsDirKey(N))
+1760   lastKey=KeyPeek; KeyNext
+1770 Until(lastKey=PAUSE OR lastKey=QUIT OR lastKey=AUTO OR IsDirKey(lastKey))
 1780 Return
 
 // === Adjust: update binary indexed tree ===
