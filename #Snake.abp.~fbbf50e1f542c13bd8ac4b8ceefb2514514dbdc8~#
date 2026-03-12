@@ -28,29 +28,6 @@
 #define nextTick Y
 #define size Z
 
-// Call Graph (depth-first, showing call relationships):
-// Main Program
-// ├─→ Play (1000)  B C F H O R V W Y Z AA => A B E R S T U X Y AA : D I J K L M N
-// │   ├─→ HomePage (8000)  C H O V W Z AA => AA : E G I M N P Q
-// │   │   ├─→ BorderPrim (3020)  O P Z AA => AA : E G M N Q
-// │   │   │   └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
-// │   │   └─→ Border (3000)  O P V W Z AA => AA : E G M N Q
-// │   │       └─→ [falls through to BorderPrim (3020)]
-// │   ├─→ InitGame (4000)  B F H O V W Z AA => B D E S T X AA : G I J K L M N P Q
-// │   │   ├─→ Adjust (2000)  O P Q Z AA => AA : I M N P
-// │   │   └─→ SpawnFood (5100) [x5 in loop]  B F O V W X Z AA => B J X AA : I K L M N P Q
-// │   │       └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
-// │   ├─→ PauseLoop (1700)  => N :
-// │   ├─→ ChangeDirection (5000) [x4]  D S AA => AA :
-// │   ├─→ AdvanceHead (6200)  B E F O S T U V W X Z AA => B E S T U X AA : D G I K L M N P Q
-// │   │   ├─→ StepSub (6000) [x2]  D P W => P :
-// │   │   ├─→ MarkHead (6500)  G S V W AA => AA : D
-// │   │   ├─→ Adjust (2000) [TAIL CALL]  O P Q Z AA => AA : I M N P
-// │   │   └─→ SpawnFood (5100)  B F O V W X Z AA => B J X AA : I K L M N P Q
-// │   └─→ TryDirSub (6800) [x7]  N S W AA => D K AA :
-// │       └─→ ChangeDirection (5000) [TAIL CALL]  D S AA => AA :
-// └─→ PauseLoop (1700)  => N :
-
 // Packed flags in B: bit 0=alive, bit 1=autoPlay, bit 2=bonusActive
 #define AliveBit 1
 #define AutoBit 2
@@ -128,6 +105,29 @@
 #define AutoDone y
 #define AutoInput z
 
+// Call Graph (depth-first, showing call relationships):
+// Main Program
+// ├─→ Play (1000)  B Y R Z H W V C O F AA => B A Y S T U E X R AA : D I J K L M N
+// │   ├─→ HomePage (8000)  C H V W Z I O AA => AA : E G M N P Q
+// │   │   ├─→ BorderPrim (3020)  P I Z O AA => AA : E G M N Q P
+// │   │   │   └─→ Adjust (2000)  P Q Z O AA => AA : I M N P
+// │   │   └─→ Border (3000)  P W V I Z O AA => AA : E G M N Q P
+// │   │       └─→ [falls through to BorderPrim (3020)]
+// │   ├─→ InitGame (4000)  H W V O Z F B AA => S T D E X B AA : G I J K L M N P Q
+// │   │   ├─→ Adjust (2000)  P Q Z O AA => AA : I M N P
+// │   │   └─→ SpawnFood (5100) [x5 in loop]  O Z W V F X B AA => J X B AA : I K L M N P Q
+// │   │       └─→ Adjust (2000)  P Q Z O AA => AA : I M N P
+// │   ├─→ PauseLoop (1700)  => N :
+// │   ├─→ ChangeDirection (5000) [x4]  S D AA => AA :
+// │   ├─→ AdvanceHead (6200)  S T E W V F U X B O Z AA => S T U B X AA E : D G I K L M N P Q
+// │   │   ├─→ StepSub (6000) [x2]  P D W => P :
+// │   │   ├─→ MarkHead (6500)  G S W V AA => AA : D
+// │   │   ├─→ Adjust (2000) [TAIL CALL]  P Q Z O AA => AA : I M N P
+// │   │   └─→ SpawnFood (5100)  O Z W V F X B AA => J X B AA : I K L M N P Q
+// │   └─→ TryDirSub (6800) [x7]  N S W AA => K D AA :
+// │       └─→ ChangeDirection (5000) [TAIL CALL]  S D AA => AA :
+// └─→ PauseLoop (1700)  => N :
+
 #ifdef DEBUG
 #  define Debug 9600
 #  define DebugReturn Goto(Debug)
@@ -204,12 +204,12 @@ Label(100, NewGame)
 Label(400, Quit)
 410 Print(Position(height+3,1) ShowCursor)
 420 For(N=1) To(300)
-430   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
+430   If(KeyAvailable) T.KeyNext
 440 Next(N)
 450 End
 
 // === Play: one game ===
-Subroutine(1000, Play, flags nextTick time size height width colOffset highScore nodes snakeLUT AA => flags tickDelay nextTick head tail score lastDir foodCount time AA : D I J K L M N)
+Subroutine(1000, Play, => flags tickDelay nextTick head tail score lastDir foodCount time AA : D I J K L M N)
 1010 score=0; flags=isAuto|AliveBit
 1020 Gosub_(HomePage)
 1030 Gosub_(InitGame); CheckTree
@@ -266,9 +266,9 @@ Label(1640, AutoDone)
 1650 Gosub(AdvanceHead); Goto(GameLoop)
 
 // === PauseLoop ===
-Subroutine(1700, PauseLoop, => N :)
+Subroutine(1700, PauseLoop, => : N)
 1710 For(N=1)To(300)
-1720   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
+1720   If(KeyAvailable) T.KeyNext
 1730 Next(N)
 1740 DO
 1750   DO; Until(KeyAvailable)
@@ -277,7 +277,7 @@ Subroutine(1700, PauseLoop, => N :)
 1780 Return
 
 // === Adjust: update binary indexed tree ===
-Subroutine(2000, Adjust, pos quantity size nodes AA => AA : I M N pos)
+Subroutine(2000, Adjust, pos quantity => AA : I M N pos)
 2010 I=0; M=size
 2020 DO; AA(I)=AA(I)+quantity
 2030   N=M; M=M/2; I=I+I+1 // Assume lower half
@@ -286,16 +286,16 @@ Subroutine(2000, Adjust, pos quantity size nodes AA => AA : I M N pos)
 2060 Return
 
 // === Border: draw and mark border cell ===
-Subroutine(3000, Border, pos width colOffset size nodes AA => AA : lastDir G M N quantity)
+Subroutine(3000, Border, pos => AA : lastDir G M N quantity)
 3010 Print(MoveToPos(pos))
-Subroutine(3020, BorderPrim, pos size nodes AA => AA : lastDir G M N quantity)
+Subroutine(3020, BorderPrim, pos => AA : lastDir G M N quantity)
 3030 Print(" ")
 3040 AA(pos)=AA(pos)|BorderBit
-3050 lastDir=I; G=pos; quantity=-CountBit; Gosub(Adjust) // Save I,pos
-3060 pos=G; I=lastDir; Return // Restore
+3050 E=I; G=pos; quantity=-CountBit; Gosub(Adjust) // Save I,pos
+3060 pos=G; I=E; Return // Restore
 
 // === InitGame: set up snake and food ===
-Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags AA : G I J K L M N pos quantity)
+Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G I J M N pos quantity)
 4010 head=(height+1)/2*width-width/2 // Center of board
 4020 tail=head-2
 4030 direction=East
@@ -310,13 +310,13 @@ Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA =
 4120 DebugReturn
 
 // === ChangeDirection ===
-Subroutine(5000, ChangeDirection, head direction AA => AA :)
+Subroutine(5000, ChangeDirection, head direction => AA)
 5010 If(AA(head)&3=direction) Then Return // Dir not changed
 5020 AA(head)=AA(head)&DirMask|direction
 5030 Return
 
 // === SpawnFood: place food on random empty cell ===
-Subroutine(5100, SpawnFood, nodes size width colOffset snakeLUT foodCount flags AA => J foodCount flags AA : I K L M N pos quantity)
+Subroutine(5100, SpawnFood, => J foodCount flags AA : I K L M N pos quantity)
 5110 If(AA(0)&CountMask=0) Then Return // Board full
 5120 pos=Abs(Rnd)%(AA(0)/CountBit)
 5130 N=pos
@@ -344,12 +344,12 @@ Label(5200, LocateLinear) // Linear search:
 5390 DebugReturn
 
 // === StepSub: advance position one step in direction ===
-Subroutine(6000, StepSub, pos direction width => pos :)
+Subroutine(6000, StepSub, pos direction => pos)
 6010 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
 6020 Return
 
 // === AdvanceHead: move snake forward one step ===
-Subroutine(6200, AdvanceHead, head tail lastDir width colOffset snakeLUT score foodCount flags nodes size AA => head tail score flags foodCount AA lastDir : direction G I K L M N pos quantity)
+Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : direction G I N pos quantity)
 6210 direction=AA(head)&3
 6220 N=snakeLUT?(lastDir*4+direction)
 6230 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
@@ -379,7 +379,7 @@ Label(6400, Eat)
 6480 Gosub(SpawnFood)
 
 // === MarkHead: draw snake head at current position ===
-Subroutine(6500, MarkHead, G head width colOffset AA => AA : direction)
+Subroutine(6500, MarkHead, G head => AA : direction)
 6510 direction=G
 6520 AA(head)=AA(head)&CountMask|BorderBit|direction
 6530 Print(MoveToPos(head) SnakeHead)
@@ -390,13 +390,13 @@ Subroutine(6500, MarkHead, G head width colOffset AA => AA : direction)
 // Step(pos,dir) = pos + (dir&2-1) * ((dir&1)*(width-1)+1)
 // TryDir(N): if dir N is safe, apply it. K=0 if safe, K=BorderBit if blocked.
 
-Subroutine(6800, TryDirSub, N head width AA => K direction AA :)
+Subroutine(6800, TryDirSub, N head => K direction AA)
 6810 K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit
 6820 If(K=0) Then direction=N; Goto(ChangeDirection) // Tail-call optimization
 6830 Return
 
 // === HomePage: draw title and borders ===
-Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : lastDir G I M N pos quantity)
+Subroutine(8000, HomePage, highScore => AA : lastDir G I M N pos quantity)
 8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
 8030 For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
@@ -436,7 +436,7 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8630 Next(J)
 8650 If (CellCount(L)=K) Then L=I; K=0; Return
 8700 PrintLn(" - Error:")
-8710 For(pos=0) To(size-1); @=4; Print(AA(pos)/8); @=1; Print("/"AA(pos)&7); Next(pos)
+8710 For(P=0) To(Z-1); @=4; Print(AA(P)/8); @=1; Print("/"AA(P)&7); Next(P)
 8720 @=8; PrintLn(ShowCursor); End
 #endif
 
@@ -460,7 +460,7 @@ Debug AA(0) // J => : I
 9620   Print(Position(I,5)Double(I+2)AA(0)/8":"J"."); Next(I)
 9630 Return
 
-Subroutine(9800, AssertSub, K size width colOffset AA => : M pos)
+Subroutine(9800, AssertSub, K => : M pos)
 9810 If(K) Then Return
 // Error: dump board flags and halt
 9820 For(pos=0) To(size-1); M=AA(pos)&FlagsMask // size, AA => : M pos
