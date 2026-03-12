@@ -25,7 +25,7 @@
 #define colOffset V
 #define width W
 #define foodCount X
-#define nextTick Y
+#define lastKey Y
 #define size Z
 
 // Call Graph (depth-first, showing call relationships):
@@ -171,7 +171,7 @@
 // Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus
 80 DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"
 // --- end Init ---
-90 flags=AutoBit; nextTick=0; highScore=0
+90 flags=AutoBit; lastKey=0; highScore=0
 // NewGame: re-init tree and play
 Label(100, NewGame)
 // --- InitTree (inlined) --- size nodes => AA : I J K
@@ -183,22 +183,22 @@ Label(100, NewGame)
 160 For(I=nodes) To(size-1); AA(I)=0; Next(I)
 // --- end InitTree ---
 170 time=0; Gosub_(Play)
-180 If(nextTick=QUIT) Then Goto(Quit)
+180 If(lastKey=QUIT) Then Goto(Quit)
 190 If(isAuto=0) Then Goto(300)
 // Auto mode: delay then restart. Any key switches to manual.
 200 N=1800; DO; N=N-1; Until(N=0 OR KeyAvailable)
-210 If(KeyEmpty) Then nextTick=0; Goto(NewGame)
+210 If(KeyEmpty) Then lastKey=0; Goto(NewGame)
 220 N=KeyPeek; KeyNext
 230 If(N=QUIT) Then Goto(Quit)
-240 If(N=PAUSE) Then clear(AutoBit); nextTick=0; Goto(NewGame)
+240 If(N=PAUSE) Then clear(AutoBit); lastKey=0; Goto(NewGame)
 250 If(N=AUTO) Then Goto(NewGame)
-260 clear(AutoBit); nextTick=N; Goto(NewGame)
+260 clear(AutoBit); lastKey=N; Goto(NewGame)
 
 // Manual mode: wait for any valid key to restart, Quit to exit.
 300 Gosub(PauseLoop)
 310 If(N=QUIT) Then Goto(Quit)
 320 If(N=AUTO) Then set(AutoBit)
-330 nextTick=N; Goto(NewGame)
+330 lastKey=N; Goto(NewGame)
 
 // Exit
 Label(400, Quit)
@@ -209,13 +209,13 @@ Label(400, Quit)
 450 End
 
 // === Play: one game ===
-Subroutine(1000, Play, flags nextTick time size height width colOffset highScore nodes snakeLUT AA => flags tickDelay nextTick head tail score lastDir foodCount time AA : D I J K L M N)
+Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT AA => flags tickDelay lastKey head tail score lastDir foodCount time AA : D I J K L M N)
 1010 score=0; flags=isAuto|AliveBit
 1020 Gosub_(HomePage)
 1030 Gosub_(InitGame); CheckTree
-1040 N=nextTick // Saved key from game-over screen
+1040 N=lastKey // Saved key from game-over screen
 1050 tickDelay=SLOW_DOWN-size/100
-1060 nextTick=time+tickDelay
+1060 K=time+tickDelay // Next tick time (temp)
 1070 If(IsDirKey(N)) Then Goto(DirKey) // Process saved direction key
 Label(1100, GameLoop)
 1110 If(isAlive=0) Then Return
@@ -230,11 +230,11 @@ Label(1170, DirKey)
 1180 If(N=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
 1190 If(N=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
 1200 If(N=DOWN) Then clear(AutoBit); direction=South; Gosub(ChangeDirection)
-1220 If(N=QUIT) Then clear(AliveBit); nextTick=N
+1220 If(N=QUIT) Then clear(AliveBit); lastKey=N
 Label(1300, WaitForTick)
 1310 time=time+1
-1320 If(time<nextTick) Then Goto(GameLoop)
-1330 nextTick=time+tickDelay
+1320 If(time<K) Then Goto(GameLoop)
+1330 K=time+tickDelay
 1340 Gosub(AdvanceHead); Goto(GameLoop)
 Label(1400, AutoInput)
 1410 If(KeyAvailable) Then N=KeyPeek; KeyNext; Goto(KeyDispatch)
@@ -439,9 +439,9 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8720 @=8; PrintLn(ShowCursor); End
 #endif
 
-// === GameOver === head foodCount score => flags nextTick highScore : I
+// === GameOver === head foodCount score => flags lastKey highScore : I
 Label(9000, Clash)
-9010 clear(AliveBit); nextTick=0
+9010 clear(AliveBit); lastKey=0
 9020 Print(MoveToPos(head))
 9030 If(foodCount=0) Then Print(SnakeHead); Goto(9050)
 9040 Print("X")
