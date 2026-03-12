@@ -31,10 +31,10 @@
 // Call Graph (depth-first, showing call relationships):
 // Main Program
 // ├─→ Play (1000)  B C F H O R V W Y Z AA => A B E R S T U X Y AA : D I J K L M N
-// │   ├─→ HomePage (8000)  C H O V W Z AA => AA : E G I M N P Q
-// │   │   ├─→ BorderPrim (3020)  O P Z AA => AA : E G M N Q
+// │   ├─→ HomePage (8000)  C H O V W Z AA => AA : G I J M N P Q
+// │   │   ├─→ BorderPrim (3020)  O P Z AA => AA : I M N P Q
 // │   │   │   └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
-// │   │   └─→ Border (3000)  O P V W Z AA => AA : E G M N Q
+// │   │   └─→ Border (3000)  O P V W Z AA => AA : I M N P Q
 // │   │       └─→ [falls through to BorderPrim (3020)]
 // │   ├─→ InitGame (4000)  B F H O V W Z AA => B D E S T X AA : G I J K L M N P Q
 // │   │   ├─→ Adjust (2000)  O P Q Z AA => AA : I M N P
@@ -286,13 +286,12 @@ Subroutine(2000, Adjust, pos quantity size nodes AA => AA : I M N pos)
 2060 Return
 
 // === Border: draw and mark border cell ===
-Subroutine(3000, Border, pos width colOffset size nodes AA => AA : lastDir G M N quantity)
+Subroutine(3000, Border, pos width colOffset size nodes AA => AA : I M N pos quantity)
 3010 Print(MoveToPos(pos))
-Subroutine(3020, BorderPrim, pos size nodes AA => AA : lastDir G M N quantity)
+Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
 3030 Print(" ")
 3040 AA(pos)=AA(pos)|BorderBit
-3050 lastDir=I; G=pos; quantity=-CountBit; Gosub(Adjust) // Save I,pos
-3060 pos=G; I=lastDir; Return // Restore
+3050 quantity=-CountBit; Goto(Adjust) // Tail-call optimization
 
 // === InitGame: set up snake and food ===
 Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags AA : G I J K L M N pos quantity)
@@ -396,7 +395,7 @@ Subroutine(6800, TryDirSub, N head width AA => K direction AA :)
 6830 Return
 
 // === HomePage: draw title and borders ===
-Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : lastDir G I M N pos quantity)
+Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : G I J M N pos quantity)
 8010 Print(ClearScreen HideCursor)
 8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
 8030 For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
@@ -404,13 +403,13 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8050 For(I=1) To(height); Print($10$13$27"#6"); Next(I)
 8060 Print(ReverseVideo)
 8070 Print(Position(3, colOffset)) // TopBorder
-8080 For(pos=0) To(width-1); Gosub(BorderPrim); Next(pos)
-8090 For(I=width) To(size-width-width) Step(width) // SideBorders
-8100   pos=I; Gosub(Border) // LeftBorder
-8110   pos=I+width-1; Gosub(Border) // RightBorder
-8120 Next(I)
+8080 For(J=0) To(width-1); pos=J; Gosub(BorderPrim); Next(J)
+8090 For(J=width) To(size-width-width) Step(width) // SideBorders
+8100   pos=J; Gosub(Border) // LeftBorder
+8110   pos=J+width-1; Gosub(Border) // RightBorder
+8120 Next(J)
 8130 Print(Position(height+2, colOffset)) // BottomBorder
-8140 For(pos=size-width) To(size-1); Gosub(BorderPrim); Next(pos)
+8140 For(J=size-width) To(size-1); pos=J; Gosub(BorderPrim); Next(J)
 8150 Print(NormalVideo)
 8160 Return
 

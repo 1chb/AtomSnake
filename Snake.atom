@@ -107,13 +107,12 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 2040 IF P>=M THEN P=P-M; M=N-M; I=I+1
 2050 UNTIL I>=O
 2060 RETURN
-3000b REM === "Border" === P W V Z O AA => AA : E G M N Q
+3000b REM === "Border" === P W V Z O AA => AA : I M N P Q
 3010 PRINT $27"["P/W+3";"P%W+V "H"
-3020r REM === "BorderPrim" === P Z O AA => AA : E G M N Q
+3020r REM === "BorderPrim" === P Z O AA => AA : I M N P Q
 3030 PRINT " "
 3040 AA(P)=AA(P)|4
-3050 E=I; G=P; Q=-8; GOSUB a
-3060 P=G; I=E; RETURN
+3050 Q=-8; GOTO a; REM "Adjust"
 4000n REM === "InitGame" === H W V O Z F B AA => S T D E X B AA : G I J K L M N P Q
 4010 S=(H+1)/2*W-W/2
 4020 T=S-2
@@ -191,7 +190,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 6810 K=AA(S+(N&2-1)*((N&1)*(W-1)+1))&4
 6820 IF K=0 THEN D=N; GOTO d; REM "ChangeDirection"
 6830 RETURN
-8000h REM === "HomePage" === C H V W Z O AA => AA : E G I M N P Q
+8000h REM === "HomePage" === C H V W Z O AA => AA : G I J M N P Q
 8010 PRINT $12 $27"[?25l"
 8020 FOR I=1 TO 2; PRINT $27"["I ";"18"H"$27"#"I+2"Snake"; NEXT I
 8030 FOR I=1 TO 2; PRINT $27"["I ";"30"H"$27"#"I+2"Score 0"; NEXT I
@@ -199,13 +198,13 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 8050 FOR I=1 TO H; PRINT $10$13$27"#6"; NEXT I
 8060 PRINT $27"[7m"
 8070 PRINT $27"["3";"V "H"
-8080 FOR P=0 TO W-1; GOSUB r; NEXT P
-8090 FOR I=W TO Z-W-W STEP W
-8100 P=I; GOSUB b
-8110 P=I+W-1; GOSUB b
-8120 NEXT I
+8080 FOR J=0 TO W-1; P=J; GOSUB r; NEXT J
+8090 FOR J=W TO Z-W-W STEP W
+8100 P=J; GOSUB b
+8110 P=J+W-1; GOSUB b
+8120 NEXT J
 8130 PRINT $27"["H+2";"V "H"
-8140 FOR P=Z-W TO Z-1; GOSUB r; NEXT P
+8140 FOR J=Z-W TO Z-1; P=J; GOSUB r; NEXT J
 8150 PRINT $27"[m"
 8160 RETURN
 9000j
