@@ -186,7 +186,7 @@ Label(400, Quit)
 450 End
 
 // === Play: one game ===
-Subroutine(1000, Play, => flags tickDelay nextTick head tail score lastDir foodCount time AA : D G I J K L M N P Q)
+Subroutine(1000, Play, => flags tickDelay nextTick head tail score lastDir foodCount time AA : D I J K L M N)
 1010 score=0; flags=isAuto|AliveBit
 1020 Gosub_(HomePage)
 1030 Gosub_(InitGame); CheckTree
@@ -272,7 +272,7 @@ Subroutine(3020, BorderPrim, pos => AA : E G M N Q)
 3060 pos=G; I=E; Return // Restore
 
 // === InitGame: set up snake and food ===
-Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G I J K L M N P Q)
+Subroutine(4000, InitGame, => head tail direction lastDir foodCount flags AA : G I J M N P Q)
 4010 head=(height+1)/2*width-width/2 // Center of board
 4020 tail=head-2
 4030 direction=East
@@ -326,7 +326,7 @@ Subroutine(6000, StepSub, pos direction => pos)
 6020 Return
 
 // === AdvanceHead: move snake forward one step ===
-Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : D G I J K L M N P Q)
+Subroutine(6200, AdvanceHead, => head tail score flags foodCount AA lastDir : D G I N P Q)
 6210 direction=AA(head)&3
 6220 N=snakeLUT?(lastDir*4+direction)
 6230 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
