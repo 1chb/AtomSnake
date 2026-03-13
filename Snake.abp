@@ -369,25 +369,23 @@ Subroutine(6200, AdvanceHead, head tail lastDir width colOffset snakeLUT score f
 6320 vu(|-......) Print(MoveToPos(tail) " ")
 6330 vu(|-......) pos=tail; Gosub(StepSub); tail=pos
 // end EatTail
-6350 vu(g-......) Gosub(MarkHead) // TODO: Inline!
+6350 vu(g-......) Gosub(MarkHead)
 6360 vu(.-......) pos=head; quantity=-CountBit
 6370 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
-Label(6400, Eat)
-6410 vu(.-......) foodCount=foodCount-1
-6420 vu(.-I.....) I=0
-6430 vu(.-i.....) If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
-6440 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
-6450 vu(.-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
-6460 vu(.-......) score=score+1
-6470 vu(.-I.....) For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
-6480 vu(.-I.KLMN) Gosub(SpawnFood)
-// === MarkHead: draw snake head at current position ===
-Subroutine(6500, MarkHead, G head width colOffset AA => AA : direction)
-6510 vu(g-......) direction=G
-6520 vu(.-......) AA(head)=AA(head)&CountMask|BorderBit|direction
-6530 vu(.-......) Print(MoveToPos(head) SnakeHead)
-6540 vu(.-......) Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
-6550 vu(.-......) Return
+Label(6400, Eat) // From 6280
+6410 vu(|-......) foodCount=foodCount-1
+6420 vu(|-I.....) I=0
+6430 vu(|-i.....) If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
+6440 vu(|-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
+6450 vu(|-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
+6460 vu(|-......) score=score+1
+6470 vu(|-I.....) For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
+6480 vu(|-I.KLMN) Gosub(SpawnFood) // Fall through to MarkHead
+Subroutine(6500, MarkHead, G head width colOffset AA => AA : ) // draw snake head at current position 
+6490 vu(g-......) AA(head)=AA(head)&CountMask|BorderBit|G
+6500 vu(.-......) Print(MoveToPos(head) SnakeHead)
+6510 vu(.-......) Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
+6520 vu(.-......) Return
 
 // === TryDirSub: test if direction N is safe, apply if so === // TODO: Move before line 1000
 // Step(pos,dir) = pos + (dir&2-1) * ((dir&1)*(width-1)+1)

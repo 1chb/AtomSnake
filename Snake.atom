@@ -1,3 +1,7 @@
+In file included from Snake.abp:4:
+AcornAtom.abp:28:29: warning: missing terminating ' character
+   28 | #  define PrintLn(any) P.any'
+      |                             ^
 
 10 W=40
 20 H=21

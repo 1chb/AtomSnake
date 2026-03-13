@@ -401,6 +401,22 @@ def optimize(text):
         else:
             merged.append(line)
     
+    # Step 4: Validate line lengths
+    errors = []
+    for line in merged:
+        if len(line) > MAX_LINE:
+            errors.append((line, len(line)))
+    
+    if errors:
+        # Report all lines that are too long
+        print(f"ERROR: {len(errors)} line(s) exceed {MAX_LINE} character limit:", file=sys.stderr)
+        for line, length in errors:
+            # Parse to get line number for better error reporting
+            num, label, body = parse_line(line)
+            line_ref = f"Line {num}" if num else "Unknown line"
+            print(f"  {line_ref}: {length} chars: {line[:80]}{'...' if len(line) > 80 else ''}", file=sys.stderr)
+        sys.exit(1)
+    
     return '\n'.join(merged) + '\n'
 
 
