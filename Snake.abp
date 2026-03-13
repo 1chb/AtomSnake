@@ -30,8 +30,8 @@
 
 // Call Graph (depth-first, showing call relationships):
 // Main Program
-// ├─→ Play (1000)  B C D F H O R V W Y Z AA => A B D E R S T U X Y AA : I J K L M N
-// │   ├─→ HomePage (8000)  C H O V W Z AA => AA : G I J M N P Q
+// ├─→ Play (1000)  B C D F H O R V W Y Z AA => A B D E R S T U X Y AA : G I J K L M N
+// │   ├─→ HomePage (8000)  C H O V W Z AA => AA : I J M N P Q
 // │   │   ├─→ BorderPrim (3020)  O P Z AA => AA : I M N P Q
 // │   │   │   └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
 // │   │   └─→ Border (3000)  O P V W Z AA => AA : I M N P Q
@@ -148,6 +148,8 @@
 #  define CheckTree
 #endif
 
+#define vu(usage)
+
 // === Main program ===
 //
 // Key handling across all modes:
@@ -159,258 +161,260 @@
 //  End Auto    exit        to manual   restart     to manual+dir
 //  End Manual  exit        restart     to auto     restart+dir
 // In End Auto pause, play will resume automatically after a delay.
-10 width=40
-20 height=21
+vu(G-IJKLMN jumps)
+10 vu(.-......) width=40
+20 vu(.-......) height=21
 // --- Init (inlined) --- width height => size nodes colOffset snakeLUT AA : I J K
-30 @=0; colOffset=(42-width)/2
-40 size=width*height
-50 DIM AA(size-1); Print("Initializing...")
-60 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
-70 nodes=nodes/2-1 // Halved tree: frees cells for food list
+30 vu(.-......) @=0; colOffset=(42-width)/2
+40 vu(.-......) size=width*height
+50 vu(.-......) DIM AA(size-1); Print("Initializing...")
+60 vu(.-......) nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
+70 vu(.-......) nodes=nodes/2-1 // Halved tree: frees cells for food list
 // Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
 // Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus
-80 DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"
+80 vu(.-......) DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"
 // --- end Init ---
-90 flags=AutoBit; lastKey=0; highScore=0
+90 vu(.-......) flags=AutoBit; lastKey=0; highScore=0
 // NewGame: re-init tree and play
 Label(100, NewGame)
 // --- InitTree (inlined) --- size nodes => AA : I J K
-110 AA(0)=size*CountBit
-120 For(I=1) To(nodes-2) Step(2)
-130   J=(I-1)/2; K=AA(J)/2&CountMask
-140   AA(I)=K; AA(I+1)=AA(J)-K
-150 Next(I)
-160 For(I=nodes) To(size-1); AA(I)=0; Next(I)
+110 vu(.-......) AA(0)=size*CountBit
+120 vu(.-I.....) For(I=1) To(nodes-2) Step(2)
+130 vu(.-iJK...)   J=(I-1)/2; K=AA(J)/2&CountMask
+140 vu(.-ijk...)   AA(I)=K; AA(I+1)=AA(J)-K
+150 vu(.-i.....) Next(I)
+160 vu(.-I.....) For(I=nodes) To(size-1); AA(I)=0; Next(I)
 // --- end InitTree ---
-170 time=0; Gosub_(Play)
-180 If(lastKey=QUIT) Then Goto(Quit)
-190 If(isAuto=0) Then Goto(300)
+170 vu(G-IJKLMN) time=0; Gosub_(Play)
+180 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
+190 vu(.-......) If(isAuto=0) Then Goto(300)
 // Auto mode: delay then restart. Any key switches to manual.
-200 N=1800; DO; N=N-1; Until(N=0 OR KeyAvailable)
-210 If(KeyEmpty) Then lastKey=0; Goto(NewGame)
-220 N=KeyPeek; KeyNext
-230 If(N=QUIT) Then Goto(Quit)
-240 If(N=PAUSE) Then clear(AutoBit); lastKey=0; Goto(NewGame)
-250 If(N=AUTO) Then Goto(NewGame)
-260 clear(AutoBit); lastKey=N; Goto(NewGame)
+200 vu(.-.....N) N=1800; DO; N=N-1; Until(N=0 OR KeyAvailable) // TODO: Use I instead of N
+210 vu(.-......) If(KeyEmpty) Then lastKey=0; Goto(NewGame)
+220 vu(.-.....N) N=KeyPeek; KeyNext // TODO: Use lastKey instead of N until line 260
+230 vu(.-.....n) If(N=QUIT) Then Goto(Quit)
+240 vu(.-.....n) If(N=PAUSE) Then clear(AutoBit); lastKey=0; Goto(NewGame)
+250 vu(.-.....n) If(N=AUTO) Then Goto(NewGame)
+260 vu(.-.....n) clear(AutoBit); lastKey=N; Goto(NewGame)
 
 // Manual mode: wait for any valid key to restart, Quit to exit.
-300 Gosub(PauseLoop)
-310 If(lastKey=QUIT) Then Goto(Quit)
-320 If(lastKey=AUTO) Then set(AutoBit)
-330 Goto(NewGame)
+300 vu(.-.....N) Gosub(PauseLoop)
+310 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
+320 vu(.-......) If(lastKey=AUTO) Then set(AutoBit)
+330 vu(.-......) Goto(NewGame)
 
 // Exit
 Label(400, Quit)
-410 Print(Position(height+3,1) ShowCursor)
-420 For(N=1) To(300)
-430   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
-440 Next(N)
-450 End
+410 vu(.-......) Print(Position(height+3,1) ShowCursor)
+420 vu(.-.....N) For(N=1) To(300) // TODO: Use I instead of N
+430 vu(.-.....|)   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
+440 vu(.-.....n) Next(N)
+450 vu(.-......) End
 
 // === Play: one game ===
-Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : I J K L M N)
-1010 score=0; flags=isAuto|AliveBit
-1020 Gosub_(HomePage)
-1030 Gosub_(InitGame); CheckTree
-1050 tickDelay=SLOW_DOWN-size/100
-1060 K=time+tickDelay // Next tick time (temp)
-1070 If(IsDirKey(lastKey)) Then Goto(DirKey) // Process saved direction key
+Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : G I J K L M N)
+1010 vu(.-......) score=0; flags=isAuto|AliveBit
+1020 vu(.-IJ..MN) Gosub_(HomePage)
+1030 vu(G-IJKLMN) Gosub_(InitGame)
+1035 vu(.-IJKLMN) CheckTree
+1050 vu(.-......) tickDelay=SLOW_DOWN-size/100
+1060 vu(.-..K...) K=time+tickDelay // Next tick time (temp)
+1070 vu(.-..|...) If(IsDirKey(lastKey)) Then Goto(DirKey) // Process saved direction key
 Label(1100, GameLoop)
-1110 If(isAlive=0) Then Return
-1120 If(isAuto) Then Goto(AutoInput)
-1130 If(KeyEmpty) Then Goto(WaitForTick)
-1140 lastKey=KeyPeek; KeyNext
+1110 vu(.-..|...) If(isAlive=0) Then Return
+1120 vu(.-..|...) If(isAuto) Then Goto(AutoInput)
+1130 vu(.-..|...) If(KeyEmpty) Then Goto(WaitForTick)
+1140 vu(.-..|...) lastKey=KeyPeek; KeyNext
 Label(1145, KeyDispatch)
-1150 If(lastKey=PAUSE) Then Gosub(PauseLoop); If(lastKey=AUTO) Then clear(AutoBit) // will toggle on the next line
-1160 If(lastKey=AUTO) Then toggle(AutoBit)
+1150 vu(.-..|..N) If(lastKey=PAUSE) Then Gosub(PauseLoop); If(lastKey=AUTO) Then clear(AutoBit) // will toggle on the next line
+1160 vu(.-..|...) If(lastKey=AUTO) Then toggle(AutoBit)
 Label(1170, DirKey)
-1171 If(lastKey=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
-1180 If(lastKey=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
-1190 If(lastKey=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
-1200 If(lastKey=DOWN) Then clear(AutoBit); direction=South; Gosub(ChangeDirection)
-1220 If(lastKey=QUIT) Then clear(AliveBit)
+1171 vu(.-..|...) If(lastKey=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
+1180 vu(.-..|...) If(lastKey=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
+1190 vu(.-..|...) If(lastKey=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
+1200 vu(.-..|...) If(lastKey=DOWN) Then clear(AutoBit); direction=South; Gosub(ChangeDirection)
+1220 vu(.-..|...) If(lastKey=QUIT) Then clear(AliveBit)
 Label(1300, WaitForTick)
-1310 time=time+1
-1320 If(time<K) Then Goto(GameLoop)
-1330 K=time+tickDelay
-1340 Gosub(AdvanceHead); Goto(GameLoop)
+1310 vu(.-..|...) time=time+1
+1320 vu(.-..k...) If(time<K) Then Goto(GameLoop)
+1330 vu(.-..K...) K=time+tickDelay
+1340 vu(.-..k...) Gosub(AdvanceHead); Goto(GameLoop)
 Label(1400, AutoInput)
-1410 If(KeyAvailable) Then lastKey=KeyPeek; KeyNext; Goto(KeyDispatch)
+1410 vu(.-......) If(KeyAvailable) Then lastKey=KeyPeek; KeyNext; Goto(KeyDispatch)
 // AutoStep (inlined): greedy AI - find nearest food, try directions
-1420 direction=AA(head)&3
-1430 If(foodCount=0) Then Goto(AutoFallback)
-1440 K=#7FFF
-1450 For(I=0) To(foodCount-1); J=FoodGet(I)
-1455   If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(1470)
-1460   M=Abs(J/width-head/width)+Abs(J%width-head%width)
-1465   If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
-1467   If(M<K) Then K=M; L=J
-1470 Next(I) // L=nearest food
-1480 J=L%width-head%width; M=L/width-head/width // J=dx, M=dy
-1490 N=East; If(J<0) Then N=West // N=horizontal toward food
-1500 If(Abs(M)>Abs(J)) Then N=South; If(M<0) Then N=North // Override: vertical if |dy|>|dx|
-1510 L=N; TryDir // L=primary direction toward food
-1520 N=South; If(M<0) Then N=North // Try other axis: vertical toward food
-1530 If(Abs(M)>Abs(J)) Then N=East; If(J<0) Then N=West // Override: horizontal if vertical was primary
-1540 TryDir
-1550 N=N:2; TryDir // Try secondary axis AWAY from food
-1560 N=L:2; TryDir // Try primary axis AWAY from food (opposite of desired)
+1420 vu(.-......) direction=AA(head)&3
+1430 vu(.-......) If(foodCount=0) Then Goto(AutoFallback)
+1440 vu(.-..K...) K=#7FFF
+1450 vu(.-IJk...) For(I=0) To(foodCount-1); J=FoodGet(I)
+1455 vu(.-|j|...)   If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(1470)
+1460 vu(.-|||.M.)   M=Abs(J/width-head/width)+Abs(J%width-head%width)
+1465 vu(.-|j|.m.)   If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
+1467 vu(.-|.kLm.)   If(M<K) Then K=M; L=J
+1470 vu(.-i..|..) Next(I) // L=nearest food
+1480 vu(.-.J.lM.) J=L%width-head%width; M=L/width-head/width // J=dx, M=dy
+1490 vu(.-.j..|N) N=East; If(J<0) Then N=West // N=horizontal toward food
+1500 vu(.-.j..mn) If(Abs(M)>Abs(J)) Then N=South; If(M<0) Then N=North // Override: vertical if |dy|>|dx|
+1510 vu(.-.|KL|n) L=N; TryDir // L=primary direction toward food
+1520 vu(.-.|.|mN) N=South; If(M<0) Then N=North // Try other axis: vertical toward food
+1530 vu(.-.j.|mn) If(Abs(M)>Abs(J)) Then N=East; If(J<0) Then N=West // Override: horizontal if vertical was primary
+1540 vu(.-..K|.n) TryDir
+1550 vu(.-..K|.n) N=N:2; TryDir // Try secondary axis AWAY from food
+1560 vu(.-..Kl.N) N=L:2; TryDir // Try primary axis AWAY from food (opposite of desired)
 Label(1600, AutoFallback)
-1610 N=direction; TryDir // Fallback: straight
-1620 N=(direction+1)&3; TryDir
-1630 N=(direction-1)&3; TryDir
+1610 vu(.-..K..N) N=direction; TryDir // Fallback: straight
+1620 vu(.-..K..N) N=(direction+1)&3; TryDir
+1630 vu(.-..K..N) N=(direction-1)&3; TryDir
 // end AutoStep
 Label(1640, AutoDone)
-1650 Gosub(AdvanceHead); Goto(GameLoop)
+1650 vu(.-......) Gosub(AdvanceHead)
+1660 vu(.-......) Goto(GameLoop)
 
 // === PauseLoop ===
 Subroutine(1700, PauseLoop, => lastKey : N)
-1710 For(N=1)To(300)
-1720   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
-1730 Next(N)
-1740 DO
-1750   DO; Until(KeyAvailable)
-1760   lastKey=KeyPeek; KeyNext
-1770 Until(lastKey=PAUSE OR lastKey=QUIT OR lastKey=AUTO OR IsDirKey(lastKey))
-1780 Return
+1710 vu(.-.....N) For(N=1)To(300)
+1720 vu(.-.....|)   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
+1730 vu(.-.....n) Next(N)
+1740 vu(.-......) DO
+1750 vu(.-......)   DO; Until(KeyAvailable)
+1760 vu(.-......)   lastKey=KeyPeek; KeyNext
+1770 vu(.-......) Until(lastKey=PAUSE OR lastKey=QUIT OR lastKey=AUTO OR IsDirKey(lastKey))
+1780 vu(.-......) Return
 
 // === Adjust: update binary indexed tree ===
 Subroutine(2000, Adjust, pos quantity size nodes AA => AA : I M N pos)
-2010 I=0; M=size
-2020 DO; AA(I)=AA(I)+quantity
-2030   N=M; M=M/2; I=I+I+1 // Assume lower half
-2040   If (pos>=M) Then pos=pos-M; M=N-M; I=I+1 // Otherwise upper half
-2050 Until(I>=nodes)
-2060 Return
+2010 vu(.-I...M.) I=0; M=size
+2020 vu(.-i...|.) DO; AA(I)=AA(I)+quantity
+2030 vu(.-i...mN)   N=M; M=M/2; I=I+I+1 // Assume lower half
+2040 vu(.-i...mn)   If (pos>=M) Then pos=pos-M; M=N-M; I=I+1 // Otherwise upper half
+2050 vu(.-i...|.) Until(I>=nodes)
+2060 vu(.-......) Return
 
 // === Border: draw and mark border cell ===
 Subroutine(3000, Border, pos width colOffset size nodes AA => AA : I M N pos quantity)
-3010 Print(MoveToPos(pos))
+3010 vu(.-......) Print(MoveToPos(pos))
 Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
-3030 Print(" ")
-3040 AA(pos)=AA(pos)|BorderBit
-3050 quantity=-CountBit; Goto(Adjust) // Tail-call optimization
+3030 vu(.-......) Print(" ")
+3040 vu(.-......) AA(pos)=AA(pos)|BorderBit
+3050 vu(.-......) quantity=-CountBit
+3060 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
 
 // === InitGame: set up snake and food ===
 Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags AA : G I J K L M N pos quantity)
-4010 head=(height+1)/2*width-width/2 // Center of board
-4020 tail=head-2
-4030 direction=East
-4040 For(J=tail) To(head)
-4050   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
-4060   AA(J)=AA(J)&CountMask|BorderBit|direction
-4070   pos=J; quantity=-CountBit; Gosub(Adjust)
-4080 Next(J)
-4090 lastDir=East; foodCount=0; clear(BonusBit)
-4100 Print(MoveToPos(head) SnakeHead)
-4110 For(G=1) To(5); Gosub(SpawnFood); Next(G)
-4120 DebugReturn
+4010 vu(.-......) head=(height+1)/2*width-width/2 // Center of board
+4020 vu(.-......) tail=head-2
+4030 vu(.-......) direction=East
+4040 vu(.-.J....) For(J=tail) To(head)
+4050 vu(.-.j....)   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
+4060 vu(.-.j....)   AA(J)=AA(J)&CountMask|BorderBit|direction
+4070 vu(.-Ij..MN)   pos=J; quantity=-CountBit; Gosub(Adjust)
+4080 vu(.-.j....) Next(J)
+4090 vu(.-......) lastDir=East; foodCount=0; clear(BonusBit)
+4100 vu(.-......) Print(MoveToPos(head) SnakeHead)
+4110 vu(G-IJKLMN) For(G=1) To(5); Gosub(SpawnFood); Next(G) // TODO: Can G be replaced with a non-temp variable?
+4120 vu(.-Ij....) DebugReturn
 
 // === ChangeDirection ===
 Subroutine(5000, ChangeDirection, head direction AA => AA :)
-5010 If(AA(head)&3=direction) Then Return // Dir not changed
-5020 AA(head)=AA(head)&DirMask|direction
-5030 Return
+5010 vu(.-......) If(AA(head)&3=direction) Then Return // Dir not changed
+5020 vu(.-......) AA(head)=AA(head)&DirMask|direction
+5030 vu(.-......) Return
 
 // === SpawnFood: place food on random empty cell ===
 Subroutine(5100, SpawnFood, nodes size width colOffset snakeLUT foodCount flags AA => J foodCount flags AA : I K L M N pos quantity)
-5110 If(AA(0)&CountMask=0) Then Return // Board full
-5120 pos=Abs(Rnd)%(AA(0)/CountBit)
-5130 N=pos
+5110 vu(.-......) If(AA(0)&CountMask=0) Then Return // Board full
+5120 vu(.-......) pos=Abs(Rnd)%(AA(0)/CountBit)
+5130 vu(.-.....N) N=pos
 #ifdef DEBUG
-5140 For(I=1) To(2); Print(Position(I,1)Double(I+2)pos":"isBonus":"N%13" "); Next(I)
+5140 vu(.-I....|) For(I=1) To(2); Print(Position(I,1)Double(I+2)pos":"isBonus":"N%13" "); Next(I)
 #endif
 // Locate (inlined): find Nth empty cell in tree
-5150 pos=pos*CountBit; I=1; J=0; K=size // Interval [J..K)
-5160 DO; M=(K-J)/2; L=AA(I)&CountMask
-5170   If(pos<L) Then K=J+M; I=I+I+1
-5180   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
-5190 Until(I>=nodes)
+5150 vu(.-IJK..|) pos=pos*CountBit; I=1; J=0; K=size // Interval [J..K)
+5160 vu(.-ijkLM|) DO; M=(K-J)/2; L=AA(I)&CountMask
+5170 vu(.-ijKlm|)   If(pos<L) Then K=J+M; I=I+I+1
+5180 vu(.-ij|lm|)   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
+5190 vu(.-i||..|) Until(I>=nodes)
 Label(5200, LocateLinear) // Linear search:
-5210 If(AA(J)&FlagsMask) J=J+1; Assert(J<size); Goto(LocateLinear)
-5220 If(pos>0) Then pos=pos-CountBit; J=J+1; Assert(J<size); Goto(LocateLinear)
+5210 vu(.-.j..M|) If(AA(J)&FlagsMask) J=J+1; Assert(J<size); Goto(LocateLinear)
+5220 vu(.-.j..M|) If(pos>0) Then pos=pos-CountBit; J=J+1; Assert(J<size); Goto(LocateLinear)
 // end Locate
-5300 Assert(pos=0 AND AA(J)&FlagsMask=0)
-5320 K=Mouse
-5330 If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
-5340 AA(J)=AA(J)+K
-5350 Print(MoveToPos(J) $(snakeLUT+15)?K)
-5360 pos=J; quantity=-CountBit; Gosub(Adjust)
-5370 FoodSet(foodCount,J)
-5380 foodCount=foodCount+1; CheckTree
-5390 DebugReturn
+5300 vu(.-.j..M|) Assert(pos=0 AND AA(J)&FlagsMask=0)
+5320 vu(.-.|K..|) K=Mouse
+5330 vu(.-.|k..n) If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
+5340 vu(.-.jk...) AA(J)=AA(J)+K
+5350 vu(.-.jk...) Print(MoveToPos(J) $(snakeLUT+15)?K)
+5360 vu(.-Ij..MN) pos=J; quantity=-CountBit; Gosub(Adjust)
+5370 vu(.-.j....) FoodSet(foodCount,J)
+5380 vu(.-......) foodCount=foodCount+1; CheckTree
+5390 vu(.-Ij....) DebugReturn
 
 // === StepSub: advance position one step in direction ===
 Subroutine(6000, StepSub, pos direction width => pos :)
-6010 pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
-6020 Return
+6010 vu(.-......) pos=pos+(direction&2-1)*((direction&1)*(width-1)+1)
+6020 vu(.-......) Return
 
 // === AdvanceHead: move snake forward one step ===
 Subroutine(6200, AdvanceHead, head tail lastDir width colOffset snakeLUT score foodCount flags nodes size AA => head tail score flags foodCount AA lastDir : direction G I K L M N pos quantity)
-6210 direction=AA(head)&3
-6220 N=snakeLUT?(lastDir*4+direction)
-6230 Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
-6240 lastDir=direction
-6250 pos=head; Gosub(StepSub); head=pos
-6260 If(AA(head)&BorderBit) Then Goto(Clash)
-6270 G=direction
-6280 If(AA(head)&FlagsMask) Then Goto(Eat)
+6210 vu(.-......) direction=AA(head)&3
+6220 vu(.-.....N) N=snakeLUT?(lastDir*4+direction)
+6230 vu(.-.....n) Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
+6240 vu(.-......) lastDir=direction
+6250 vu(.-......) pos=head; Gosub(StepSub); head=pos
+6260 vu(.-I.....) If(AA(head)&BorderBit) Then Goto(Clash)
+6270 vu(G-......) G=direction
+6280 vu(|-......) If(AA(head)&FlagsMask) Then Goto(Eat)
 // EatTail (inlined): remove tail segment
-6290 pos=tail; quantity=CountBit; Gosub(Adjust)
-6300 direction=AA(tail)
-6310 AA(tail)=direction&CountMask
-6320 Print(MoveToPos(tail) " ")
-6330 pos=tail; Gosub(StepSub)
-6340 tail=pos
+6290 vu(|-I...MN) pos=tail; quantity=CountBit; Gosub(Adjust)
+6300 vu(|-......) direction=AA(tail)
+6310 vu(|-......) AA(tail)=direction&CountMask
+6320 vu(|-......) Print(MoveToPos(tail) " ")
+6330 vu(|-......) pos=tail; Gosub(StepSub); tail=pos
 // end EatTail
-6350 Gosub(MarkHead)
-6360 pos=head; quantity=-CountBit; Goto(Adjust) // Tail-call optimization
+6350 vu(g-......) Gosub(MarkHead) // TODO: Inline!
+6360 vu(.-......) pos=head; quantity=-CountBit
+6370 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
 Label(6400, Eat)
-6410 foodCount=foodCount-1
-6420 I=0
-6430 If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
-6440 AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
-6450 If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
-6460 score=score+1
-6470 For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
-6480 Gosub(SpawnFood)
-
+6410 vu(.-......) foodCount=foodCount-1
+6420 vu(.-I.....) I=0
+6430 vu(.-i.....) If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
+6440 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
+6450 vu(.-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
+6460 vu(.-......) score=score+1
+6470 vu(.-I.....) For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
+6480 vu(.-I.KLMN) Gosub(SpawnFood)
 // === MarkHead: draw snake head at current position ===
 Subroutine(6500, MarkHead, G head width colOffset AA => AA : direction)
-6510 direction=G
-6520 AA(head)=AA(head)&CountMask|BorderBit|direction
-6530 Print(MoveToPos(head) SnakeHead)
-6540 Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
-6550 DebugReturn
+6510 vu(g-......) direction=G
+6520 vu(.-......) AA(head)=AA(head)&CountMask|BorderBit|direction
+6530 vu(.-......) Print(MoveToPos(head) SnakeHead)
+6540 vu(.-......) Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
+6550 vu(.-......) Return
 
-// === TryDirSub: test if direction N is safe, apply if so ===
+// === TryDirSub: test if direction N is safe, apply if so === // TODO: Move before line 1000
 // Step(pos,dir) = pos + (dir&2-1) * ((dir&1)*(width-1)+1)
 // TryDir(N): if dir N is safe, apply it. K=0 if safe, K=BorderBit if blocked.
-
 Subroutine(6800, TryDirSub, N head width AA => K direction AA :)
-6810 K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit
-6820 If(K=0) Then direction=N; Goto(ChangeDirection) // Tail-call optimization
-6830 Return
+6810 vu(.-..K..n) K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit
+6820 vu(.-..k...) If(K=0) Then direction=N; Goto(ChangeDirection) // Tail-call optimization
+6830 vu(.-......) Return
 
 // === HomePage: draw title and borders ===
-Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : G I J M N pos quantity)
-8010 Print(ClearScreen HideCursor)
-8020 For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
-8030 For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
-8040 If(highScore) Then For(I=1) To(2); Print(Position(I,1)Double(I+2)"High "highScore); Next(I)
-8050 For(I=1) To(height); Print($10$13$27"#6"); Next(I)
-8060 Print(ReverseVideo)
-8070 Print(Position(3, colOffset)) // TopBorder
-8080 For(J=0) To(width-1); pos=J; Gosub(BorderPrim); Next(J)
-8090 For(J=width) To(size-width-width) Step(width) // SideBorders
-8100   pos=J; Gosub(Border) // LeftBorder
-8110   pos=J+width-1; Gosub(Border) // RightBorder
-8120 Next(J)
-8130 Print(Position(height+2, colOffset)) // BottomBorder
-8140 For(J=size-width) To(size-1); pos=J; Gosub(BorderPrim); Next(J)
-8150 Print(NormalVideo)
-8160 Return
+Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
+8010 vu(.-......) Print(ClearScreen HideCursor)
+8020 vu(.-I.....) For(I=1) To(2); Print(Position(I,18)Double(I+2)"Snake"); Next(I)
+8030 vu(.-I.....) For(I=1) To(2); Print(Position(I,30)Double(I+2)"Score 0"); Next(I)
+8040 vu(.-I.....) If(highScore) Then For(I=1) To(2); Print(Position(I,1)Double(I+2)"High "highScore); Next(I)
+8050 vu(.-I.....) For(I=1) To(height); Print($10$13$27"#6"); Next(I)
+8060 vu(.-......) Print(ReverseVideo)
+8070 vu(.-......) Print(Position(3, colOffset)) // TopBorder
+8080 vu(.-IJ..MN) For(J=0) To(width-1); pos=J; Gosub(BorderPrim); Next(J)
+8090 vu(.-.J....) For(J=width) To(size-width-width) Step(width) // SideBorders
+8100 vu(.-Ij..MN)   pos=J; Gosub(Border) // LeftBorder
+8110 vu(.-Ij..MN)   pos=J+width-1; Gosub(Border) // RightBorder
+8120 vu(.-.j....) Next(J)
+8130 vu(.-......) Print(Position(height+2, colOffset)) // BottomBorder
+8140 vu(.-IJ..MN) For(J=size-width) To(size-1); pos=J; Gosub(BorderPrim); Next(J)
+8150 vu(.-......) Print(NormalVideo)
+8160 vu(.-......) Return
 
 #define CellCount(i) AA(i)&CountMask
 #define ChildA(i) i+i+1
@@ -418,50 +422,55 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 
 #ifdef TREE_CHECK
 // === Check === AA => : I J K L M N pos
-8500 For(I=0) To(nodes/2-1)
-8520   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8700)
-8530 Next(I)
-8540 Remark(Verify leaf counts against actual empty cells)
-8545 Remark(Walk each cell to its leaf node)
-8550 L=0; K=CellCount(L)
-8560 For(J=0) To(size-1)
-8570   I=0; M=size; pos=J
-8580   DO; N=M; M=M/2; I=I+I+1 // Assume left
-8590     If(pos>=M) Then pos=pos-M; M=N-M; I=I+1 // When right
-8600   Until(I>=nodes/2)
-8610   If(I>L) Then Gosub(8650) // Validate when new leaf
-8620   If(AA(J)&FlagsMask=0) Then K=K+CountBit // Count empty cells
-8630 Next(J)
-8650 If (CellCount(L)=K) Then L=I; K=0; Return
-8700 PrintLn(" - Error:")
-8710 For(pos=0) To(size-1); @=4; Print(AA(pos)/8); @=1; Print("/"AA(pos)&7); Next(pos)
-8720 @=8; PrintLn(ShowCursor); End
+8500 vu(.-I.....) For(I=0) To(nodes/2-1)
+8520 vu(.-i.....)   If(CellCount(I)<>CellCount(ChildA(I))+CellCount(ChildB(I))) Then Goto(8700)
+8530 vu(.-i.....) Next(I)
+8540 vu(.-......) Remark(Verify leaf counts against actual empty cells)
+8545 vu(.-......) Remark(Walk each cell to its leaf node)
+8550 vu(.-..KL..) L=0; K=CellCount(L)
+8560 vu(.-.J|...) For(J=0) To(size-1)
+8570 vu(.-I||.M.)   I=0; M=size; pos=J
+8580 vu(.-i||.mN)   DO; N=M; M=M/2; I=I+I+1 // Assume left
+8590 vu(.-i||.mn)     If(pos>=M) Then pos=pos-M; M=N-M; I=I+1 // When right
+8600 vu(.-i||...)   Until(I>=nodes/2)
+8610 vu(.-i|kl..)   If(I>L) Then Gosub(8650) // Validate when new leaf
+8620 vu(.-|jk...)   If(AA(J)&FlagsMask=0) Then K=K+CountBit // Count empty cells
+8630 vu(.-|j....) Next(J)
+8650 vu(.-i.kl..) If (CellCount(L)=K) Then L=I; K=0; Return // OK
+8700 vu(.-......) PrintLn(" - Error:")
+8710 vu(.-......) For(pos=0) To(size-1); @=4; Print(AA(pos)/8); @=1; Print("/"AA(pos)&7); Next(pos)
+8720 vu(.-......) @=8; PrintLn(ShowCursor)
+8730 vu(.-......) End
 #endif
 
 // === GameOver === head foodCount score => flags lastKey highScore : I
 Label(9000, Clash)
-9010 clear(AliveBit); lastKey=0
-9020 Print(MoveToPos(head))
-9030 If(foodCount=0) Then Print(SnakeHead); Goto(9050)
-9040 Print("X")
-9050 If(score<=highScore) Then Return
-9060 highScore=score
-9070 For(I=1) To(2)
-9080   Print(Position(I,1)Double(I+2)"High "highScore" (You")
-9090   If(foodCount=0) Then Print(" Win")
-9100   Print(")")
-9110 Next(I); Return
+9010 vu(.-......) clear(AliveBit); lastKey=0
+9020 vu(.-......) Print(MoveToPos(head))
+9030 vu(.-......) If(foodCount=0) Then Print(SnakeHead); Goto(9050)
+9040 vu(.-......) Print("X")
+9050 vu(.-......) If(score<=highScore) Then Return
+9060 vu(.-......) highScore=score
+9070 vu(.-I.....) For(I=1) To(2)
+9080 vu(.-i.....)   Print(Position(I,1)Double(I+2)"High "highScore" (You")
+9090 vu(.-|.....)   If(foodCount=0) Then Print(" Win")
+9100 vu(.-|.....)   Print(")")
+9110 vu(.-i.....) Next(I)
+9120 vu(.-......) Return
 
 #ifdef DEBUG
 Debug AA(0) // J => : I
-9610 For(I=1) To(2)
-9620   Print(Position(I,5)Double(I+2)AA(0)/8":"J"."); Next(I)
-9630 Return
+9610 vu(.-Ij....) For(I=1) To(2)
+9620 vu(.-ij....)   Print(Position(I,5)Double(I+2)AA(0)/8":"J".")
+9630 vu(.-i.....) Next(I)
+9640 vu(.-......) Return
 
 Subroutine(9800, AssertSub, K size width colOffset AA => : M pos)
-9810 If(K) Then Return
+9810 vu(.-..k...) If(K) Then Return
 // Error: dump board flags and halt
-9820 For(pos=0) To(size-1); M=AA(pos)&FlagsMask // size, AA => : M pos
-9830   If(M>0) Then Print(MoveToPos(pos) M)
-9840 Next(pos); Print(ShowCursor); End
+9820 vu(.-......) For(pos=0) To(size-1)
+9830 vu(.-....M.)   M=AA(pos)&FlagsMask
+9840 vu(.-....m.)   If(M>0) Then Print(MoveToPos(pos) M)
+9850 vu(.-......) Next(pos)
+9860 vu(.-......) Goto(Quit)
 #endif
