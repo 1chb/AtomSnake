@@ -16,6 +16,10 @@ Reads a .atom file (PROD preprocessed) and applies size optimizations:
     - Lines that are GOTO/GOSUB targets (by line number)
     - Don't append to a line whose last statement is IF (THEN gates rest of line)
 12. Remove empty lines
+13. Truncate REM comments if line exceeds 63 characters:
+    - Truncates comment text to fit within limit
+    - Keeps at least "REM" if there's space
+    - Removes entire REM statement if less than 3 chars available
 
 Usage: python3 optimize.py < input.atom > output.atom
        python3 optimize.py input.atom [output.atom]
@@ -401,9 +405,46 @@ def optimize(text):
         else:
             merged.append(line)
     
-    # Step 4: Validate line lengths
-    errors = []
+    # Step 4: Truncate REM comments if line is too long
+    truncated = []
     for line in merged:
+        if len(line) > MAX_LINE:
+            # Try to find and truncate REM comment
+            # Match REM at end of line (could be ";REM" or " REM")
+            # Use non-greedy match to find the last REM
+            rem_match = re.search(r'^(.*)([;\s])(REM)(.*)$', line)
+            if rem_match:
+                prefix = rem_match.group(1)      # Everything before separator
+                separator = rem_match.group(2)   # ; or space
+                rem_keyword = rem_match.group(3) # "REM"
+                comment = rem_match.group(4)     # The comment text
+                
+                # Calculate space available for REM + comment
+                # Line = prefix + separator + "REM" + comment
+                prefix_len = len(prefix + separator)
+                available = MAX_LINE - prefix_len
+                
+                if available >= 3:
+                    # Enough space for "REM" at minimum
+                    # Truncate comment to fit
+                    comment_space = available - 3  # 3 chars for "REM"
+                    if comment_space > 0:
+                        line = prefix + separator + rem_keyword + comment[:comment_space]
+                    else:
+                        line = prefix + separator + rem_keyword
+                else:
+                    # Not enough space even for "REM", remove entire REM statement
+                    line = prefix.rstrip(';').rstrip()
+        
+        # Verify line is now within limit
+        if len(line) <= MAX_LINE:
+            truncated.append(line)
+        else:
+            truncated.append(line)  # Keep it for error reporting
+    
+    # Step 5: Validate line lengths after truncation
+    errors = []
+    for line in truncated:
         if len(line) > MAX_LINE:
             errors.append((line, len(line)))
     
@@ -417,7 +458,7 @@ def optimize(text):
             print(f"  {line_ref}: {length} chars: {line[:80]}{'...' if len(line) > 80 else ''}", file=sys.stderr)
         sys.exit(1)
     
-    return '\n'.join(merged) + '\n'
+    return '\n'.join(truncated) + '\n'
 
 
 def main():
