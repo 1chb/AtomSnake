@@ -171,8 +171,28 @@ vu(G-IJKLMN jumps)
 60 vu(.-......) nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
 70 vu(.-......) nodes=nodes/2-1 // Halved tree: frees cells for food list
 // Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
-// Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└. Food: @=Mouse *=Bonus
-80 vu(.-......) DIM snakeLUT(18); $F="qmnlkxlnnjqkjnmx@*"
+// Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└ t=├ u=┤ v=┴ w=┬. Food: @=Mouse *=Bonus
+// Index  lastDir  direction  Char  Graphic  Transition
+// -----  -------  ---------  ----  -------  ----------
+// 0      W(0)     W(0)       q     (-)      West→West
+// 1      W(0)     N(1)       m     (└)      West→North
+// 2      W(0)     E(2)       t     (├)      West→East (clash)
+// 3      W(0)     S(3)       l     (┌)      West→South
+// 4      N(1)     W(0)       k     (┐)      North→West
+// 5      N(1)     N(1)       x     (|)      North→North
+// 6      N(1)     E(2)       l     (┌)      North→East
+// 7      N(1)     S(3)       w     (┬)      North→South (clash)
+// 8      E(2)     W(0)       u     (┤)      East→West (clash)
+// 9      E(2)     N(1)       j     (┘)      East→North
+// 10     E(2)     E(2)       q     (-)      East→East
+// 11     E(2)     S(3)       k     (┐)      East→South
+// 12     S(3)     W(0)       j     (┘)      South→West
+// 13     S(3)     N(1)       v     (┴)      South→North (clash)
+// 14     S(3)     E(2)       m     (└)      South→East
+// 15     S(3)     S(3)       x     (|)      South→South
+// 16     -        -          @     Mouse    Food
+// 17     -        -          *     Bonus    Food
+80 vu(.-......) DIM snakeLUT(18); $F="qmtlkxlwujqkjvmx@*"
 // --- end Init ---
 90 vu(.-......) flags=AutoBit; lastKey=0; highScore=0
 // NewGame: re-init tree and play
