@@ -410,12 +410,12 @@ def optimize(text):
     for line in merged:
         if len(line) > MAX_LINE:
             # Try to find and truncate REM comment
-            # Match REM at end of line (could be ";REM" or " REM")
-            # Use non-greedy match to find the last REM
-            rem_match = re.search(r'^(.*)([;\s])(REM)(.*)$', line)
+            # Match REM (could be ";REM", " REM", or at start after line number/label)
+            # Separator is optional (might be directly after label like "1000pREM")
+            rem_match = re.search(r'^(.*?)([;\s]?)(REM)(.*)$', line)
             if rem_match:
                 prefix = rem_match.group(1)      # Everything before separator
-                separator = rem_match.group(2)   # ; or space
+                separator = rem_match.group(2)   # ; or space or empty
                 rem_keyword = rem_match.group(3) # "REM"
                 comment = rem_match.group(4)     # The comment text
                 
