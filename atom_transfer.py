@@ -40,6 +40,54 @@ def process_line(line, strip_remarks):
         full_line += ' ' + new_rest  # Add space only if needed
     return full_line if full_line.strip() else None
 
+def validate_program(lines):
+    """
+    Validate BASIC program lines for common issues.
+    Returns (is_valid, warnings, errors) where:
+    - is_valid: True if no critical errors
+    - warnings: list of warning messages
+    - errors: list of error messages
+    """
+    warnings = []
+    errors = []
+    seen_line_numbers = {}  # line_number -> (file_line_num, full_line)
+    prev_line_num = 0
+    
+    for file_line_num, line in enumerate(lines, 1):
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Extract line number
+        match = re.match(r'^(\d+)([a-z]?)', line)
+        if not match:
+            continue
+        
+        line_num = int(match.group(1))
+        label = match.group(2)
+        
+        # Check for duplicate line numbers
+        if line_num in seen_line_numbers:
+            prev_file_line, prev_full = seen_line_numbers[line_num]
+            errors.append(
+                f"Line {file_line_num}: Duplicate line number {line_num}\n"
+                f"  First occurrence at file line {prev_file_line}: {prev_full[:60]}\n"
+                f"  Duplicate at file line {file_line_num}: {line[:60]}"
+            )
+        else:
+            seen_line_numbers[line_num] = (file_line_num, line)
+        
+        # Check for lines out of order
+        if line_num < prev_line_num:
+            warnings.append(
+                f"Line {file_line_num}: Line number {line_num} comes after {prev_line_num} (out of order)"
+            )
+        
+        prev_line_num = line_num
+    
+    is_valid = len(errors) == 0
+    return is_valid, warnings, errors
+
 def send_and_get_response(ser, cmd, is_line_entry=False):
     """
     Send a command character by character, verify echoes, send CR,
@@ -132,18 +180,39 @@ def main():
     
     try:
         if args.upload:
+            # Read and validate the file first
+            with open(args.upload, 'r') as f:
+                file_lines = f.readlines()
+            
+            is_valid, warnings, errors = validate_program(file_lines)
+            
+            # Print warnings
+            for warning in warnings:
+                print(f"WARNING: {warning}", file=sys.stderr)
+            
+            # Print errors and abort if any
+            if errors:
+                print("\nERROR: Program validation failed:", file=sys.stderr)
+                for error in errors:
+                    print(f"  {error}", file=sys.stderr)
+                print("\nUpload aborted due to validation errors.", file=sys.stderr)
+                sys.exit(1)
+            
+            if warnings:
+                print(f"\nFound {len(warnings)} warning(s). Proceeding with upload...\n", file=sys.stderr)
+            
             # Clear memory with NEW
             send_and_get_response(ser, "NEW", is_line_entry=True)
             
-            with open(args.upload, 'r') as f:
-                for line_num, file_line in enumerate(f, 1):
-                    processed = process_line(file_line, args.strip)
-                    if processed:
-                        try:
-                            send_and_get_response(ser, processed, is_line_entry=True)
-                        except ValueError as e:
-                            print(f"Error on line {line_num}: {e}", file=sys.stderr)
-                            break
+            # Upload the program
+            for line_num, file_line in enumerate(file_lines, 1):
+                processed = process_line(file_line, args.strip)
+                if processed:
+                    try:
+                        send_and_get_response(ser, processed, is_line_entry=True)
+                    except ValueError as e:
+                        print(f"Error on line {line_num}: {e}", file=sys.stderr)
+                        break
         
         if args.download:
             listing = send_and_get_response(ser, "LIST")

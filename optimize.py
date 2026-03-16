@@ -4,19 +4,20 @@
 Reads a .atom file (PROD preprocessed) and applies size optimizations:
 1. Strip cpp warnings from output
 2. Remove trailing semicolons
-3. Convert hex literals to decimal: #38 -> 56, #410 -> 1040
-4. Evaluate constant parenthesized expressions: (-1-2) -> -3
-5. Remove spaces after line numbers (and label suffixes)
-6. Remove spaces after abbreviated commands (I. F. G. P. N. etc.)
-7. Remove spaces after semicolons, closing parens, and string literals
-8. Merge adjacent string literals ("A" "B" -> "AB")
-9. Remove spaces after digits (when next char is non-digit)
-10. Remove spaces after THEN (which is empty in PROD)
-11. Merge consecutive short lines (respecting 63-char limit), except:
+3. Collapse multiple semicolons (;; -> ;)
+4. Convert hex literals to decimal: #38 -> 56, #410 -> 1040
+5. Evaluate constant parenthesized expressions: (-1-2) -> -3
+6. Remove spaces after line numbers (and label suffixes)
+7. Remove spaces after abbreviated commands (I. F. G. P. N. etc.)
+8. Remove spaces after semicolons, closing parens, and string literals
+9. Merge adjacent string literals ("A" "B" -> "AB")
+10. Remove spaces after digits (when next char is non-digit)
+11. Remove spaces after THEN (which is empty in PROD)
+12. Merge consecutive short lines (respecting 63-char limit), except:
     - Lines that are GOTO/GOSUB targets (by line number)
     - Don't append to a line whose last statement is IF (THEN gates rest of line)
-12. Remove empty lines
-13. Truncate REM comments if line exceeds 63 characters:
+13. Remove empty lines
+14. Truncate REM comments if line exceeds 63 characters:
     - Truncates comment text to fit within limit
     - Keeps at least "REM" if there's space
     - Removes entire REM statement if less than 3 chars available
@@ -36,8 +37,11 @@ def find_jump_targets(lines):
     """Find all line numbers that are GOTO or GOSUB targets."""
     targets = set()
     for line in lines:
-        # G. 1280 or G.1280 or GOS. 1140 or GOS.1140
+        # PROD mode: G. 1280 or G.1280 or GOS. 1140 or GOS.1140
         for m in re.finditer(r'(?:G\.|GOS\.)\s*(\d+)', line):
+            targets.add(m.group(1))
+        # Non-PROD mode: GOTO 1280 or GOSUB 1140
+        for m in re.finditer(r'\b(?:GOTO|GOSUB)\s+(\d+)', line):
             targets.add(m.group(1))
     return targets
 
@@ -71,10 +75,21 @@ def contains_if(line):
     for i, c in enumerate(line):
         if c == '"':
             in_string = not in_string
-        elif not in_string and c == 'I' and i + 1 < len(line) and line[i + 1] == '.':
-            # Exclude DIM etc: only reject if preceded by uppercase alpha
-            if i == 0 or not line[i - 1].isupper():
-                return True
+        elif not in_string and c == 'I':
+            # Check for "I." (PROD mode) or "IF" (non-PROD mode)
+            if i + 1 < len(line) and line[i + 1] == '.':
+                # I. pattern - exclude DIM etc: only match if not preceded by uppercase alpha
+                if i == 0 or not line[i - 1].isupper():
+                    return True
+            elif i + 1 < len(line) and line[i + 1] == 'F':
+                # IF pattern - check it's actually the keyword, not part of another word
+                # Must not be preceded by uppercase letter (to avoid matching "DIFF" etc)
+                # Lowercase letters and digits are OK before IF (e.g., "5200gIF" after label merge)
+                # Must not be followed by letter (to avoid matching "IFX" etc)
+                prev_ok = (i == 0 or not line[i - 1].isupper())
+                next_ok = (i + 2 >= len(line) or not line[i + 2].isalpha())
+                if prev_ok and next_ok:
+                    return True
     return False
 
 
@@ -116,6 +131,11 @@ def convert_hex_to_decimal(line):
 def remove_trailing_semicolons(line):
     """Remove trailing semicolons (and whitespace after them)."""
     return re.sub(r';\s*$', '', line)
+
+
+def collapse_multiple_semicolons(line):
+    """Replace multiple consecutive semicolons with a single semicolon."""
+    return re.sub(r';{2,}', ';', line)
 
 
 def remove_unnecessary_spaces(line):
@@ -342,6 +362,9 @@ def optimize(text):
         # Remove trailing semicolons
         line = remove_trailing_semicolons(line)
         
+        # Collapse multiple semicolons
+        line = collapse_multiple_semicolons(line)
+        
         # Convert hex literals to decimal
         line = convert_hex_to_decimal(line)
         
@@ -405,23 +428,27 @@ def optimize(text):
         else:
             merged.append(line)
     
+    # Step 3b: Collapse multiple semicolons created by merging
+    merged = [collapse_multiple_semicolons(line) for line in merged]
+    
     # Step 4: Truncate REM comments if line is too long
     truncated = []
     for line in merged:
         if len(line) > MAX_LINE:
             # Try to find and truncate REM comment
-            # Match REM (could be ";REM", " REM", or at start after line number/label)
-            # Separator is optional (might be directly after label like "1000pREM")
-            rem_match = re.search(r'^(.*?)([;\s]?)(REM)(.*)$', line)
+            # Match REM preceded by non-uppercase letter (digit, lowercase, punctuation)
+            # Examples: 1000REM, 1010pREM, A=1;REM, IF A=1REM, IF A=1T.REM
+            # Won't match: XREM (uppercase before REM means it's part of identifier)
+            rem_match = re.search(r'^(.*)([^A-Z])(REM)(.*)$', line)
             if rem_match:
-                prefix = rem_match.group(1)      # Everything before separator
-                separator = rem_match.group(2)   # ; or space or empty
+                prefix = rem_match.group(1)      # Everything before the char preceding REM
+                pre_rem_char = rem_match.group(2) # The [^A-Z] char (must preserve)
                 rem_keyword = rem_match.group(3) # "REM"
                 comment = rem_match.group(4)     # The comment text
                 
                 # Calculate space available for REM + comment
-                # Line = prefix + separator + "REM" + comment
-                prefix_len = len(prefix + separator)
+                # Line = prefix + pre_rem_char + "REM" + comment
+                prefix_len = len(prefix + pre_rem_char)
                 available = MAX_LINE - prefix_len
                 
                 if available >= 3:
@@ -429,12 +456,12 @@ def optimize(text):
                     # Truncate comment to fit
                     comment_space = available - 3  # 3 chars for "REM"
                     if comment_space > 0:
-                        line = prefix + separator + rem_keyword + comment[:comment_space]
+                        line = prefix + pre_rem_char + rem_keyword + comment[:comment_space]
                     else:
-                        line = prefix + separator + rem_keyword
+                        line = prefix + pre_rem_char + rem_keyword
                 else:
                     # Not enough space even for "REM", remove entire REM statement
-                    line = prefix.rstrip(';').rstrip()
+                    line = (prefix + pre_rem_char).rstrip(';').rstrip()
         
         # Verify line is now within limit
         if len(line) <= MAX_LINE:
