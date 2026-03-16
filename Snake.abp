@@ -21,7 +21,7 @@
 #define direction D
 #define lastDir E
 #define snakeLUT F
-// G -- Save (used as temp in Border)
+// G -- Free
 #define height H
 // I,J,K,L,M,N -- Temp
 #define nodes O
@@ -39,13 +39,13 @@
 
 // Call Graph (depth-first, showing call relationships):
 // Main Program
-// ├─→ Play (1000)  B C D F H O R V W Y Z AA => A B D E R S T U X Y AA : G I J K L M N
+// ├─→ Play (1000)  B C D F H O R V W Y Z AA => A B D E R S T U X Y AA : I J K L M N
 // │   ├─→ HomePage (8000)  C H O V W Z AA => AA : I J M N P Q
 // │   │   ├─→ BorderPrim (3020)  O P Z AA => AA : I M N P Q
 // │   │   │   └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
 // │   │   └─→ Border (3000)  O P V W Z AA => AA : I M N P Q
 // │   │       └─→ [falls through to BorderPrim (3020)]
-// │   ├─→ InitGame (4000)  B F H O V W Z AA => B D E S T X AA : G I J K L M N P Q
+// │   ├─→ InitGame (4000)  B F H O V W Z AA => B D E S T X AA : I J K L M N P Q
 // │   │   ├─→ Adjust (2000)  O P Q Z AA => AA : I M N P
 // │   │   └─→ SpawnFood (5100) [x5 in loop]  B F O V W X Z AA => B X AA : I J K L M N P Q
 // │   │       └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
@@ -56,7 +56,7 @@
 // │   │   ├─→ MarkHead (6500)  D S V W AA => AA :
 // │   │   ├─→ Adjust (2000) [TAIL CALL]  O P Q Z AA => AA : I M N P
 // │   │   └─→ SpawnFood (5100)  B F O V W X Z AA => B X AA : I J K L M N P Q
-// │   └─→ TryDirSub (6800) [x7]  N S W AA => D K AA :
+// │   └─→ TryDirSub (600) [x7]  N S W AA => D K AA :
 // │       └─→ ChangeDirection (5000) [TAIL CALL]  D S AA => AA :
 // └─→ PauseLoop (1700)  => Y : N
 
@@ -217,14 +217,13 @@ Label(100, NewGame)
 180 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
 190 vu(.-......) If(isAuto=0) Then Goto(300)
 // Auto mode: delay then restart. Any key switches to manual.
-200 vu(.-.....N) N=AutoNewGameDelay; DO; N=N-1; Until(N=0 OR KeyAvailable) // TODO: Use I instead of N
+200 vu(.-.....I) I=AutoNewGameDelay; DO; I=I-1; Until(I=0 OR KeyAvailable)
 210 vu(.-......) If(KeyEmpty) Then lastKey=0; Goto(NewGame)
-220 vu(.-.....N) N=KeyPeek; KeyNext // TODO: Use lastKey instead of N until line 260
-230 vu(.-.....n) If(N=QUIT) Then Goto(Quit)
-240 vu(.-.....n) If(N=PAUSE) Then clear(AutoBit); lastKey=0; Goto(NewGame)
-250 vu(.-.....n) If(N=AUTO) Then Goto(NewGame)
-260 vu(.-.....n) clear(AutoBit); lastKey=N; Goto(NewGame)
-
+220 vu(.-......) lastKey=KeyPeek; KeyNext
+230 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
+240 vu(.-......) If(lastKey=PAUSE) Then clear(AutoBit); lastKey=0; Goto(NewGame)
+250 vu(.-......) If(lastKey=AUTO) Then Goto(NewGame)
+260 vu(.-......) clear(AutoBit); Goto(NewGame)
 // Manual mode: wait for any valid key to restart, Quit to exit.
 300 vu(.-.....N) Gosub(PauseLoop)
 310 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
@@ -234,16 +233,30 @@ Label(100, NewGame)
 // Exit
 Label(400, Quit)
 410 vu(.-......) Print(Position(height+3,1) ShowCursor)
-420 vu(.-.....N) For(N=1) To(300) // TODO: Use I instead of N
+420 vu(.-.....I) For(I=1) To(300)
 430 vu(.-.....|)   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
-440 vu(.-.....n) Next(N)
+440 vu(.-.....i) Next(I)
 450 vu(.-......) End
 
+// === ChangeDirection ===
+Subroutine(500, ChangeDirection, head direction AA => AA :)
+510 vu(.-......) If(AA(head)&3=direction) Then Return // Dir not changed
+520 vu(.-......) AA(head)=AA(head)&DirMask|direction
+530 vu(.-......) Return
+
+// === TryDirSub: test if direction N is safe, apply if so ===
+// Step(pos,dir) = pos + (dir&2-1) * ((dir&1)*(width-1)+1)
+// TryDir(N): if dir N is safe, apply it. K=0 if safe, K=BorderBit if blocked.
+Subroutine(600, TryDirSub, N head width AA => K direction AA :)
+610 vu(.-..K..n) K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit
+620 vu(.-..k...) If(K=0) Then direction=N; Goto(ChangeDirection) // Tail-call optimization
+630 vu(.-......) Return
+
 // === Play: one game ===
-Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : G I J K L M N)
+Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : I J K L M N)
 1010 vu(.-......) score=0; flags=isAuto|AliveBit
 1020 vu(.-IJ..MN) Gosub_(HomePage)
-1030 vu(G-IJKLMN) Gosub_(InitGame)
+1030 vu(.-IJKLMN) Gosub_(InitGame)
 1040 vu(.-IJKLMN) CheckTree
 1050 vu(.-......) tickDelay=SLOW_DOWN
 1070 vu(.-......) If(IsDirKey(lastKey)) Then Goto(DirKey) // Process saved direction key
@@ -327,7 +340,7 @@ Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
 3060 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
 
 // === InitGame: set up snake and food ===
-Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags AA : G I J K L M N pos quantity)
+Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags AA : I J K L M N pos quantity)
 4010 vu(.-......) head=(height+1)/2*width-width/2 // Center of board
 4020 vu(.-......) tail=head-2
 4030 vu(.-......) direction=East
@@ -336,16 +349,11 @@ Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA =
 4060 vu(.-.j....)   AA(J)=AA(J)&CountMask|BorderBit|direction
 4070 vu(.-Ij..MN)   pos=J; quantity=-CountBit; Gosub(Adjust)
 4080 vu(.-.j....) Next(J)
-4090 vu(.-......) lastDir=East; foodCount=0; clear(BonusBit) // TODO: lastDir = direction
+4090 vu(.-......) foodCount=0; clear(BonusBit)
 4100 vu(.-......) Print(MoveToPos(head) SnakeHead)
-4110 vu(G-IJKLMN) For(G=1) To(5); Gosub(SpawnFood); Next(G) // TODO: Can G be replaced with a non-temp variable?
-4120 vu(.-......) Return
-
-// === ChangeDirection ===
-Subroutine(5000, ChangeDirection, head direction AA => AA :)
-5010 vu(.-......) If(AA(head)&3=direction) Then Return // Dir not changed
-5020 vu(.-......) AA(head)=AA(head)&DirMask|direction
-5030 vu(.-......) Return
+4110 vu(.-IJKLMN) For(lastDir=1) To(5); Gosub(SpawnFood); Next(lastDir) // lastDir is used as a temp variable here.
+4120 vu(.-......) lastDir=direction
+4130 vu(.-......) Return
 
 // === SpawnFood: place food on random empty cell ===
 Subroutine(5100, SpawnFood, nodes size width colOffset snakeLUT foodCount flags AA => foodCount flags AA : I J K L M N pos quantity)
@@ -418,14 +426,6 @@ Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw s
 6520 vu(.-......) Print(MoveToPos(head) SnakeHead)
 6530 vu(.-......) Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
 6540 vu(.-......) Return
-
-// === TryDirSub: test if direction N is safe, apply if so === // TODO: Move before line 1000
-// Step(pos,dir) = pos + (dir&2-1) * ((dir&1)*(width-1)+1)
-// TryDir(N): if dir N is safe, apply it. K=0 if safe, K=BorderBit if blocked.
-Subroutine(6800, TryDirSub, N head width AA => K direction AA :)
-6810 vu(.-..K..n) K=AA(head+(N&2-1)*((N&1)*(width-1)+1))&BorderBit
-6820 vu(.-..k...) If(K=0) Then direction=N; Goto(ChangeDirection) // Tail-call optimization
-6830 vu(.-......) Return
 
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
