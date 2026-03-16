@@ -40,19 +40,22 @@
 #  define End END
 #  define For(init) FOR init
 #  define Gosub(label) GOSUB label
-#  define Gosub_(label) GOSUB label; REM #label
-#  define Goto(label) GOTO label; REM #label
+#  define Gosub_(label) GOSUB label
+#  define Goto(label) GOTO label
 #  define If(expr) IF expr
 #  define Label(line, name) Concat(line, name)
 #  define Next(variable) NEXT variable
 #  define Print(any) PRINT any
 #  define PrintLn(any) PRINT any $13$10
-#  define Remark(comment) REM comment
+// #  define Remark(comment) REM comment
+#  define Remark(comment)
 #  define Return RETURN
 #  define Rnd RND
 #  define Step(expression) STEP expression
-#  define Subroutine(line, label, doc) Label(line, label) REM === #label === doc
-#  define Then THEN
+//#  define Subroutine(line, label, doc) Label(line, label) REM === #label === doc
+#  define Subroutine(line, label, doc) Label(line, label)
+// #  define Then THEN
+#  define Then
 #  define To(expression) TO expression
 #  define Until(expression) UNTIL expression
 #endif

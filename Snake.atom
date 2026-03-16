@@ -1,16 +1,11 @@
-In file included from Snake.abp:4:
-AcornAtom.abp:28:29: warning: missing terminating ' character
-   28 | #  define PrintLn(any) P.any'
-      |                             ^
-
-10 W=40
-20 H=21
+10 W=16
+20 H=9
 30 @=0; V=(42-W)/2
 40 Z=W*H
 50 DIM AA(Z-1); PRINT "Initializing..."
 60 O=1; DO; O=O+O; UNTIL O+O>Z+1
 70 O=O/2-1
-80 DIM F(18); $F="qmnlkxlnnjqkjnmx@*"
+80 DIM F(18); $F="qmtlkxlwujqkjvmx@*"
 90 B=2; Y=0; C=0
 100x
 110 AA(0)=Z*8
@@ -19,20 +14,20 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 140 AA(I)=K; AA(I+1)=AA(J)-K
 150 NEXT I
 160 FOR I=O TO Z-1; AA(I)=0; NEXT I
-170 R=0; GOSUB p; REM "Play"
-180 IF Y=27 THEN GOTO i; REM "Quit"
-190 IF B&2=0 THEN GOTO 300; REM "300"
+170 R=0; GOSUB p
+180 IF Y=27 GOTO i
+190 IF B&2=0 GOTO 300
 200 N=1800; DO; N=N-1; UNTIL N=0 OR ?#410<>?#411
-210 IF ?#410=?#411 THEN Y=0; GOTO x; REM "NewGame"
+210 IF ?#410=?#411 Y=0; GOTO x
 220 N=#400?(?#410); ?#410=(?#410 +1)&#F
-230 IF N=27 THEN GOTO i; REM "Quit"
-240 IF N=#35 THEN B=B&(-1-2); Y=0; GOTO x; REM "NewGame"
-250 IF N=#30 THEN GOTO x; REM "NewGame"
-260 B=B&(-1-2); Y=N; GOTO x; REM "NewGame"
+230 IF N=27 GOTO i
+240 IF N=#35 B=B&(-1-2); Y=0; GOTO x
+250 IF N=#30 GOTO x
+260 B=B&(-1-2); Y=N; GOTO x
 300 GOSUB o
-310 IF Y=27 THEN GOTO i; REM "Quit"
-320 IF Y=#30 THEN B=B|2
-330 GOTO x; REM "NewGame"
+310 IF Y=27 GOTO i
+320 IF Y=#30 B=B|2
+330 GOTO x
 400i
 410 PRINT $27"["H+3";"1"H" $27"[?25h"
 420 FOR N=1 TO 300
@@ -41,58 +36,58 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 450 END
 1000p REM === "Play" === B Y R Z H W V C O F D AA => B A Y S T U E X R D AA : G I J K L M N
 1010 U=0; B=B&2|1
-1020 GOSUB h; REM "HomePage"
-1030 GOSUB n; REM "InitGame"
-1035
-1050 A=28 -Z/100
-1060 K=R+A
-1070 IF (Y-2)&-7=48 THEN GOTO c; REM "DirKey"
-1100q
-1110 IF B&1=0 THEN RETURN
-1120 IF B&2 THEN GOTO z; REM "AutoInput"
-1130 IF ?#410=?#411 THEN GOTO w; REM "WaitForTick"
+1020 GOSUB h
+1030 GOSUB n
+1040
+1050 A=15-Z/100
+1070 IF (Y-2)&-7=48 GOTO c
+1080q
+1090 K=R+A
+1100 IF B&1=0 RETURN
+1120 IF B&2 GOTO z
+1130 IF ?#410=?#411 GOTO w
 1140 Y=#400?(?#410); ?#410=(?#410 +1)&#F
 1145l
-1150 IF Y=#35 THEN GOSUB o; IF Y=#30 THEN B=B&(-1-2)
-1160 IF Y=#30 THEN B=B:2
+1150 IF Y=#35 GOSUB o; IF Y=#30 B=B&(-1-2)
+1160 IF Y=#30 B=B:2
 1170c
-1171 IF Y=#38 THEN B=B&(-1-2); D=1; GOSUB d
-1180 IF Y=#34 THEN B=B&(-1-2); D=0; GOSUB d
-1190 IF Y=#36 THEN B=B&(-1-2); D=2; GOSUB d
-1200 IF Y=#32 THEN B=B&(-1-2); D=3; GOSUB d
-1220 IF Y=27 THEN B=B&(-1-1)
+1171 IF Y=#38 B=B&(-1-2); D=1; GOSUB d
+1180 IF Y=#34 B=B&(-1-2); D=0; GOSUB d
+1190 IF Y=#36 B=B&(-1-2); D=2; GOSUB d
+1200 IF Y=#32 B=B&(-1-2); D=3; GOSUB d
+1220 IF Y=27 B=B&(-1-1)
 1300w
 1310 R=R+1
-1320 IF R<K THEN GOTO q; REM "GameLoop"
-1330 K=R+A
-1340 GOSUB f; GOTO q; REM "GameLoop"
+1320 IF R<K GOTO 1100
+1340 GOSUB f
+1350 GOTO q
 1400z
-1410 IF ?#410<>?#411 THEN Y=#400?(?#410); ?#410=(?#410 +1)&#F; GOTO l; REM "KeyDispatch"
+1410 IF ?#410<>?#411 Y=#400?(?#410); ?#410=(?#410 +1)&#F; GOTO l
 1420 D=AA(S)&3
-1430 IF X=0 THEN GOTO m; REM "AutoFallback"
+1430 IF X=0 GOTO m
 1440 K=#7FFF
 1450 FOR I=0 TO X-1; J=AA(O+I)/8
-1455 IF AA(J)&7=2 AND U%10<3 AND X>1 THEN GOTO 1470; REM "1470"
+1455 IF AA(J)&7=2 AND U%10<3 AND X>1 GOTO 1470
 1460 M=ABS(J/W-S/W)+ABS(J%W-S%W)
-1465 IF AA(J)&7=2 AND U%10=9 THEN M=0
-1467 IF M<K THEN K=M; L=J
+1465 IF AA(J)&7=2 AND U%10=9 M=0
+1467 IF M<K K=M; L=J
 1470 NEXT I
 1480 J=L%W-S%W; M=L/W-S/W
-1490 N=2; IF J<0 THEN N=0
-1500 IF ABS(M)>ABS(J) THEN N=3; IF M<0 THEN N=1
-1510 L=N; GOSUB k; IF K=0 THEN GOTO y; REM "AutoDone"
-1520 N=3; IF M<0 THEN N=1
-1530 IF ABS(M)>ABS(J) THEN N=2; IF J<0 THEN N=0
-1540 GOSUB k; IF K=0 THEN GOTO y; REM "AutoDone"
-1550 N=N:2; GOSUB k; IF K=0 THEN GOTO y; REM "AutoDone"
-1560 N=L:2; GOSUB k; IF K=0 THEN GOTO y; REM "AutoDone"
+1490 N=2; IF J<0 N=0
+1500 IF ABS(M)>ABS(J) N=3; IF M<0 N=1
+1510 L=N; GOSUB k; IF K=0 GOTO y
+1520 N=3; IF M<0 N=1
+1530 IF ABS(M)>ABS(J) N=2; IF J<0 N=0
+1540 GOSUB k; IF K=0 GOTO y
+1550 N=N:2; GOSUB k; IF K=0 GOTO y
+1560 N=L:2; GOSUB k; IF K=0 GOTO y
 1600m
-1610 N=D; GOSUB k; IF K=0 THEN GOTO y; REM "AutoDone"
-1620 N=(D+1)&3; GOSUB k; IF K=0 THEN GOTO y; REM "AutoDone"
-1630 N=(D-1)&3; GOSUB k; IF K=0 THEN GOTO y; REM "AutoDone"
+1610 N=D; GOSUB k; IF K=0 GOTO y
+1620 N=(D+1)&3; GOSUB k; IF K=0 GOTO y
+1630 N=(D-1)&3; GOSUB k; IF K=0 GOTO y
 1640y
 1650 GOSUB f
-1660 GOTO q; REM "GameLoop"
+1660 GOTO q
 1700o REM === "PauseLoop" === => Y : N
 1710 FOR N=1 TO 300
 1720 IF ?#410<>?#411 T.?#410=(?#410 +1)&#F
@@ -106,7 +101,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 2010 I=0; M=Z
 2020 DO; AA(I)=AA(I)+Q
 2030 N=M; M=M/2; I=I+I+1
-2040 IF P>=M THEN P=P-M; M=N-M; I=I+1
+2040 IF P>=M P=P-M; M=N-M; I=I+1
 2050 UNTIL I>=O
 2060 RETURN
 3000b REM === "Border" === P W V Z O AA => AA : I M N P Q
@@ -115,7 +110,7 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 3030 PRINT " "
 3040 AA(P)=AA(P)|4
 3050 Q=-8
-3060 GOTO a; REM "Adjust"
+3060 GOTO a
 4000n REM === "InitGame" === H W V O Z F B AA => S T D E X B AA : G I J K L M N P Q
 4010 S=(H+1)/2*W-W/2
 4020 T=S-2
@@ -130,74 +125,77 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 4110 FOR G=1 TO 5; GOSUB s; NEXT G
 4120 RETURN
 5000d REM === "ChangeDirection" === S D AA => AA :
-5010 IF AA(S)&3=D THEN RETURN
+5010 IF AA(S)&3=D RETURN
 5020 AA(S)=AA(S)&-4|D
 5030 RETURN
-5100s REM === "SpawnFood" === O Z W V F X B AA => J X B AA : I K L M N P Q
-5110 IF AA(0)&-8=0 THEN RETURN
+5100s REM === "SpawnFood" === O Z W V F X B AA => X B AA : I J K L M N P Q
+5110 IF AA(0)&-8=0 RETURN
 5120 P=ABS(RND)%(AA(0)/8)
 5130 N=P
 5150 P=P*8; I=1; J=0; K=Z
-5160 DO; M=(K-J)/2; L=AA(I)&-8
-5170 IF P<L THEN K=J+M; I=I+I+1
-5180 IF P>=L THEN J=J+M; P=P-L; I=I+I+3
+5160 DO
+5163 M=(K-J)/2
+5166 L=AA(I)&-8
+5170 IF P<L K=J+M; I=I+I+1
+5180 IF P>=L J=J+M; P=P-L; I=I+I+3
 5190 UNTIL I>=O
 5200g
-5210 IF AA(J)&7 J=J+1; ; GOTO g; REM "LocateLinear"
-5220 IF P>0 THEN P=P-8; J=J+1; ; GOTO g; REM "LocateLinear"
+5210 IF AA(J)&7 J=J+1; ; GOTO g
+5220 IF P>0 P=P-8; J=J+1; ; GOTO g
 5300
 5320 K=1
-5330 IF B&4=0 AND N%13=5 THEN K=2; B=B|4
+5330 IF B&4=0 AND N%13=5 K=2; B=B|4
 5340 AA(J)=AA(J)+K
 5350 PRINT $27"["J/W+3";"J%W+V "H" $(F+15)?K
 5360 P=J; Q=-8; GOSUB a
 5370 AA(O+X)=AA(O+X)&7|J*8
-5380 X=X+1;
+5380 X=X+1
+5385
 5390 RETURN
 6000t REM === "StepSub" === P D W => P :
 6010 P=P+(D&2-1)*((D&1)*(W-1)+1)
 6020 RETURN
-6200f REM === "AdvanceHead" === S T E W V F U X B O Z AA => S T U B X AA E : D G I K L M N P Q
+6200f REM === "AdvanceHead" === S T E W V F U X B O Z AA => S T U B X AA E : D I K L M N P Q
 6210 D=AA(S)&3
 6220 N=F?(E*4+D)
 6230 PRINT $27"["S/W+3";"S%W+V "H" $27"(0" $N $27"(B"
 6240 E=D
 6250 P=S; GOSUB t; S=P
-6260 IF AA(S)&4 THEN GOTO j; REM "Clash"
-6270 G=D
-6280 IF AA(S)&7 THEN GOTO v; REM "Eat"
+6260 IF AA(S)&4 GOTO j
+6280 IF AA(S)&7 GOTO v
 6290 P=T; Q=8; GOSUB a
+6295 I=D
 6300 D=AA(T)
 6310 AA(T)=D&-8
 6320 PRINT $27"["T/W+3";"T%W+V "H" " "
 6330 P=T; GOSUB t; T=P
+6335 D=I
 6350 GOSUB u
 6360 P=S; Q=-8
-6370 GOTO a; REM "Adjust"
+6370 GOTO a
 6400v
 6410 X=X-1
 6420 I=0
-6430 IF AA(O+I)/8<>S THEN I=I+1; GOTO 6430; REM "6430"
+6430 IF AA(O+I)/8<>S I=I+1; GOTO 6430
 6440 AA(O+I)=AA(O+I)&7|AA(O+X)&-8
-6450 IF AA(S)&7=2 THEN U=U+(U%10)-1; B=B&(-1-4)
+6450 IF AA(S)&7=2 U=U+(U%10)-1; B=B&(-1-4)
 6460 U=U+1
 6470 FOR I=1 TO 2; PRINT $27"["I ";"36"H"$27"#"I+2 U; NEXT I
 6480 GOSUB s
-6500u REM === "MarkHead" === G S W V AA => AA : D
-6510 D=G
-6520 AA(S)=AA(S)&-8|4|D
-6530 PRINT $27"["S/W+3";"S%W+V "H" $27"(0" "`" $27"(B"
-6540 PRINT $27"["S/W+3";"S%W+V "H"
-6550 RETURN
+6500u REM === "MarkHead" === D S W V AA => AA :
+6490 AA(S)=AA(S)&-8|4|D
+6500 PRINT $27"["S/W+3";"S%W+V "H" $27"(0" "`" $27"(B"
+6510 PRINT $27"["S/W+3";"S%W+V "H"
+6520 RETURN
 6800k REM === "TryDirSub" === N S W AA => K D AA :
 6810 K=AA(S+(N&2-1)*((N&1)*(W-1)+1))&4
-6820 IF K=0 THEN D=N; GOTO d; REM "ChangeDirection"
+6820 IF K=0 D=N; GOTO d
 6830 RETURN
 8000h REM === "HomePage" === C H V W Z O AA => AA : I J M N P Q
 8010 PRINT $12 $27"[?25l"
 8020 FOR I=1 TO 2; PRINT $27"["I ";"18"H"$27"#"I+2"Snake"; NEXT I
 8030 FOR I=1 TO 2; PRINT $27"["I ";"30"H"$27"#"I+2"Score 0"; NEXT I
-8040 IF C THEN FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"High "C; NEXT I
+8040 IF C FOR I=1 TO 2; PRINT $27"["I ";"1"H"$27"#"I+2"High "C; NEXT I
 8050 FOR I=1 TO H; PRINT $10$13$27"#6"; NEXT I
 8060 PRINT $27"[7m"
 8070 PRINT $27"["3";"V "H"
@@ -213,13 +211,13 @@ AcornAtom.abp:28:29: warning: missing terminating ' character
 9000j
 9010 B=B&(-1-1); Y=0
 9020 PRINT $27"["S/W+3";"S%W+V "H"
-9030 IF X=0 THEN PRINT $27"(0" "`" $27"(B"; GOTO 9050; REM "9050"
+9030 IF X=0 PRINT $27"(0" "`" $27"(B"; GOTO 9050
 9040 PRINT "X"
-9050 IF U<=C THEN RETURN
+9050 IF U<=C RETURN
 9060 C=U
 9070 FOR I=1 TO 2
 9080 PRINT $27"["I ";"1"H"$27"#"I+2"High "C " (You"
-9090 IF X=0 THEN PRINT " Win"
+9090 IF X=0 PRINT " Win"
 9100 PRINT ")"
 9110 NEXT I
 9120 RETURN
