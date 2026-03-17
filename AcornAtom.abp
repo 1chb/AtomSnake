@@ -3,17 +3,19 @@
 
 // VT100
 #define ClearScreen $12
-#define NormalVideo $27"[m"
-#define ReverseVideo $27"[7m"
-#define HideCursor $27"[?25l"
-#define ShowCursor $27"[?25h"
-#define Position(row,column) $27"["row";"column"H"
-#define Double(k) $27"#"k
-#define GraphicsOn $27"(0"
-#define GraphicsOff $27"(B"
+#define NormalVideo ESC "[m"
+#define ReverseVideo ESC "[7m"
+#define HideCursor ESC "[?25l"
+#define ShowCursor ESC "[?25h"
+#define Position(row,column) ESC "["row";"column"H"
+#define Double(k) ESC "#"k
+#define GraphicsOn ESC "(0"
+#define GraphicsOff ESC "(B"
 
 // BASIC language macros
 #ifdef PROD
+// VT100 escape character: backslash placeholder, converted to ESC (27) by self-modification code
+#  define ESC "\"
 #  define Abs A.
 #  define And A.
 #  define End E.
@@ -35,6 +37,8 @@
 #  define To(expression) T.expression
 #  define Until(expression) U.expression
 #else
+// VT100 escape character: direct escape character $27
+#  define ESC $27
 #  define Abs ABS
 #  define And AND
 #  define End END
@@ -46,7 +50,7 @@
 #  define Label(line, name) Concat(line, name)
 #  define Next(variable) NEXT variable
 #  define Print(any) PRINT any
-#  define PrintLn(any) PRINT any $13$10
+#  define PrintLn(any) PRINT any'
 // #  define Remark(comment) REM comment
 #  define Remark(comment)
 #  define Return RETURN

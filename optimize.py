@@ -220,6 +220,118 @@ def remove_unnecessary_spaces(line):
     return ''.join(result)
 
 
+def convert_numeric_literals_in_escapes(line):
+    """Convert numeric literals to string literals in escape sequence lines.
+    
+    Only applies to lines containing $27 or "\" (escape sequence markers).
+    Converts standalone numeric literals that meet LEFT and RIGHT conditions.
+    
+    'P.$27"["1"H"' -> 'P.$27"[" "1" "H"'
+    
+    Must run BEFORE merge_adjacent_strings().
+    """
+    # Check if line contains escape sequence markers
+    if '$27' not in line and '"\\"' not in line:
+        return line
+    
+    # Find the first escape marker position
+    esc_pos = line.find('$27')
+    if esc_pos == -1:
+        esc_pos = line.find('"\\"')
+    if esc_pos == -1:
+        return line  # Shouldn't happen
+    
+    # Copy everything before the first escape marker as-is
+    result = []
+    result.append(line[:esc_pos])
+    
+    # Start processing from the escape marker
+    i = esc_pos
+    left = False
+    
+    while i < len(line):
+        # Check for 3-character patterns BEFORE checking for single quote
+        # This prevents "\" from being treated as a regular string
+        
+        # Check for $27
+        if i + 2 < len(line) and line[i:i+3] == '$27':
+            result.append('$27')
+            i += 3
+            left = True
+            continue
+        
+        # Check for "\" (must come before general string check)
+        if i + 2 < len(line) and line[i:i+3] == '"\\"':
+            result.append('"\\"')
+            i += 3
+            left = True
+            continue
+        
+        # Check for string literal (general case)
+        if line[i] == '"':
+            result.append('"')
+            i += 1
+            # Skip to matching quote
+            while i < len(line) and line[i] != '"':
+                result.append(line[i])
+                i += 1
+            if i < len(line):
+                result.append('"')
+                i += 1
+            left = True
+            continue
+        
+        # Check for digit with left condition
+        if line[i].isdigit() and left:
+            # Collect all digits
+            j = i
+            while j < len(line) and line[j].isdigit():
+                j += 1
+            
+            # Check right condition
+            k = j
+            while k < len(line) and line[k] == ' ':
+                k += 1
+            
+            right_ok = (k >= len(line) or 
+                       line[k] == ';' or 
+                       line[k] == '"')
+            
+            if right_ok:
+                # Convert to string literal
+                result.append(' "')
+                result.append(line[i:j])
+                result.append('" ')
+                left = True
+            else:
+                # Don't convert
+                result.append(line[i:j])
+                left = False
+            i = j
+            continue
+        
+        # Check for semicolon (ends current escape sequence context)
+        if line[i] == ';':
+            result.append(';')
+            i += 1
+            left = False
+            continue
+        
+        # Space: preserve left state if True, otherwise no change
+        if line[i] == ' ':
+            result.append(' ')
+            i += 1
+            # left unchanged
+            continue
+        
+        # Any other character
+        result.append(line[i])
+        i += 1
+        left = False
+    
+    return ''.join(result)
+
+
 def merge_adjacent_strings(line):
     """Merge adjacent string literals separated by space.
     
@@ -227,11 +339,7 @@ def merge_adjacent_strings(line):
     '" "' is left alone (string containing a space)
     '"A""B"' is left alone ("" is escaped quote in Atom BASIC)
     Must run BEFORE space removal.
-    
-    On VT100 lines (containing $27), also fold decimal integer
-    constants between adjacent strings: '";"36"H"' -> '";36H"'
     """
-    is_vt100 = '$27' in line
     result = []
     i = 0
     while i < len(line):
@@ -264,22 +372,6 @@ def merge_adjacent_strings(line):
                             content.append(next_content)
                             i = j + 1
                             merged = True
-                # Fold constant integer into string: "A"36"B" (VT100 only)
-                if (is_vt100 and not merged
-                        and i < len(line) and line[i].isdigit()):
-                    j = i
-                    while j < len(line) and line[j].isdigit():
-                        j += 1
-                    if j < len(line) and line[j] == '"':
-                        content.append(line[i:j])
-                        i = j + 1  # skip opening quote of next string
-                        # Read next string's content into ours
-                        while i < len(line) and line[i] != '"':
-                            content.append(line[i])
-                            i += 1
-                        if i < len(line):
-                            i += 1  # skip closing quote
-                        merged = True
             result.append('"')
             result.extend(content)
             result.append('"')
@@ -373,6 +465,9 @@ def optimize(text):
         
         # Evaluate constant parenthesized expressions
         line = eval_const_parens(line)
+        
+        # Convert numeric literals to strings in escape sequences
+        line = convert_numeric_literals_in_escapes(line)
         
         # Merge adjacent string literals ("A" "B" -> "AB")
         line = merge_adjacent_strings(line)

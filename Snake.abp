@@ -419,7 +419,7 @@ Label(6400, Eat) // From 6280
 6440 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
 6450 vu(.-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
 6460 vu(.-......) score=score+1
-6470 vu(.-I.....) For(I=1) To(2); Print(Position(I,36)Double(I+2)score); Next(I)
+6470 vu(.-I.....) For(I=1) To(2); Print(Position(I,36) Double(I+2)score); Next(I)
 6480 vu(.-IJKLMN) Gosub(SpawnFood) // Fall through to MarkHead
 Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw snake head at current position 
 6510 vu(.-......) AA(head)=AA(head)&CountMask|BorderBit|direction
@@ -430,11 +430,11 @@ Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw s
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
 8010 vu(.-......) Print(ClearScreen HideCursor)
-8020 vu(.-I.....) For(I=1) To(2);Print(Position(I,18)Double(I+2)"Snake");N.// Next(I)
-8030 vu(.-I.....) For(I=1) To(2);Print(Position(I,30)Double(I+2)"Score 0");N.// Next(I)
-// 8040 vu(.-I.....) If(highScore) Then For(I=1) To(2); Print(Position(I,1)Double(I+2)"High "highScore); Next(I)
-8040 vu(.-I.....) If(highScore) Then For(I=1) To(2);P.Position(I,1)Double(I+2)"High "highScore;N.
-8050 vu(.-I.....) For(I=1) To(height); Print($10$13$27"#6"); Next(I)
+8020 vu(.-I.....) For(I=1) To(2);Print(Position(I,18) Double(I+2)"Snake");N.// Next(I)
+8030 vu(.-I.....) For(I=1) To(2);Print(Position(I,30) Double(I+2)"Score 0");N.// Next(I)
+//8040 vu(.-I.....) If(highScore) Then For(I=1) To(2); Print(Position(I,1) Double(I+2)"High "highScore); Next(I)
+8040 vu(.-I.....) If(highScore) Then For(I=1) To(2);P.Position(I,1) Double(I+2)"High "highScore;N.
+8050 vu(.-I.....) For(I=1) To(height); PrintLn(); Print(Double(6)); Next(I)
 8060 vu(.-......) Print(ReverseVideo)
 8070 vu(.-......) Print(Position(3, colOffset)) // TopBorder
 8080 vu(.-IJ..MN) For(J=0) To(width-1); pos=J; Gosub(BorderPrim); Next(J)
@@ -485,7 +485,7 @@ Label(9000, Clash)
 9050 vu(.-......) If(score<=highScore) Then Return
 9060 vu(.-......) highScore=score
 9070 vu(.-I.....) For(I=1) To(2)
-9080 vu(.-i.....)   Print(Position(I,1)Double(I+2)"High "highScore" (You")
+9080 vu(.-i.....)   Print(Position(I,1) Double(I+2)"High "highScore" (You")
 9090 vu(.-|.....)   If(foodCount=0) Then Print(" Win")
 9100 vu(.-|.....)   Print(")")
 9110 vu(.-i.....) Next(I)

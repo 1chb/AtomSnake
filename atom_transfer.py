@@ -3,6 +3,19 @@ import re
 import argparse
 import sys
 
+# Self-modification code template for ESC optimization
+# Converts backslash (\) to ESC (27) in string literals
+SELF_MOD_TEMPLATE = [
+    "1 I={start_addr}; Q=0",
+    "2 DO",
+    "3 IF ?I=13 I=I+2; GOTO 7",
+    "4 IF ?I=34 Q=Q:1",
+    "5 IF Q AND ?I=92 THEN ?I=27",
+    "7 I=I+1",
+    "8 UNTIL I>=TOP",
+    "9 END"
+]
+
 def process_line(line, strip_remarks):
     """
     Process a BASIC program line, optionally stripping REM remarks.
@@ -88,12 +101,39 @@ def validate_program(lines):
     is_valid = len(errors) == 0
     return is_valid, warnings, errors
 
-def send_and_get_response(ser, cmd, is_line_entry=False):
+def validate_no_lines_1_to_9(lines):
+    """Check that lines 1-9 are not used in the program.
+    
+    Returns (is_free, conflict_line) where:
+    - is_free: True if lines 1-9 are all free
+    - conflict_line: The conflicting line number, or None if all free
+    """
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        match = re.match(r'^(\d+)', line)
+        if match:
+            line_num = int(match.group(1))
+            if 1 <= line_num <= 9:
+                return False, line_num
+    
+    return True, None
+
+def send_and_get_response(ser, cmd, is_line_entry=False, timeout=None):
     """
     Send a command character by character, verify echoes, send CR,
-    verify LF then CR (as per board behavior), then collect output until '>' at the start of a line.
+    verify LF then CR (as per board behavior), then collect output until '>' prompt.
+    
+    timeout: Optional timeout in seconds for waiting for prompt (uses serial port default if None)
     """
     output = b""
+    
+    # Save original timeout and set custom one if specified
+    original_timeout = ser.timeout
+    if timeout is not None:
+        ser.timeout = timeout
     
     cmd_bytes = cmd.encode('ascii')
     
@@ -109,35 +149,23 @@ def send_and_get_response(ser, cmd, is_line_entry=False):
     # Send CR
     ser.write(b'\r')
     
-    # Expect LF first
-    echo_lf = ser.read(1)
-    if not echo_lf:
-        raise ValueError("Timeout on LF after CR")
-    if echo_lf != b'\n':
-        raise ValueError(f"No LF after CR, got {echo_lf}")
-    
-    # Expect CR next
-    echo_cr = ser.read(1)
-    if not echo_cr:
-        raise ValueError("Timeout on CR after LF")
-    if echo_cr != b'\r':
-        raise ValueError(f"No CR after LF, got {echo_cr}")
-    
-    # Now collect output until '>' at the start of a line
-    last_was_newline = True  # After LF CR, we are at start of line
-    newline_chars = {b'\r', b'\n'}
-    
+    # Now collect output until we see the '>' prompt
+    # The board sends output (if any) followed immediately by '>'
     while True:
         byte = ser.read(1)
         if not byte:
-            raise ValueError("Timeout waiting for prompt")
+            raise ValueError(f"Timeout waiting for prompt (command was: {cmd})")
         
-        if last_was_newline and byte == b'>':
-            # Found '>' at start of line, stop without including it
+        if byte == b'>':
+            # Found prompt, done
             break
         
+        # Collect any output before the prompt
         output += byte
-        last_was_newline = byte in newline_chars
+    
+    # Restore original timeout
+    if timeout is not None:
+        ser.timeout = original_timeout
     
     # Decode output with ascii, ignoring errors
     output_str = output.decode('ascii', errors='ignore')
@@ -148,35 +176,61 @@ def send_and_get_response(ser, cmd, is_line_entry=False):
     
     return output_str
 
+def get_program_start(ser):
+    """Query TOP to get program start address after NEW.
+    
+    Returns the start address as an integer.
+    """
+    # Send NEW command
+    print("NEW", file=sys.stderr)
+    send_and_get_response(ser, "NEW", is_line_entry=False)
+    
+    # Query TOP
+    output = send_and_get_response(ser, "PRINT TOP", is_line_entry=False)
+    
+    # Parse the number from output
+    match = re.search(r'(\d+)', output)
+    if not match:
+        raise ValueError(f"Could not parse TOP address from: {output}")
+    
+    start_addr = int(match.group(1))
+    print(f"TOP = {start_addr}", file=sys.stderr)
+    return start_addr
+
+def upload_self_mod_code(ser, start_addr):
+    """Upload self-modification code (lines 1-9)."""
+    print("LINE 1-9", file=sys.stderr)
+    for line_template in SELF_MOD_TEMPLATE:
+        line = line_template.format(start_addr=start_addr)
+        send_and_get_response(ser, line, is_line_entry=True)
+
+def execute_and_cleanup_self_mod(ser):
+    """Execute self-modification code and delete lines 1-9."""
+    # Execute with 30 second timeout
+    print("RUN", file=sys.stderr)
+    send_and_get_response(ser, "RUN", timeout=30)
+    
+    # Delete lines 1-9
+    print("DELETE 1-9", file=sys.stderr)
+    for line_num in range(1, 10):
+        send_and_get_response(ser, str(line_num), is_line_entry=True)
+
 def main():
     parser = argparse.ArgumentParser(description="Utility for uploading/downloading BASIC programs to Acorn Atom via serial.")
     parser.add_argument('--port', required=True, help='Serial port (e.g., /dev/ttyUSB0)')
     parser.add_argument('--upload', help='File to upload (BASIC program)')
     parser.add_argument('--download', help='File to save downloaded program to')
     parser.add_argument('--strip', action='store_true', help='Strip REM remarks during upload')
+    parser.add_argument('--optimize-esc', action='store_true', 
+                       help='Optimize ESC sequences using self-modifying code (requires lines 1-9 to be free)')
     
     args = parser.parse_args()
     
     if not args.upload and not args.download:
         parser.error("Specify --upload or --download (or both)")
     
-    ser = serial.Serial(args.port, 9600, timeout=2, xonxoff=True)
+    ser = serial.Serial(args.port, 9600, timeout=3, xonxoff=True)
     ser.reset_input_buffer()
-    
-    # Optional: Sync by reading until '>' at start of line or timeout
-    sync_data = b""
-    last_was_newline = True  # Assume potential start
-    newline_chars = {b'\r', b'\n'}
-    while True:
-        byte = ser.read(1)
-        if not byte:
-            break  # Exit on timeout, no hang
-        if last_was_newline and byte == b'>':
-            break
-        sync_data += byte
-        last_was_newline = byte in newline_chars
-    if sync_data:
-        print("Synced, discarded:", sync_data.decode('ascii', errors='ignore'), file=sys.stderr)
     
     try:
         if args.upload:
@@ -201,10 +255,43 @@ def main():
             if warnings:
                 print(f"\nFound {len(warnings)} warning(s). Proceeding with upload...\n", file=sys.stderr)
             
-            # Clear memory with NEW
-            send_and_get_response(ser, "NEW", is_line_entry=True)
+            # Additional validation for --optimize-esc
+            if args.optimize_esc:
+                is_free, conflict_line = validate_no_lines_1_to_9(file_lines)
+                if not is_free:
+                    print(f"\nERROR: --optimize-esc requires lines 1-9 to be free", file=sys.stderr)
+                    print(f"  Line {conflict_line} conflicts with self-modification code", file=sys.stderr)
+                    print("  Please renumber your program to start at line 10 or higher", file=sys.stderr)
+                    sys.exit(1)
             
-            # Upload the program
+            # Sync with board - send CR and wait for prompt, flushing any garbage
+            try:
+                send_and_get_response(ser, "", is_line_entry=False)
+            except ValueError as e:
+                print(f"Error: No prompt received - board may not be responding", file=sys.stderr)
+                sys.exit(1)
+            
+            # Handle optimize-esc workflow
+            if args.optimize_esc:
+                # Get start address (NEW is called inside get_program_start)
+                try:
+                    start_addr = get_program_start(ser)
+                except ValueError as e:
+                    print(f"Error querying start address: {e}", file=sys.stderr)
+                    sys.exit(1)
+                
+                # Upload self-modification code
+                try:
+                    upload_self_mod_code(ser, start_addr)
+                except ValueError as e:
+                    print(f"Error uploading self-modification code: {e}", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                # Clear memory with NEW - it's a command, not a line entry
+                send_and_get_response(ser, "NEW", is_line_entry=False)
+            
+            # Upload the user program
+            print("UPLOAD", file=sys.stderr)
             for line_num, file_line in enumerate(file_lines, 1):
                 processed = process_line(file_line, args.strip)
                 if processed:
@@ -212,7 +299,16 @@ def main():
                         send_and_get_response(ser, processed, is_line_entry=True)
                     except ValueError as e:
                         print(f"Error on line {line_num}: {e}", file=sys.stderr)
-                        break
+                        sys.exit(1)
+            
+            # Execute and cleanup if optimize-esc
+            if args.optimize_esc:
+                try:
+                    execute_and_cleanup_self_mod(ser)
+                except ValueError as e:
+                    print(f"Error during ESC optimization: {e}", file=sys.stderr)
+                    print("Board may be in inconsistent state. Reset and try again.", file=sys.stderr)
+                    sys.exit(1)
         
         if args.download:
             listing = send_and_get_response(ser, "LIST")
