@@ -288,7 +288,12 @@ def main():
                     sys.exit(1)
             else:
                 # Clear memory with NEW - it's a command, not a line entry
-                send_and_get_response(ser, "NEW", is_line_entry=False)
+                print("NEW", file=sys.stderr)
+                try:
+                    send_and_get_response(ser, "NEW", is_line_entry=False)
+                except ValueError as e:
+                    print(f"Error sending NEW command: {e}", file=sys.stderr)
+                    sys.exit(1)
             
             # Upload the user program
             print("UPLOAD program", file=sys.stderr)
@@ -311,11 +316,13 @@ def main():
                     sys.exit(1)
         
         if args.download:
+            print("DOWNLOAD program", file=sys.stderr)
             listing = send_and_get_response(ser, "LIST")
             # Normalize line endings to single \n, remove extra newlines
             listing = re.sub(r'[\r\n]+', '\n', listing).strip()
             with open(args.download, 'w') as f:
                 f.write(listing + '\n')  # Ensure trailing newline
+            print(f"Saved to {args.download}", file=sys.stderr)
     
     finally:
         ser.close()
