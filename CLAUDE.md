@@ -161,6 +161,22 @@ The array implements a binary indexed tree that efficiently tracks empty cells f
 - `1/2/3` - Number of players
 - `Esc/Q` - Quit
 
+### Numpad Layout Toggle
+
+The game supports both keyboard numpad and phone numpad layouts, since these have opposite vertical orientations:
+
+**Keyboard mode (default):**
+- `8` (top of numpad) = Up
+- `2` (bottom of numpad) = Down
+- `4` = Left, `6` = Right
+
+**Phone mode (press `-` to toggle):**
+- `2` (top of phone keypad) = Up
+- `8` (bottom of phone keypad) = Down
+- `4` = Left, `6` = Right
+
+The selected mode persists across games until toggled again with `-`.
+
 ### Variables
 
 Global state is stored in single-letter variables (A-Z). See `Snake.abp` for the complete variable list and their `#define` macro names. Key variables include `AA` (area array / binary indexed tree), `W` (width), `H` (height), `Z` (grid size W×H), `S` (snake head), `T` (snake tail), `D` (direction). Variables `I,J,K,L,M,N,P,Q` are temporaries reused across functions.

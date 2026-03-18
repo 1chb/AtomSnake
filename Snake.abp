@@ -60,14 +60,16 @@
 // │       └─→ ChangeDirection (5000) [TAIL CALL]  D S AA => AA :
 // └─→ PauseLoop (1700)  => Y : N
 
-// Packed flags in B: bit 0=alive, bit 1=autoPlay, bit 2=bonusActive
+// Packed flags in B: bit 0=alive, bit 1=phone, bit 2=autoPlay, bit 3=bonusActive
 #define AliveBit 1
-#define AutoBit 2
-#define BonusBit 4
+#define PhoneBit 2  // Position corresponds to vertical direction bit
+#define AutoBit 4
+#define BonusBit 8
 #define isAlive isSet(AliveBit)
+#define isPhone isSet(PhoneBit)
 #define isAuto isSet(AutoBit)
 #define isBonus isSet(BonusBit)
-#define isSet(bit) flags&bit
+#define isSet(bit) flags&(bit)
 #define set(bit) flags=flags|bit
 #define clear(bit) flags=flags&(-1-bit)
 #define toggle(bit) flags=flags:bit
@@ -83,7 +85,7 @@
 #define East 2
 #define South 3
 
-// KEYS: North=8, West=4, East=6, South=2, Pause=5, Quit=Esc
+// KEYS: North=8, West=4, East=6, South=2, Pause=5, Quit=Esc, Phone=-
 #define UP    #38
 #define LEFT  #34
 #define RIGHT #36
@@ -91,6 +93,7 @@
 #define PAUSE #35
 #define QUIT  27
 #define AUTO  #30
+#define PHONE #2D
 #define IsDirKey(n) (n-2)&-7=48
 
 // Bits
@@ -254,7 +257,7 @@ Subroutine(600, TryDirSub, N head width AA => K direction AA :)
 
 // === Play: one game ===
 Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : I J K L M N)
-1010 vu(.-......) score=0; flags=isAuto|AliveBit
+1010 vu(.-......) score=0; flags=isSet(AutoBit+PhoneBit)|AliveBit
 1020 vu(.-IJ..MN) Gosub_(HomePage)
 1030 vu(.-IJKLMN) Gosub_(InitGame)
 1040 vu(.-IJKLMN) CheckTree
@@ -269,11 +272,12 @@ Label(1080, GameLoop)
 Label(1145, KeyDispatch)
 1150 vu(.-..|..N) If(lastKey=PAUSE) Then Gosub(PauseLoop); If(lastKey=AUTO) Then clear(AutoBit) // will toggle on the next line
 1160 vu(.-..|...) If(lastKey=AUTO) Then toggle(AutoBit)
+1165 vu(.-..|...) If(lastKey=PHONE) Then toggle(PhoneBit)
 Label(1170, DirKey)
-1171 vu(.-..|...) If(lastKey=UP) Then clear(AutoBit); direction=North; Gosub(ChangeDirection)
+1171 vu(.-..|...) If(lastKey=UP) Then clear(AutoBit); direction=North:isPhone; Gosub(ChangeDirection)
 1180 vu(.-..|...) If(lastKey=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
 1190 vu(.-..|...) If(lastKey=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
-1200 vu(.-..|...) If(lastKey=DOWN) Then clear(AutoBit); direction=South; Gosub(ChangeDirection)
+1200 vu(.-..|...) If(lastKey=DOWN) Then clear(AutoBit); direction=South:isPhone; Gosub(ChangeDirection)
 1220 vu(.-..|...) If(lastKey=QUIT) Then clear(AliveBit)
 Label(1300, WaitForTick)
 1310 vu(.-..|...) time=time+1
