@@ -194,12 +194,12 @@ def get_program_start(ser):
         raise ValueError(f"Could not parse TOP address from: {output}")
     
     start_addr = int(match.group(1))
-    print(f"TOP = {start_addr}", file=sys.stderr)
+    print(f"TOP #{start_addr:X}", file=sys.stderr)
     return start_addr
 
 def upload_self_mod_code(ser, start_addr):
     """Upload self-modification code (lines 1-9)."""
-    print("LINE 1-9", file=sys.stderr)
+    print("ADD patch esc code", file=sys.stderr)
     for line_template in SELF_MOD_TEMPLATE:
         line = line_template.format(start_addr=start_addr)
         send_and_get_response(ser, line, is_line_entry=True)
@@ -207,11 +207,11 @@ def upload_self_mod_code(ser, start_addr):
 def execute_and_cleanup_self_mod(ser):
     """Execute self-modification code and delete lines 1-9."""
     # Execute with 30 second timeout
-    print("RUN", file=sys.stderr)
+    print("RUN patch", file=sys.stderr)
     send_and_get_response(ser, "RUN", timeout=30)
     
     # Delete lines 1-9
-    print("DELETE 1-9", file=sys.stderr)
+    print("DELETE patch", file=sys.stderr)
     for line_num in range(1, 10):
         send_and_get_response(ser, str(line_num), is_line_entry=True)
 
@@ -291,7 +291,7 @@ def main():
                 send_and_get_response(ser, "NEW", is_line_entry=False)
             
             # Upload the user program
-            print("UPLOAD", file=sys.stderr)
+            print("UPLOAD program", file=sys.stderr)
             for line_num, file_line in enumerate(file_lines, 1):
                 processed = process_line(file_line, args.strip)
                 if processed:

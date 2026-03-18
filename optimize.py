@@ -190,6 +190,11 @@ def remove_unnecessary_spaces(line):
             i += 1
             continue
         
+        # Remove duplicate spaces (keep only one space)
+        if c == ' ' and i > 0 and line[i-1] == ' ':
+            i += 1
+            continue
+        
         # Remove space after digit when next char is not a digit.
         # (Hex literals are already converted to decimal, so A-F
         # no longer need special handling.)
@@ -281,32 +286,87 @@ def convert_numeric_literals_in_escapes(line):
             left = True
             continue
         
-        # Check for digit with left condition
-        if line[i].isdigit() and left:
-            # Collect all digits
+        # Check for digit - could be numeric literal or addition expression
+        if line[i].isdigit():
+            # Collect first operand (all consecutive digits)
             j = i
             while j < len(line) and line[j].isdigit():
                 j += 1
+            operand1 = line[i:j]
             
-            # Check right condition
+            # Check if followed by + operator and another digit
             k = j
             while k < len(line) and line[k] == ' ':
-                k += 1
+                k += 1  # Skip spaces after first operand
             
-            right_ok = (k >= len(line) or 
-                       line[k] == ';' or 
-                       line[k] == '"')
+            # Check for addition expression: <digit>+<digit>
+            if k < len(line) and line[k] == '+':
+                # Found +, look for second operand
+                m = k + 1
+                while m < len(line) and line[m] == ' ':
+                    m += 1  # Skip spaces after +
+                
+                if m < len(line) and line[m].isdigit():
+                    # Collect second operand
+                    n = m
+                    while n < len(line) and line[n].isdigit():
+                        n += 1
+                    operand2 = line[m:n]
+                    
+                    # Evaluate the expression
+                    sum_result = str(int(operand1) + int(operand2))
+                    
+                    # Now check if we should convert this to a string (same LEFT/RIGHT logic)
+                    if left:
+                        # Check right condition after the expression
+                        p = n
+                        while p < len(line) and line[p] == ' ':
+                            p += 1
+                        
+                        right_ok = (p >= len(line) or 
+                                   line[p] == ';' or 
+                                   line[p] == '"' or
+                                   line[p].isupper())
+                        
+                        if right_ok:
+                            # Convert evaluated result to string literal
+                            result.append(' "')
+                            result.append(sum_result)
+                            result.append('" ')
+                            left = True
+                            i = n
+                            continue
+                    
+                    # Don't convert - just output the evaluated result
+                    result.append(sum_result)
+                    left = False
+                    i = n
+                    continue
             
-            if right_ok:
-                # Convert to string literal
-                result.append(' "')
-                result.append(line[i:j])
-                result.append('" ')
-                left = True
-            else:
-                # Don't convert
-                result.append(line[i:j])
-                left = False
+            # Not an addition expression, handle as simple numeric literal
+            if left:
+                # Check right condition
+                k = j
+                while k < len(line) and line[k] == ' ':
+                    k += 1
+                
+                right_ok = (k >= len(line) or 
+                           line[k] == ';' or 
+                           line[k] == '"' or
+                           line[k].isupper())
+                
+                if right_ok:
+                    # Convert to string literal
+                    result.append(' "')
+                    result.append(operand1)
+                    result.append('" ')
+                    left = True
+                    i = j
+                    continue
+            
+            # Don't convert
+            result.append(operand1)
+            left = False
             i = j
             continue
         
@@ -360,18 +420,24 @@ def merge_adjacent_strings(line):
             merged = True
             while merged:
                 merged = False
-                # Merge space-separated adjacent string: "A" "B"
-                if (i < len(line) and line[i] == ' '
-                        and i + 1 < len(line) and line[i+1] == '"'):
-                    j = i + 2
-                    while j < len(line) and line[j] != '"':
+                # Merge space-separated adjacent string: "A" "B" or "A"  "B" (any number of spaces)
+                if i < len(line) and line[i] == ' ':
+                    # Skip all spaces to find the next string
+                    j = i
+                    while j < len(line) and line[j] == ' ':
                         j += 1
-                    if j < len(line):
-                        next_content = line[i+2:j]
-                        if content or next_content:
-                            content.append(next_content)
-                            i = j + 1
-                            merged = True
+                    # Check if there's a string after the spaces
+                    if j < len(line) and line[j] == '"':
+                        # Found adjacent string, merge it
+                        k = j + 1
+                        while k < len(line) and line[k] != '"':
+                            k += 1
+                        if k < len(line):
+                            next_content = line[j+1:k]
+                            if content or next_content:
+                                content.append(next_content)
+                                i = k + 1
+                                merged = True
             result.append('"')
             result.extend(content)
             result.append('"')

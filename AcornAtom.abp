@@ -9,6 +9,7 @@
 #define ShowCursor ESC "[?25h"
 #define Position(row,column) ESC "["row";"column"H"
 #define Double(k) ESC "#"k
+#define DoubleAt(row, col, text) Position(row,col) Double(3) text Position(row+1,col) Double(4) text
 #define GraphicsOn ESC "(0"
 #define GraphicsOff ESC "(B"
 

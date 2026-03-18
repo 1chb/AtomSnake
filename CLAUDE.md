@@ -22,12 +22,24 @@ This is a Snake game implementation written in BBC BASIC for a custom 6502 board
 ### Source Control
 Files are under Git source control. Standard git workflow applies.
 
+### CRITICAL: Git Commit Workflow
+
+**NEVER commit without explicit user approval.**
+
+When working on changes:
+1. **Always include "Commit changes" as a TODO item** at the start of work
+2. **Complete all implementation and testing** first
+3. **Show the user a summary/diff** of all changes made
+4. **Wait for explicit "Commit" or "Go" command** from the user
+5. **Only then run git commit**
+
+The user ALWAYS wants to review changes before they are committed. No exceptions.
+
 ### Best Practices for This Project
-1. Commit changes regularly with descriptive messages
-2. The user must manually type any changes into the 6502 board, so minimize code size when possible
-3. Test changes thoroughly before the user invests time typing them in
-4. Use feature branches for experimental changes
-5. Snake.atom is generated from Snake.abp - regenerate after editing .abp files
+1. The user must manually type any changes into the 6502 board, so minimize code size when possible
+2. Test changes thoroughly before the user invests time typing them in
+3. Use feature branches for experimental changes
+4. Snake.atom is generated from Snake.abp - regenerate after editing .abp files
 
 ### Source Files
 
@@ -138,10 +150,11 @@ The array implements a binary indexed tree that efficiently tracks empty cells f
 
 - `P` - Play/Pause
 - `A` - Auto mode
-- `[` - Up
-- `;` - Left
-- `,` - Right
-- `/` - Down
+- `8` - Up (keyboard mode) / Down (phone mode)
+- `4` - Left
+- `6` - Right
+- `2` - Down (keyboard mode) / Up (phone mode)
+- `-` - Toggle between keyboard and phone numpad layouts
 - `+/-` - Adjust speed
 - `W/Q` - Adjust width
 - `H/G` - Adjust height

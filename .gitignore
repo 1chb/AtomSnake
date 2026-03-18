@@ -4,14 +4,15 @@
 *.bak
 
 # Generated files (Snake.atom is generated from Snake.ab)
-# Note: Keeping Snake.atom in repo for now since it has valuable inline docs
+# Note: Keeping Snake.atom in repo for now since it is valuable to compare earlier versions.
 # Snake.atom
+
+Snake.?
 
 # Editor temporary files
 *.swp
 *.swo
 *~
-
 # OS files
 .DS_Store
 Thumbs.db
