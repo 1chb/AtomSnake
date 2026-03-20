@@ -89,10 +89,10 @@
 #define South 3
 
 // KEYS:
-#define UP    #38 // 8 (or 2) North
-#define LEFT  #34 // 4        West
-#define RIGHT #36 // 6        East
-#define DOWN  #32 // 2 (or 8) South
+#define NORTH #38 // 8 (or 2)
+#define WEST  #34 // 4
+#define EAST  #36 // 6
+#define SOUTH #32 // 2 (or 8)
 #define PAUSE #35 // 5        Middle
 #define QUIT  27  // Esc
 #define AUTO  #30 // 0
@@ -142,6 +142,8 @@
 #define NewGame x
 #define AutoDone y
 #define AutoInput z
+
+#define Help 8300 // flags => : N
 
 #ifdef DEBUG
 #  define Debug 9600
@@ -262,6 +264,7 @@ Subroutine(600, TryDirSub, N head width AA => K direction AA :)
 Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : I J K L M N)
 1010 vu(.-......) score=0; flags=isSet(AutoBit+PhoneBit)|AliveBit
 1020 vu(.-IJ..MN) Gosub_(HomePage)
+1025 vu(.-.....N) Gosub_(Help)
 1030 vu(.-IJKLMN) Gosub_(InitGame)
 1040 vu(.-IJKLMN) CheckTree
 1050 vu(.-......) tickDelay=SLOW_DOWN
@@ -275,12 +278,11 @@ Label(1080, GameLoop)
 Label(1145, KeyDispatch)
 1150 vu(.-..|..N) If(lastKey=PAUSE) Then Gosub(PauseLoop); If(lastKey=AUTO) Then clear(AutoBit) // will toggle on the next line
 1160 vu(.-..|...) If(lastKey=AUTO) Then toggle(AutoBit)
-1165 vu(.-..|...) If(lastKey=PHONE) Then toggle(PhoneBit)
 Label(1170, DirKey)
-1171 vu(.-..|...) If(lastKey=UP) Then clear(AutoBit); direction=North:isPhone; Gosub(ChangeDirection)
-1180 vu(.-..|...) If(lastKey=LEFT) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
-1190 vu(.-..|...) If(lastKey=RIGHT) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
-1200 vu(.-..|...) If(lastKey=DOWN) Then clear(AutoBit); direction=South:isPhone; Gosub(ChangeDirection)
+1171 vu(.-..|...) If(lastKey=NORTH) Then clear(AutoBit); direction=North:isPhone; Gosub(ChangeDirection)
+1180 vu(.-..|...) If(lastKey=WEST) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
+1190 vu(.-..|...) If(lastKey=EAST) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
+1200 vu(.-..|...) If(lastKey=SOUTH) Then clear(AutoBit); direction=South:isPhone; Gosub(ChangeDirection)
 1220 vu(.-..|...) If(lastKey=QUIT) Then clear(AliveBit)
 Label(1300, WaitForTick)
 1310 vu(.-..|...) time=time+1
@@ -318,13 +320,14 @@ Label(1640, AutoDone)
 1660 vu(.-......) Goto(GameLoop)
 
 // === PauseLoop ===
-Subroutine(1700, PauseLoop, => lastKey : N)
+Subroutine(1700, PauseLoop, flags => flags lastKey : N)
 1710 vu(.-.....N) For(N=1)To(300)
 1720 vu(.-.....|)   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
 1730 vu(.-.....n) Next(N)
 1740 vu(.-......) DO
 1750 vu(.-......)   DO; Until(KeyAvailable)
 1760 vu(.-......)   lastKey=KeyPeek; KeyNext
+1765 vu(.-.....N)   If(lastKey=PHONE) Then toggle(PhoneBit); Gosub(Help)
 1770 vu(.-......) Until(lastKey=PAUSE OR lastKey=QUIT OR lastKey=AUTO OR IsDirKey(lastKey))
 1780 vu(.-......) Return
 
@@ -434,6 +437,11 @@ Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw s
 6530 vu(.-......) Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
 6540 vu(.-......) Return
 
+// N:8 W:4 E:6 S:2 8/2:/ P:5 A:0 // 29 chars
+#define HelpPos         Position(3,        6) // (42-29)/2
+#define TopBorderPos    Position(3,        colOffset)
+#define BottomBorderPos Position(height+2, colOffset)
+
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
 8010 vu(.-......) Print(ClearScreen HideCursor)
@@ -441,17 +449,20 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8030 vu(.-......) Print(DoubleAt(1,SCORE_COL,"Score 0"))
 8040 vu(.-......) If(highScore) Then Print(DoubleAt(1,1, "High "highScore))
 8050 vu(.-......) For(I=1) To(height); PrintLn(); Print(Double(6)); Next(I)
-8060 vu(.-......) Print(ReverseVideo)
-8070 vu(.-......) Print(Position(3, colOffset)) // TopBorder
+8060 vu(.-......) Print(ReverseVideo TopBorderPos)
 8080 vu(.-IJ..MN) For(J=0) To(width-1); pos=J; Gosub(BorderPrim); Next(J)
 8090 vu(.-.J....) For(J=width) To(size-width-width) Step(width) // SideBorders
 8100 vu(.-Ij..MN)   pos=J; Gosub(Border) // LeftBorder
 8110 vu(.-Ij..MN)   pos=J+width-1; Gosub(Border) // RightBorder
 8120 vu(.-.j....) Next(J)
-8130 vu(.-......) Print(Position(height+2, colOffset)) // BottomBorder
+8130 vu(.-......) Print(BottomBorderPos)
 8140 vu(.-IJ..MN) For(J=size-width) To(size-1); pos=J; Gosub(BorderPrim); Next(J)
 8150 vu(.-......) Print(NormalVideo)
 8160 vu(.-......) Return
+
+Help vu(.-.....N) N=flags&PhoneBit*3 // Assumes PhoneBit=2 => 0|6
+8310 Print(ReverseVideo HelpPos "N:"8-N" W:4 E:6 S:"2+N" 8/2:/ P:5 A:0" NormalVideo)
+8320 Return
 
 #define CellCount(i) AA(i)&CountMask
 #define ChildA(i) i+i+1

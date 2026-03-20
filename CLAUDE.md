@@ -162,7 +162,7 @@ The array implements a binary indexed tree that efficiently tracks empty cells f
 - `4` - Left
 - `6` - Right
 - `2` - Down (keyboard mode) / Up (phone mode)
-- `/` - Toggle between keyboard and phone numpad layouts
+- `/` - Toggle between keyboard and phone numpad layouts (only in pause mode)
 - `+/-` - Adjust speed
 - `W/Q` - Adjust width
 - `H/G` - Adjust height
@@ -171,19 +171,19 @@ The array implements a binary indexed tree that efficiently tracks empty cells f
 
 ### Numpad Layout Toggle
 
-The game supports both keyboard numpad and phone numpad layouts, since these have opposite vertical orientations:
+The game supports both keyboard numpad and phone numpad layouts, since these have opposite vertical orientations. **The toggle can only be changed while paused** - press `P` to pause, then `/` to toggle.
 
 **Keyboard mode (default):**
 - `8` (top of numpad) = Up
 - `2` (bottom of numpad) = Down
 - `4` = Left, `6` = Right
 
-**Phone mode (press `/` to toggle):**
+**Phone mode (press `P` to pause, then `/` to toggle):**
 - `2` (top of phone keypad) = Up
 - `8` (bottom of phone keypad) = Down
 - `4` = Left, `6` = Right
 
-The selected mode persists across games until toggled again with `/`.
+The selected mode persists across games until toggled again.
 
 ### Variables
 
