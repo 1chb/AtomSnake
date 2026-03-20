@@ -46,13 +46,21 @@ The user ALWAYS wants to review changes before they are committed. No exceptions
 **Source → Generated relationship:**
 - `AcornAtom.abp` - **COMMON MACROS** for Acorn Atom platform (VT100, BASIC language, OS keyboard)
 - `Snake.abp` - **SOURCE FILE** with game-specific code, includes AcornAtom.abp
-- `Snake.atom` - **GENERATED FILE** created by running `cpp -P Snake.abp`
+- `optimize.py` - **BUILD TOOL** that optimizes the preprocessed output (strips warnings, removes spaces, merges lines, etc.)
+- `Snake.atom` - **GENERATED FILE** created by the build pipeline: `cpp -P Snake.abp | python3 optimize.py > Snake.atom`
 
 The `.abp` extension stands for "Atom BASIC Preprocessed" — indicating the file requires the C preprocessor.
 
 **Build Command:**
 ```bash
-cpp -P Snake.abp > Snake.atom
+cpp -P Snake.abp | python3 optimize.py > Snake.atom
+```
+
+Or use the Makefile (recommended):
+```bash
+make Snake.atom          # Build only
+make transfer            # Build and upload to board
+make play                # Build, upload, and open terminal
 ```
 
 The `.abp` files use `#define` macros for:
@@ -154,7 +162,7 @@ The array implements a binary indexed tree that efficiently tracks empty cells f
 - `4` - Left
 - `6` - Right
 - `2` - Down (keyboard mode) / Up (phone mode)
-- `-` - Toggle between keyboard and phone numpad layouts
+- `/` - Toggle between keyboard and phone numpad layouts
 - `+/-` - Adjust speed
 - `W/Q` - Adjust width
 - `H/G` - Adjust height
@@ -170,12 +178,12 @@ The game supports both keyboard numpad and phone numpad layouts, since these hav
 - `2` (bottom of numpad) = Down
 - `4` = Left, `6` = Right
 
-**Phone mode (press `-` to toggle):**
+**Phone mode (press `/` to toggle):**
 - `2` (top of phone keypad) = Up
 - `8` (bottom of phone keypad) = Down
 - `4` = Left, `6` = Right
 
-The selected mode persists across games until toggled again with `-`.
+The selected mode persists across games until toggled again with `/`.
 
 ### Variables
 
@@ -215,24 +223,42 @@ The game uses ANSI/VT100 escape codes:
 ## Development Notes
 
 ### Development Workflow
+
+**Recommended workflow using the Makefile:**
+
+1. Edit the **SOURCE** files on the development machine: `Snake.abp` or `AcornAtom.abp`
+2. From the deployment computer (connected to the board via USB-to-serial), run:
+   ```bash
+   make play
+   ```
+   This automatically:
+   - Fetches source files from the dev machine via `scp` (configured in `SRC_DIR` variable)
+   - Runs the build pipeline: `cpp -P -DPROD Snake.abp | python3 optimize.py > Snake.atom`
+   - Uploads `Snake.atom` to the board via `atom_transfer.py` (with `--optimize-esc` in PROD mode)
+   - Opens an interactive terminal session with `picocom`
+
+**Manual workflow (if not using Makefile):**
+
 1. Edit the **SOURCE** file: `Snake.abp` (or `AcornAtom.abp` for platform macros)
-2. Generate the target file: `cpp -P Snake.abp > Snake.atom`
+2. Generate the target file: `cpp -P Snake.abp | python3 optimize.py > Snake.atom`
 3. Review the generated `Snake.atom` for correctness
 4. Upload to the board and test on actual hardware
 
-**Deploy from a separate computer connected to the board via USB-to-serial:**
-```bash
-scp work:Documents/snake/{Snake,AcornAtom}.abp . && \
-  (cpp -DPROD=1 Snake.abp > Snake.atom || true) && \
-  python3 atom_transfer.py --port /dev/ttyUSB0 --upload Snake.atom && \
-  picocom /dev/ttyUSB0 -b 9600
-```
+**Build pipeline details:**
 
-This command:
-1. Copies the source files from the development machine (`work:` via SSH)
-2. Builds the production `.atom` file with PROD mode (abbreviated keywords, no comments)
-3. Uploads the program to the Acorn Atom board via USB-to-serial
-4. Opens an interactive terminal session to the board with `picocom`
+The build process runs through two stages:
+1. **C Preprocessor (`cpp`)**: Expands macros, processes `#define`/`#include` directives
+   - In PROD mode (`-DPROD`): Keywords are abbreviated (IF→I., GOTO→G., etc.), comments stripped
+   - Non-PROD mode: Full keywords and comments preserved for readability
+2. **Optimizer (`optimize.py`)**: Post-processes the output to minimize size
+   - Strips cpp warnings
+   - Removes trailing semicolons and unnecessary spaces
+   - Converts hex literals to decimal (`#38` → `56`)
+   - Evaluates constant expressions (`(-1-2)` → `-3`)
+   - Merges adjacent string literals (`"A" "B"` → `"AB"`)
+   - Merges consecutive short lines (respecting 63-character limit and jump targets)
+   - Truncates REM comments if lines exceed 63 characters
+   - In PROD mode with `--optimize-esc`: Further optimizes VT100 escape sequences
 
 **Remember**: The `.atom` file has a 63-character line length limit. Favor smaller, cleaner code.
 

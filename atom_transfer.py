@@ -218,6 +218,7 @@ def execute_and_cleanup_self_mod(ser):
 def main():
     parser = argparse.ArgumentParser(description="Utility for uploading/downloading BASIC programs to Acorn Atom via serial.")
     parser.add_argument('--port', required=True, help='Serial port (e.g., /dev/ttyUSB0)')
+    parser.add_argument('--baud', type=int, default=9600, help='Baud rate (default: 9600)')
     parser.add_argument('--upload', help='File to upload (BASIC program)')
     parser.add_argument('--download', help='File to save downloaded program to')
     parser.add_argument('--strip', action='store_true', help='Strip REM remarks during upload')
@@ -229,7 +230,7 @@ def main():
     if not args.upload and not args.download:
         parser.error("Specify --upload or --download (or both)")
     
-    ser = serial.Serial(args.port, 9600, timeout=3, xonxoff=True)
+    ser = serial.Serial(args.port, args.baud, timeout=3, xonxoff=True)
     ser.reset_input_buffer()
     
     try:

@@ -14,6 +14,9 @@
 # define HEIGHT 9
 #endif
 
+#define SNAKE_COL 20
+#define SCORE_COL 32
+
 // Variables:
 #define tickDelay A
 #define flags B
@@ -85,15 +88,15 @@
 #define East 2
 #define South 3
 
-// KEYS: North=8, West=4, East=6, South=2, Pause=5, Quit=Esc, Phone=-
-#define UP    #38
-#define LEFT  #34
-#define RIGHT #36
-#define DOWN  #32
-#define PAUSE #35
-#define QUIT  27
-#define AUTO  #30
-#define PHONE #2D
+// KEYS:
+#define UP    #38 // 8 (or 2) North
+#define LEFT  #34 // 4        West
+#define RIGHT #36 // 6        East
+#define DOWN  #32 // 2 (or 8) South
+#define PAUSE #35 // 5        Middle
+#define QUIT  27  // Esc
+#define AUTO  #30 // 0
+#define PHONE #2F // /        Toggle North/South
 #define IsDirKey(n) (n-2)&-7=48
 
 // Bits
@@ -423,7 +426,7 @@ Label(6400, Eat) // From 6280
 6440 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
 6450 vu(.-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
 6460 vu(.-......) score=score+1
-6470 vu(.-......) Print(DoubleAt(1,36,score))
+6470 vu(.-......) Print(DoubleAt(1,(SCORE_COL+6),score))
 6480 vu(.-IJKLMN) Gosub(SpawnFood) // Fall through to MarkHead
 Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw snake head at current position 
 6510 vu(.-......) AA(head)=AA(head)&CountMask|BorderBit|direction
@@ -434,8 +437,8 @@ Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw s
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
 8010 vu(.-......) Print(ClearScreen HideCursor)
-8020 vu(.-......) Print(DoubleAt(1,18,"Snake"))
-8030 vu(.-......) Print(DoubleAt(1,30,"Score 0"))
+8020 vu(.-......) Print(DoubleAt(1,SNAKE_COL,"Snake"))
+8030 vu(.-......) Print(DoubleAt(1,SCORE_COL,"Score 0"))
 8040 vu(.-......) If(highScore) Then Print(DoubleAt(1,1, "High "highScore))
 8050 vu(.-......) For(I=1) To(height); PrintLn(); Print(Double(6)); Next(I)
 8060 vu(.-......) Print(ReverseVideo)
