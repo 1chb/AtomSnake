@@ -1,19 +1,23 @@
+PROD = 1
+OPT = $(if $(PROD:0=),0:1)
+ONLY =
 SRC_DIR = work:Documents/snake
-CPP_DEFS = -DPROD
 TERMINAL_PORT = /dev/ttyUSB0
 TERMINAL_BAUD = 9600
-OPT_ESC = $(if $(CPP_DEFS:-DPROD=),,--optimize-esc)
 
 .PHONY: play
-play: transfer
+play: $(if $(ONLY:0=),,transfer)
 	picocom $(TERMINAL_PORT) -b $(TERMINAL_BAUD)
 
 .PHONY: transfer
+transfer: OPT_ESC = $(if $(PROD:0=),--optimize-esc,)
 transfer: Snake.atom remote-atom_transfer.py
 	python3 atom_transfer.py --port $(TERMINAL_PORT) --baud $(TERMINAL_BAUD) $(OPT_ESC) --upload Snake.atom
 
+Snake.atom: VARIANT = $(if $(PROD:0=),-DPROD,)
+Snake.atom: OPTIMIZE = $(if $(OPT:0=),python3 optimize.py,tee)
 Snake.atom: remote-Snake.abp remote-AcornAtom.abp remote-optimize.py
-	cpp -P $(CPP_DEFS) Snake.abp | python3 optimize.py > Snake.atom
+	cpp -P $(VARIANT) Snake.abp | $(OPTIMIZE) > Snake.atom
 
 .PHONY: remote-%
 remote-%:
@@ -21,6 +25,10 @@ remote-%:
 
 .PHONY: mf
 mf: remote-Makefile
+
+.PHONY: print-%
+print-%:
+	@echo "$*=$($*)"
 
 # scp work:Documents/snake/{optimize.py,atom_transfer.py,Snake.abp,AcornAtom.abp} . \
   && (cpp -P Snake.abp | python3 optimize.py > Snake.atom) \

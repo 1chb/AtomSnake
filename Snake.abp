@@ -9,9 +9,11 @@
 #ifdef PROD
 # define WIDTH 40
 # define HEIGHT 21
+# define notPROD(x)
 #else
 # define WIDTH 16
 # define HEIGHT 9
+# define notPROD(x) x
 #endif
 
 #define SNAKE_COL 20
@@ -152,7 +154,7 @@
 #endif
 
 // Snake-specific macros
-#define SnakeHead GraphicsOn "`" GraphicsOff
+#define SnakeHead $(snakeLUT+18+isAuto*2) // Assumes Manual head starts at 18, auto at 26, and isAuto is 0 or 4: 18+4*2=26
 #define MoveToPos(p) Position(p/width+3, p%width+colOffset)
 #define TryDir Gosub(TryDirSub); If(K=0) Then Goto(AutoDone)
 
@@ -190,27 +192,30 @@
 70 nodes=nodes/2-1 // Halved tree: frees cells for food list
 // Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
 // Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└ t=├ u=┤ v=┴ w=┬. Food: @=Mouse *=Bonus
-// Index  lastDir  direction  Char  Graphic  Transition
-// -----  -------  ---------  ----  -------  ----------
-// 0      W(0)     W(0)       q     (-)      West→West
-// 1      W(0)     N(1)       m     (└)      West→North
-// 2      W(0)     E(2)       t     (├)      West→East (clash)
-// 3      W(0)     S(3)       l     (┌)      West→South
-// 4      N(1)     W(0)       k     (┐)      North→West
-// 5      N(1)     N(1)       x     (|)      North→North
-// 6      N(1)     E(2)       l     (┌)      North→East
-// 7      N(1)     S(3)       w     (┬)      North→South (clash)
-// 8      E(2)     W(0)       u     (┤)      East→West (clash)
-// 9      E(2)     N(1)       j     (┘)      East→North
-// 10     E(2)     E(2)       q     (-)      East→East
-// 11     E(2)     S(3)       k     (┐)      East→South
-// 12     S(3)     W(0)       j     (┘)      South→West
-// 13     S(3)     N(1)       v     (┴)      South→North (clash)
-// 14     S(3)     E(2)       m     (└)      South→East
-// 15     S(3)     S(3)       x     (|)      South→South
-// 16     -        -          @     Mouse    Food
-// 17     -        -          *     Bonus    Food
-80 DIM snakeLUT(18); $F="qmtlkxlwujqkjvmx@*"
+// Index  lastDir  direction  Char(s)   Graphic   Transition
+// -----  -------  ---------  -------   --------  ----------
+// 0      W(0)     W(0)       q         (-)       West→West
+// 1      W(0)     N(1)       m         (└)       West→North
+// 2      W(0)     E(2)       t         (├)       West→East (clash)
+// 3      W(0)     S(3)       l         (┌)       West→South
+// 4      N(1)     W(0)       k         (┐)       North→West
+// 5      N(1)     N(1)       x         (|)       North→North
+// 6      N(1)     E(2)       l         (┌)       North→East
+// 7      N(1)     S(3)       w         (┬)       North→South (clash)
+// 8      E(2)     W(0)       u         (┤)       East→West (clash)
+// 9      E(2)     N(1)       j         (┘)       East→North
+// 10     E(2)     E(2)       q         (-)       East→East
+// 11     E(2)     S(3)       k         (┐)       East→South
+// 12     S(3)     W(0)       j         (┘)       South→West
+// 13     S(3)     N(1)       v         (┴)       South→North (clash)
+// 14     S(3)     E(2)       m         (└)       South→East
+// 15     S(3)     S(3)       x         (|)       South→South
+// 16     -        -          @         Mouse     Food (15+1)
+// 17     -        -          *         Bonus     Food (15+2)
+// 18-25  -        -          \(0`\(B␍  SnakeHead Manual mode: GraphicsOn "`" GraphicsOff <CR>
+// 26-27  -        -          Q␍        SnakeHead Auto mode
+80 DIM snakeLUT(27)
+81 $F="qmtlkxlwujqkjvmx@*\(0`\(B_Q"; notPROD(F?18=27;F?22=27); F?25=13
 90 flags=0; lastKey=PAUSE; highScore=0
 // --- end Init --- fall through
 
@@ -393,7 +398,7 @@ Label(5200, LocateLinear) // Linear search:
 5320 vu(.-.|K..|) K=Mouse
 5330 vu(.-.|k..n) If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
 5340 vu(.-.jk...) AA(J)=AA(J)+K
-5350 vu(.-.jk...) Print(MoveToPos(J) $(snakeLUT+15)?K)
+5350 vu(.-.jk...) Print(MoveToPos(J) $(snakeLUT+15)?K) // food:K=1, bonus:K=2
 5360 vu(.-Ij..MN) pos=J; quantity=-CountBit; Gosub(Adjust)
 5370 vu(.-.j....) FoodSet(foodCount,J)
 5380 vu(.-.|....) foodCount=foodCount+1
@@ -433,7 +438,12 @@ Label(6400, Eat) // From 6280
 6440 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
 6450 vu(.-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
 6460 vu(.-......) score=score+1
+#ifdef PROD
 6470 vu(.-......) Print(DoubleAt(1,(SCORE_COL+6),score))
+#else
+6470 vu(.-......) Print(UpperAt(1,(SCORE_COL+6),score))
+6471 vu(.-......) Print(LowerAt(1,(SCORE_COL+6),score))
+#endif
 6480 vu(.-IJKLMN) Gosub(SpawnFood) // Fall through to MarkHead
 Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw snake head at current position 
 6510 vu(.-......) AA(head)=AA(head)&CountMask|BorderBit|direction
@@ -444,9 +454,18 @@ Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw s
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
 8010 vu(.-......) Print(ClearScreen HideCursor)
+#ifdef PROD
 8020 vu(.-......) Print(DoubleAt(1,SNAKE_COL,"Snake"))
 8030 vu(.-......) Print(DoubleAt(1,SCORE_COL,"Score 0"))
 8040 vu(.-......) If(highScore) Then Print(DoubleAt(1,1, "High "highScore))
+#else
+8020 vu(.-......) Print(UpperAt(1,SNAKE_COL,"Snake"))
+8021 vu(.-......) Print(LowerAt(1,SNAKE_COL,"Snake"))
+8030 vu(.-......) Print(UpperAt(1,SCORE_COL,"Score 0"))
+8031 vu(.-......) Print(LowerAt(1,SCORE_COL,"Score 0"))
+8040 vu(.-......) If(highScore) Then Print(UpperAt(1,1, "High "highScore))
+8041 vu(.-......) If(highScore) Then Print(LowerAt(1,1, "High "highScore))
+#endif
 8050 vu(.-......) For(I=1) To(height); PrintLn(); Print(Double(6)); Next(I)
 8060 vu(.-......) Print(ReverseVideo TopBorderPos)
 8080 vu(.-IJ..MN) For(J=0) To(width-1); pos=J; Gosub(BorderPrim); Next(J)
@@ -460,7 +479,12 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8160 vu(.-......) Return
 
 Help vu(.-.....N) N=flags&PhoneBit*3 // Assumes PhoneBit=2 => 0|6
+#ifdef PROD
 8310 Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N" N/S=/ P=5 A=0" NormalVideo)
+#else
+8310 Print(ReverseVideo HelpPos)
+8311 Print("N="8-N" E=6 W=4 S="2+N" N/S=/ P=5 A=0" NormalVideo)
+#endif
 8320 Return
 
 #define CellCount(i) AA(i)&CountMask
