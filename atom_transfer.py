@@ -53,6 +53,8 @@ def process_line(line, strip_remarks):
         full_line += ' ' + new_rest  # Add space only if needed
     return full_line if full_line.strip() else None
 
+MAX_LINE = 63
+
 def validate_program(lines):
     """
     Validate BASIC program lines for common issues.
@@ -94,6 +96,12 @@ def validate_program(lines):
         if line_num < prev_line_num:
             warnings.append(
                 f"Line {file_line_num}: Line number {line_num} comes after {prev_line_num} (out of order)"
+            )
+        
+        # Check line length
+        if len(line) > MAX_LINE:
+            errors.append(
+                f"Line {file_line_num}: Line {line_num} exceeds {MAX_LINE} chars ({len(line)}): {line[:60]}{'...' if len(line) > 60 else ''}"
             )
         
         prev_line_num = line_num
