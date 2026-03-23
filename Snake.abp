@@ -156,6 +156,11 @@
 #define MoveToPos(p) Position(p/width+3, p%width+colOffset)
 #define TryDir Gosub(TryDirSub); If(K=0) Then Goto(AutoDone)
 
+// N=8 E=6 W=4 S=2 N/S=/ P=5 A=0 // 29 chars
+#define HelpPos         Position(3,        6) // (42-29)/2
+#define TopBorderPos    Position(3,        colOffset)
+#define BottomBorderPos Position(height+2, colOffset)
+
 #ifdef TREE_CHECK
 #  define CheckTree Gosub(8500)
 #else
@@ -210,7 +215,7 @@
 // --- end Init --- fall through
 
 // NewGame: re-init tree and play
-Label(100, NewGame) Print(Position(3, colOffset) "Wait...")
+Label(100, NewGame) Print(TopBorderPos "Wait...")
 // --- InitTree (inlined) --- size nodes => AA : I J K
 //  vu(G-IJKLMN) Scopes of temp variables
 110 vu(.-......) AA(0)=size*CountBit
@@ -436,11 +441,6 @@ Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw s
 6530 vu(.-......) Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
 6540 vu(.-......) Return
 
-// N:8 W:4 E:6 S:2 8/2:/ P:5 A:0 // 29 chars
-#define HelpPos         Position(3,        6) // (42-29)/2
-#define TopBorderPos    Position(3,        colOffset)
-#define BottomBorderPos Position(height+2, colOffset)
-
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
 8010 vu(.-......) Print(ClearScreen HideCursor)
@@ -460,7 +460,7 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8160 vu(.-......) Return
 
 Help vu(.-.....N) N=flags&PhoneBit*3 // Assumes PhoneBit=2 => 0|6
-8310 Print(ReverseVideo HelpPos "N:"8-N" W:4 E:6 S:"2+N" 8/2:/ P:5 A:0" NormalVideo)
+8310 Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N" N/S=/ P=5 A=0" NormalVideo)
 8320 Return
 
 #define CellCount(i) AA(i)&CountMask
