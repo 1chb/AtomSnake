@@ -104,8 +104,7 @@
 #define BorderBit 4
 #define FlagsMask 7
 #define CountBit 8
-// #FFFFFFF8 = -8
-#define CountMask -CountBit
+#define CountMask -CountBit // #FFFFFFF8 = -8
 #define Mouse 1
 #define Bonus 2
 
@@ -118,7 +117,7 @@
 // Labels
 #define Adjust a
 #define Border b
-#define DirKey c
+#define IgnoreBonus c
 #define ChangeDirection d
 #define AssertSub e
 #define AdvanceHead f
@@ -181,7 +180,7 @@
 // --- Init (inlined) --- width height => size nodes colOffset snakeLUT AA : I J K
 30 @=0; colOffset=(42-width)/2
 40 size=width*height
-50 DIM AA(size-1); Print("Initializing...")
+50 DIM AA(size-1)
 60 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
 70 nodes=nodes/2-1 // Halved tree: frees cells for food list
 // Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
@@ -207,11 +206,11 @@
 // 16     -        -          @     Mouse    Food
 // 17     -        -          *     Bonus    Food
 80 DIM snakeLUT(18); $F="qmtlkxlwujqkjvmx@*"
-90 flags=AutoBit; lastKey=0; highScore=0
+90 flags=0; lastKey=PAUSE; highScore=0
 // --- end Init --- fall through
 
 // NewGame: re-init tree and play
-Label(100, NewGame)
+Label(100, NewGame) Print(Position(3, colOffset) "Wait...")
 // --- InitTree (inlined) --- size nodes => AA : I J K
 //  vu(G-IJKLMN) Scopes of temp variables
 110 vu(.-......) AA(0)=size*CountBit
@@ -268,7 +267,7 @@ Subroutine(1000, Play, flags lastKey time size height width colOffset highScore 
 1030 vu(.-IJKLMN) Gosub_(InitGame)
 1040 vu(.-IJKLMN) CheckTree
 1050 vu(.-......) tickDelay=SLOW_DOWN
-1070 vu(.-......) If(IsDirKey(lastKey)) Then Goto(DirKey) // Process saved direction key
+1070 vu(.-......) If(IsDirKey(lastKey) OR lastKey=PAUSE) Then Goto(KeyDispatch) // Process saved direction key
 Label(1080, GameLoop)
 1090 vu(.-..K...) K=time+tickDelay // Next tick time (temp)
 1100 vu(.-..|...) If(isAlive=0) Then Return
@@ -278,7 +277,6 @@ Label(1080, GameLoop)
 Label(1145, KeyDispatch)
 1150 vu(.-..|..N) If(lastKey=PAUSE) Then Gosub(PauseLoop); If(lastKey=AUTO) Then clear(AutoBit) // will toggle on the next line
 1160 vu(.-..|...) If(lastKey=AUTO) Then toggle(AutoBit)
-Label(1170, DirKey)
 1171 vu(.-..|...) If(lastKey=NORTH) Then clear(AutoBit); direction=North:isPhone; Gosub(ChangeDirection)
 1180 vu(.-..|...) If(lastKey=WEST) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
 1190 vu(.-..|...) If(lastKey=EAST) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
@@ -296,10 +294,11 @@ Label(1400, AutoInput)
 1430 vu(.-......) If(foodCount=0) Then Goto(AutoFallback)
 1440 vu(.-..K...) K=#7FFF
 1450 vu(.-IJk...) For(I=0) To(foodCount-1); J=FoodGet(I)
-1455 vu(.-|j|...)   If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(1470)
+1455 vu(.-|j|...)   If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(IgnoreBonus) // When score is bad, ignore bonus if possible
 1460 vu(.-|||.M.)   M=Abs(J/width-head/width)+Abs(J%width-head%width)
 1465 vu(.-|j|.m.)   If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
 1467 vu(.-|.kLm.)   If(M<K) Then K=M; L=J
+Label(1469, IgnoreBonus)
 1470 vu(.-i..|..) Next(I) // L=nearest food
 1480 vu(.-.J.lM.) J=L%width-head%width; M=L/width-head/width // J=dx, M=dy
 1490 vu(.-.j..|N) N=East; If(J<0) Then N=West // N=horizontal toward food
