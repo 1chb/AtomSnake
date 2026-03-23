@@ -1,7 +1,7 @@
-10W=40;H=21;@=0;V=(42-W)/2;Z=W*H;DIM AA(Z-1)
+10W=40;H=22;@=0;V=(42-W)/2;Z=W*(H-2);DIM AA(Z-1)
 60O=1;DO;O=O+O;U.O+O>Z+1;O=O/2-1;DIM F(27)
 81$F="qmtlkxlwujqkjvmx@*\(0`\(B_Q";F?25=13
-90B=0;Y=53;C=0;A=24-Z/60
+90B=0;Y=53;C=0;A=24-Z/50
 100xP."\[3;"V"HWait...";AA(0)=Z*8;F.I=1T.O-2S.2
 130J=(I-1)/2;K=AA(J)/2&-8;AA(I)=K;AA(I+1)=AA(J)-K;N.
 160F.I=O T.Z-1;AA(I)=0;N.;R=0;GOS.p;I.Y=27G.i
@@ -19,7 +19,8 @@
 440N.;E.
 500dI.AA(S)&3=D R.
 520AA(S)=AA(S)&-4|D;R.
-600kK=AA(S+(N&2-1)*((N&1)*(W-1)+1))&4;I.K=0D=N;G.d
+600kK=S+(N&2-1)*((N&1)*(W-1)+1);I.K<0ORK>=Z K=4;R.
+620K=AA(K)&4;I.K=0D=N;G.d
 630R.
 1000pU=0;B=B&6|1;GOS.h;GOS.8300;GOS.n;I.(Y-2)&-7=48ORY=53G.l
 1080qK=R+A
@@ -62,13 +63,13 @@
 2000aI=0;M=Z;DO;AA(I)=AA(I)+Q;N=M;M=M/2;I=I+I+1
 2040I.P>=M P=P-M;M=N-M;I=I+1
 2050U.I>=O;R.
-3000bP."\["P/W+3";"P%W+V"H"
+3000bP."\["(P+W)/W+3";"(P+W)%W+V"H"
 3020rP." ";AA(P)=AA(P)|4;Q=-8;G.a
-4000nS=(H+1)/2*W-W/2;T=S-2;D=2;F.J=T T.S
-4050P."\["J/W+3";"J%W+V"H\(0q\(B";AA(J)=AA(J)&-8|4|D
+4000nS=(H-1)/2*W-W/2;T=S-2;D=2;F.J=T T.S
+4050P."\["(J+W)/W+3";"(J+W)%W+V"H\(0q\(B";AA(J)=AA(J)&-8|4|D
 4070P=J;Q=-8;GOS.a;N.;X=0;B=B&-9
-4100P."\["S/W+3";"S%W+V"H"$(F+18+B&4*2);F.E=1T.5;GOS.s;N.;E=D
-4130R.
+4100P."\["(S+W)/W+3";"(S+W)%W+V"H"$(F+18+B&4*2)
+4110F.E=1T.5;GOS.s;N.;E=D;R.
 5100sI.AA(0)&-8=0R.
 5120P=A.(R.)%(AA(0)/8);N=P;P=P*8;I=1;J=0;K=Z;DO;M=(K-J)/2
 5166L=AA(I)&-8;I.P<L K=J+M;I=I+I+1
@@ -77,31 +78,33 @@
 5200gI.AA(J)&7J=J+1;G.g
 5220I.P>0P=P-8;J=J+1;G.g
 5320K=1;I.B&8=0A.N%13=5K=2;B=B|8
-5340AA(J)=AA(J)+K;P."\["J/W+3";"J%W+V"H"$(F+15)?K
+5340AA(J)=AA(J)+K;P."\["(J+W)/W+3";"(J+W)%W+V"H"$(F+15)?K
 5360P=J;Q=-8;GOS.a;AA(O+X)=AA(O+X)&7|J*8;X=X+1;R.
 6000tP=P+(D&2-1)*((D&1)*(W-1)+1);R.
-6200fD=AA(S)&3;N=F?(E*4+D);P."\["S/W+3";"S%W+V"H\(0"$N"\(B";E=D
-6250P=S;GOS.t;S=P;I.AA(S)&4G.j
+6200fD=AA(S)&3;N=F?(E*4+D)
+6230P."\["(S+W)/W+3";"(S+W)%W+V"H\(0"$N"\(B";E=D;P=S;GOS.t;S=P
+6255I.S<0ORS>=Z G.j
+6260I.AA(S)&4G.j
 6280I.AA(S)&7G.v
 6290P=T;Q=8;GOS.a;I=D;D=AA(T);AA(T)=D&-8
-6320P."\["T/W+3";"T%W+V"H ";P=T;GOS.t;T=P;D=I;GOS.u;P=S;Q=-8
-6370G.a
+6320P."\["(T+W)/W+3";"(T+W)%W+V"H ";P=T;GOS.t;T=P;D=I;GOS.u
+6360P=S;Q=-8;G.a
 6400vX=X-1;I=0
 6430I.AA(O+I)/8<>S I=I+1;G.6430
 6440AA(O+I)=AA(O+I)&7|AA(O+X)&-8;I.AA(S)&7=2U=U+(U%10)-1;B=B&-9
 6460U=U+1;P."\[1;38H\#3"U"\[2;38H\#4"U;GOS.s
-6500uAA(S)=AA(S)&-8|4|D;P."\["S/W+3";"S%W+V"H"$(F+18+B&4*2)
-6530P."\["S/W+3";"S%W+V"H";R.
+6500uAA(S)=AA(S)&-8|4|D
+6520P."\["(S+W)/W+3";"(S+W)%W+V"H"$(F+18+B&4*2)
+6530P."\["(S+W)/W+3";"(S+W)%W+V"H";R.
 8000hP.$12"\[?25l";P."\[1;20H\#3Snake\[2;20H\#4Snake"
 8030P."\[1;32H\#3Score 0\[2;32H\#4Score 0"
 8040I.C P."\[1;1H\#3High "C"\[2;1H\#4High "C
-8050F.I=1T.H;P.';P."\#6";N.;P."\[7m\[3;"V"H"
-8080F.J=0T.W-1;P=J;GOS.r;N.;F.J=W T.Z-W-W S.W;P=J;GOS.b
-8110P=J+W-1;GOS.b;N.;P."\["H+2";"V"H"
-8140F.J=Z-W T.Z-1;P=J;GOS.r;N.;P."\[m";R.
+8050F.I=1T.H;P.';P."\#6";N.;P."\[7m\[3;"V"H";F.J=1T.W;P." ";N.
+8090F.J=0T.Z-W S.W;P=J;GOS.b;P=J+W-1;GOS.b;N.;P."\["H+2";"V"H"
+8140F.J=1T.W;P." ";N.;P."\[m";R.
 8300N=B&2*3;P."\[7m\[3;4H"
 8311P."N="8-N" E=6 W=4 S="2+N" N/S=/ P=5 A=0 -"A"+ \[m";R.
-9000jB=B&-2;Y=0;P."\["S/W+3";"S%W+V"H"
+9000jB=B&-2;Y=0;P."\["(S+W)/W+3";"(S+W)%W+V"H"
 9030I.X=0P.$(F+18+B&4*2);G.9050
 9040P."X"
 9050I.U<=C R.
