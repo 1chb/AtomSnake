@@ -24,7 +24,6 @@
 #  define End E.
 #  define For(init) F.init
 #  define Gosub(label) GOS.label
-#  define Gosub_(label) GOS.label
 #  define Goto(label) G.label
 #  define If(expr) I.expr
 #  define Label(line, name) Concat(line, name)
@@ -47,7 +46,6 @@
 #  define End END
 #  define For(init) FOR init
 #  define Gosub(label) GOSUB label
-#  define Gosub_(label) GOSUB label
 #  define Goto(label) GOTO label
 #  define If(expr) IF expr
 #  define Label(line, name) Concat(line, name)
@@ -78,5 +76,4 @@
 #define KeyNext ?KeyOut=(?KeyOut+1)&KeyMask
 
 // Helpers
-#define Scan(x) x
 #define Concat(a,b) a ## b

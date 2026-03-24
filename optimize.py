@@ -23,7 +23,6 @@ Reads a .atom file (PROD preprocessed) and applies size optimizations:
     - Removes entire REM statement if less than 3 chars available
 
 Usage: python3 optimize.py < input.atom > output.atom
-       python3 optimize.py input.atom [output.atom]
 """
 
 import re
@@ -623,12 +622,7 @@ def optimize(text):
                 else:
                     # Not enough space even for "REM", remove entire REM statement
                     line = (prefix + pre_rem_char).rstrip(';').rstrip()
-        
-        # Verify line is now within limit
-        if len(line) <= MAX_LINE:
-            truncated.append(line)
-        else:
-            truncated.append(line)  # Keep it for error reporting
+        truncated.append(line)
     
     # Step 5: Validate line lengths after truncation
     errors = []

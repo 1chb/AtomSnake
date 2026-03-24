@@ -60,14 +60,14 @@
 // │   │   └─→ SpawnFood (5100) [x5 in loop]  B F O V W X Z AA => B X AA : I J K L M N P Q
 // │   │       └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
 // │   ├─→ PauseLoop (1700)  => Y : N
-// │   ├─→ ChangeDirection (5000) [x4]  D S AA => AA :
+// │   ├─→ ChangeDirection (500) [x4]  D S AA => AA :
 // │   ├─→ AdvanceHead (6200)  B E F O S T U V W X Z AA => B E S T U X AA : D I K L M N P Q
 // │   │   ├─→ StepSub (6000) [x2]  D P W => P :
 // │   │   ├─→ MarkHead (6500)  D S V W AA => AA :
 // │   │   ├─→ Adjust (2000) [TAIL CALL]  O P Q Z AA => AA : I M N P
 // │   │   └─→ SpawnFood (5100)  B F O V W X Z AA => B X AA : I J K L M N P Q
 // │   └─→ TryDirSub (600) [x7]  N S W AA => D K AA :
-// │       └─→ ChangeDirection (5000) [TAIL CALL]  D S AA => AA :
+// │       └─→ ChangeDirection (500) [TAIL CALL]  D S AA => AA :
 // └─→ PauseLoop (1700)  => Y : N
 
 // Packed flags in B: bit 0=alive, bit 1=phone, bit 2=autoPlay, bit 3=bonusActive
@@ -85,9 +85,10 @@
 #define toggle(bit) flags=flags:bit
 
 // Turns
-#define Left -1
-#define Ahead 0
-#define Right 1
+#define GoAhead(dir) dir
+#define TurnAround(dir) dir:2
+#define TurnLeft(dir) (dir+3)&3
+#define TurnRight(dir) (dir+1)&3
 
 // Directions
 #define West 0
@@ -251,7 +252,7 @@ Label(100, NewGame) Print(TopBorderPos "Wait...")
 150 vu(.-i.....) Next(I)
 160 vu(.-I.....) For(I=nodes) To(size-1); AA(I)=0; Next(I)
 // --- end InitTree ---
-170 vu(G-IJKLMN) time=0; Gosub_(Play)
+170 vu(G-IJKLMN) time=0; Gosub(Play)
 180 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
 190 vu(.-......) If(isAuto=0) Then Goto(300)
 // Auto mode: delay then restart. Any key switches to manual.
@@ -297,9 +298,9 @@ Subroutine(600, TryDirSub, N head width size AA => K direction AA :)
 // === Play: one game ===
 Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : I J K L M N)
 1010 vu(.-......) score=0; flags=isSet(AutoBit+PhoneBit)|AliveBit
-1020 vu(.-IJ..MN) Gosub_(HomePage)
-1025 vu(.-.....N) Gosub_(Help)
-1030 vu(.-IJKLMN) Gosub_(InitGame)
+1020 vu(.-IJ..MN) Gosub(HomePage)
+1025 vu(.-.....N) Gosub(Help)
+1030 vu(.-IJKLMN) Gosub(InitGame)
 1040 vu(.-IJKLMN) CheckTree
 1070 vu(.-......) If(IsDirKey(lastKey) OR lastKey=PAUSE) Then Goto(KeyDispatch) // Process saved direction key
 Label(1080, GameLoop)
@@ -342,12 +343,12 @@ Label(1469, IgnoreBonus)
 1520 vu(.-.|.|mN) N=South; If(M<0) Then N=North // Try other axis: vertical toward food
 1530 vu(.-.j.|mn) If(Abs(M)>Abs(J)) Then N=East; If(J<0) Then N=West // Override: horizontal if vertical was primary
 1540 vu(.-..K|.n) TryDir
-1550 vu(.-..K|.n) N=N:2; TryDir // Try secondary axis AWAY from food
-1560 vu(.-..Kl.N) N=L:2; TryDir // Try primary axis AWAY from food (opposite of desired)
+1550 vu(.-..K|.n) N=TurnAround(N); TryDir // Try secondary axis AWAY from food
+1560 vu(.-..Kl.N) N=TurnAround(L); TryDir // Try primary axis AWAY from food (opposite of desired)
 Label(1600, AutoFallback)
-1610 vu(.-..K..N) N=direction; TryDir // Fallback: straight
-1620 vu(.-..K..N) N=(direction+1)&3; TryDir
-1630 vu(.-..K..N) N=(direction-1)&3; TryDir
+1610 vu(.-..K..N) N=GoAhead(direction); TryDir
+1620 vu(.-..K..N) N=TurnRight(direction); TryDir
+1630 vu(.-..K..N) N=TurnLeft(direction); TryDir
 // end AutoStep
 Label(1640, AutoDone)
 1650 vu(.-IJKLMN) Gosub(AdvanceHead)
