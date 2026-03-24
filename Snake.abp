@@ -155,9 +155,22 @@
 #  define Assert(condition)
 #endif
 
+#ifndef PROD
+# define HORIZONTAL_BORDERS_IN_BOARD
+#endif
+
+#ifdef HORIZONTAL_BORDERS_IN_BOARD
+# define MoveToPos(p) Position(p/width+3, p%width+colOffset)
+# define SIZE_OF_BOARD width*height
+# define CENTER_OF_BOARD (height+1)/2*width-width/2
+#else
+# define MoveToPos(p) Position((p+width)/width+3, (p+width)%width+colOffset)
+# define SIZE_OF_BOARD width*(height-2)
+# define CENTER_OF_BOARD (height-1)/2*width-width/2
+#endif
+
 // Snake-specific macros
 #define SnakeHead $(snakeLUT+18+isAuto*2) // Assumes Manual head starts at 18, auto at 26, and isAuto is 0 or 4: 18+4*2=26
-#define MoveToPos(p) Position((p+width)/width+3, (p+width)%width+colOffset)
 #define TryDir Gosub(TryDirSub); If(K=0) Then Goto(AutoDone)
 
 // N=8 E=6 W=4 S=2 N/S=/ P=5 A=0 -NN+ // 33 chars
@@ -188,7 +201,7 @@
 20 height=HEIGHT
 // --- Init (inlined) --- width height => size nodes colOffset snakeLUT AA : I J K
 30 @=0; colOffset=(42-width)/2
-40 size=width*(height-2)
+40 size=SIZE_OF_BOARD
 50 DIM AA(size-1)
 60 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
 70 nodes=nodes/2-1 // Halved tree: frees cells for food list
@@ -268,7 +281,9 @@ Subroutine(500, ChangeDirection, head direction AA => AA :)
 // TryDir(N): if dir N is safe, apply it. K=0 if safe, K=BorderBit if blocked.
 Subroutine(600, TryDirSub, N head width size AA => K direction AA :)
 610 vu(.-..K..n) K=head+(N&2-1)*((N&1)*(width-1)+1)
+#ifndef HORIZONTAL_BORDERS_IN_BOARD
 615 vu(.-..k...) If(K<0 OR K>=size) Then K=BorderBit; Return
+#endif
 620 vu(.-..k...) K=AA(K)&BorderBit
 625 vu(.-..k...) If(K=0) Then direction=N; Goto(ChangeDirection) // Tail-call optimization
 630 vu(.-......) Return
@@ -365,16 +380,11 @@ Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
 
 // === InitGame: set up snake and food ===
 Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags AA : I J K L M N pos quantity)
-4010 vu(.-......) head=(height-1)/2*width-width/2 // Center of board
+4010 vu(.-......) head=CENTER_OF_BOARD
 4020 vu(.-......) tail=head-2
 4030 vu(.-......) direction=East
 4040 vu(.-.J....) For(J=tail) To(head)
-#ifdef PROD
 4050 vu(.-.j....)   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
-#else
-4050 vu(.-.j....)   Print(MoveToPos(J) GraphicsOn "q")
-4051 vu(.-.j....)   Print(GraphicsOff)
-#endif
 4060 vu(.-.j....)   AA(J)=AA(J)&CountMask|BorderBit|direction
 4070 vu(.-Ij..MN)   pos=J; quantity=-CountBit; Gosub(Adjust)
 4080 vu(.-.j....) Next(J)
@@ -424,15 +434,12 @@ Subroutine(6000, StepSub, pos direction width => pos :)
 Subroutine(6200, AdvanceHead, head tail lastDir width colOffset snakeLUT score foodCount flags nodes size AA => head tail score flags foodCount AA lastDir : direction I K L M N pos quantity) // K destroyed when EAT!
 6210 vu(.-......) direction=AA(head)&3
 6220 vu(.-.....N) N=snakeLUT?(lastDir*4+direction)
-#ifdef PROD
 6230 vu(.-.....n) Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
-#else
-6230 vu(.-.....n) Print(MoveToPos(head) GraphicsOn $N)
-6231 vu(.-.....n) Print(GraphicsOff)
-#endif
 6240 vu(.-......) lastDir=direction
 6250 vu(.-......) pos=head; Gosub(StepSub); head=pos
+#ifndef HORIZONTAL_BORDERS_IN_BOARD
 6255 vu(.-......) If(head<0 OR head>=size) Then Goto(Clash)
+#endif
 6260 vu(.-I.....) If(AA(head)&BorderBit) Then Goto(Clash)
 6280 vu(.-......) If(AA(head)&FlagsMask) Then Goto(Eat)
 // EatTail (inlined): remove tail segment
@@ -484,13 +491,22 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 #endif
 8050 vu(.-......) For(I=1) To(height); PrintLn(); Print(Double(6)); Next(I)
 8060 vu(.-......) Print(ReverseVideo TopBorderPos)
+#ifdef HORIZONTAL_BORDERS_IN_BOARD
+8080 vu(.-IJ..MN) For(J=0) To(width-1); pos=J; Gosub(BorderPrim); Next(J)
+8090 vu(.-.J....) For(J=width) To(size-width-width) Step(width) // SideBorders
+#else
 8070 vu(.-.J....) For(J=1) To(width); Print(" "); Next(J) // TopBorder (screen only)
 8090 vu(.-.J....) For(J=0) To(size-width) Step(width) // SideBorders
+#endif
 8100 vu(.-Ij..MN)   pos=J; Gosub(Border) // LeftBorder
 8110 vu(.-Ij..MN)   pos=J+width-1; Gosub(Border) // RightBorder
 8120 vu(.-.j....) Next(J)
 8130 vu(.-......) Print(BottomBorderPos)
+#ifdef HORIZONTAL_BORDERS_IN_BOARD
+8140 vu(.-IJ..MN) For(J=size-width) To(size-1); pos=J; Gosub(BorderPrim); Next(J)
+#else
 8140 vu(.-.J....) For(J=1) To(width); Print(" "); Next(J) // BottomBorder (screen only)
+#endif
 8150 vu(.-......) Print(NormalVideo)
 8160 vu(.-......) Return
 
