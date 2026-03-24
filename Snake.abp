@@ -5,15 +5,20 @@
 
 #define SLOW_DOWN 24-size/50
 #define AutoNewGameDelay 1500
+#define NumFood 5
 
 #ifdef PROD
-# define WIDTH 40
-# define HEIGHT 22
-# define notPROD(x)
+#  define WIDTH 40
+#  ifdef TREE_CHECK
+#    define HEIGHT 16
+#  else
+#    define HEIGHT 22
+#  endif
+#  define notPROD(x)
 #else
-# define WIDTH 16
-# define HEIGHT 9
-# define notPROD(x) x
+#  define WIDTH 16
+#  define HEIGHT 9
+#  define notPROD(x) x
 #endif
 
 #define SNAKE_COL 20
@@ -123,7 +128,7 @@
 #define Border b
 #define IgnoreBonus c
 #define ChangeDirection d
-#define AssertSub e
+#define GameLoop2 e
 #define AdvanceHead f
 #define LocateLinear g
 #define HomePage h
@@ -150,23 +155,24 @@
 
 #ifdef DEBUG
 #  define Debug 9600
-#  define Assert(condition) K=condition; Gosub(AssertSub)
+#  define Failure 9800
+#  define AssertStmt(condition) If ((condition)=0) Then Goto(Failure)
 #else
-#  define Assert(condition)
+#  define AssertStmt(condition)
 #endif
 
 #ifndef PROD
-# define HORIZONTAL_BORDERS_IN_BOARD
+#  define HORIZONTAL_BORDERS_IN_BOARD
 #endif
 
 #ifdef HORIZONTAL_BORDERS_IN_BOARD
-# define MoveToPos(p) Position(p/width+3, p%width+colOffset)
-# define SIZE_OF_BOARD width*height
-# define CENTER_OF_BOARD (height+1)/2*width-width/2
+#  define MoveToPos(p) Position(p/width+3, p%width+colOffset)
+#  define SIZE_OF_BOARD width*height
+#  define CENTER_OF_BOARD (height+1)/2*width-width/2
 #else
-# define MoveToPos(p) Position((p+width)/width+3, (p+width)%width+colOffset)
-# define SIZE_OF_BOARD width*(height-2)
-# define CENTER_OF_BOARD (height-1)/2*width-width/2
+#  define MoveToPos(p) Position((p+width)/width+3, (p+width)%width+colOffset)
+#  define SIZE_OF_BOARD width*(height-2)
+#  define CENTER_OF_BOARD (height-1)/2*width-width/2
 #endif
 
 // Snake-specific macros
@@ -298,7 +304,8 @@ Subroutine(1000, Play, flags lastKey time size height width colOffset highScore 
 1070 vu(.-......) If(IsDirKey(lastKey) OR lastKey=PAUSE) Then Goto(KeyDispatch) // Process saved direction key
 Label(1080, GameLoop)
 1090 vu(.-..K...) K=time+tickDelay // Next tick time (temp)
-1100 vu(.-..|...) If(isAlive=0) Then Return
+Label(1100, GameLoop2)
+1110 vu(.-..|...) If(isAlive=0) Then Return
 1120 vu(.-..|...) If(isAuto) Then Goto(AutoInput)
 1130 vu(.-..|...) If(KeyEmpty) Then Goto(WaitForTick)
 1140 vu(.-..|...) lastKey=KeyPeek; KeyNext
@@ -312,7 +319,7 @@ Label(1145, KeyDispatch)
 1220 vu(.-..|...) If(lastKey=QUIT) Then clear(AliveBit)
 Label(1300, WaitForTick)
 1310 vu(.-..|...) time=time+1
-1320 vu(.-..k...) If(time<K) Then Goto(1100)
+1320 vu(.-..k...) If(time<K) Then Goto(GameLoop2)
 1340 vu(.-I.KLMN) Gosub(AdvanceHead)
 1350 vu(.-......) Goto(GameLoop)
 Label(1400, AutoInput)
@@ -390,7 +397,7 @@ Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA =
 4080 vu(.-.j....) Next(J)
 4090 vu(.-......) foodCount=0; clear(BonusBit)
 4100 vu(.-......) Print(MoveToPos(head) SnakeHead)
-4110 vu(.-IJKLMN) For(lastDir=1) To(5); Gosub(SpawnFood); Next(lastDir) // lastDir is used as a temp variable here.
+4110 vu(.-IJKLMN) For(lastDir=1) To(NumFood); Gosub(SpawnFood); Next(lastDir) // lastDir is used as a temp variable here.
 4120 vu(.-......) lastDir=direction
 4130 vu(.-......) Return
 
@@ -400,7 +407,8 @@ Subroutine(5100, SpawnFood, nodes size width colOffset snakeLUT foodCount flags 
 5120 vu(.-......) pos=Abs(Rnd)%(AA(0)/CountBit)
 5130 vu(.-.....N) N=pos
 #ifdef DEBUG
-5140 vu(.-.....|) Print(DoubleAt(1,1,pos":"isBonus":"N%13" "))
+5140 vu(.-.....|) Print(UpperAt(1,1,pos":"isBonus":"N%13" "))
+5141 vu(.-.....|) Print(LowerAt(1,1,pos":"isBonus":"N%13" "))
 #endif
 // Locate (inlined): find Nth empty cell in tree
 5150 vu(.-IJK..|) pos=pos*CountBit; I=1; J=0; K=size // Interval [J..K)
@@ -410,11 +418,11 @@ Subroutine(5100, SpawnFood, nodes size width colOffset snakeLUT foodCount flags 
 5170 vu(.-ijklm|)   If(pos<L) Then K=J+M; I=I+I+1
 5180 vu(.-ij|lm|)   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
 5190 vu(.-i||..|) Until(I>=nodes)
-Label(5200, LocateLinear) // Linear search:
-5210 vu(.-.j..M|) If(AA(J)&FlagsMask) J=J+1; Assert(J<size); Goto(LocateLinear)
-5220 vu(.-.j..M|) If(pos>0) Then pos=pos-CountBit; J=J+1; Assert(J<size); Goto(LocateLinear)
+Label(5200, LocateLinear) AssertStmt(J<size) // Linear search:
+5210 vu(.-.j..M|) If(AA(J)&FlagsMask) J=J+1; Goto(LocateLinear)
+5220 vu(.-.j..M|) If(pos>0) Then pos=pos-CountBit; J=J+1; Goto(LocateLinear)
 // end Locate
-5300 vu(.-.j..M|) Assert(pos=0 AND AA(J)&FlagsMask=0)
+5300 vu(.-.j..M|) AssertStmt(pos=0 AND AA(J)&FlagsMask=0)
 5320 vu(.-.|K..|) K=Mouse
 5330 vu(.-.|k..n) If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
 5340 vu(.-.jk...) AA(J)=AA(J)+K
@@ -456,8 +464,8 @@ Subroutine(6200, AdvanceHead, head tail lastDir width colOffset snakeLUT score f
 6370 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
 Label(6400, Eat) // From 6280
 6410 vu(.-......) foodCount=foodCount-1
-6420 vu(.-I.....) I=0
-6430 vu(.-i.....) If(FoodGet(I)<>head) Then I=I+1; Goto(6430)
+6420 vu(.-I.....) I=-1
+6430 vu(.-i.....) DO I=I+1; Until(FoodGet(I)=head) // Locate eaten food.
 6440 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
 6450 vu(.-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
 6460 vu(.-......) score=score+1
@@ -544,9 +552,12 @@ Help vu(.-.....N) N=flags&PhoneBit*3 // Assumes PhoneBit=2 => 0|6
 8630 vu(.-|j||..) Next(J)
 8650 vu(.-i.kl..) If (CellCount(L)=K) Then L=I; K=0; Return // OK
 8700 vu(.-......) PrintLn(" - Error:")
-8710 vu(.-......) For(pos=0) To(size-1); @=4; Print(AA(pos)/8); @=1; Print("/"AA(pos)&7); Next(pos)
-8720 vu(.-......) @=8; PrintLn(ShowCursor)
-8730 vu(.-......) End
+8710 vu(.-......) For(pos=0) To(size-1)
+8720 vu(.-......)   @=4; Print(AA(pos)/8)
+8730 vu(.-......)   @=1; Print("/"AA(pos)&7)
+8740 vu(.-......) Next(pos)
+8750 vu(.-......) @=8; PrintLn(ShowCursor)
+8760 vu(.-......) End
 #endif
 
 // === GameOver === head foodCount score => flags lastKey highScore : I
@@ -565,14 +576,13 @@ Label(9000, Clash)
 9120 vu(.-......) Return
 
 #ifdef DEBUG
-Debug AA(0) // J => : I
+Debug REM // AA(0) J => : I
 9610 vu(.-Ij....) For(I=1) To(2)
 9620 vu(.-ij....)   Print(Position(I,5)Double(I+2)AA(0)/8":"J".")
 9630 vu(.-i.....) Next(I)
 9640 vu(.-......) Return
 
-Subroutine(9800, AssertSub, K size width colOffset AA => : M pos)
-9810 vu(.-..k...) If(K) Then Return
+Failure REM // K size width colOffset AA => : M pos)
 // Error: dump board flags and halt
 9820 vu(.-......) For(pos=0) To(size-1)
 9830 vu(.-....M.)   M=AA(pos)&FlagsMask

@@ -1,6 +1,8 @@
 PROD = 1
 OPT = $(if $(PROD:0=),0:1)
 ONLY =
+DEBUG =
+TREE_CHECK =
 SRC_DIR = work:Documents/snake
 TERMINAL_PORT = /dev/ttyUSB0
 TERMINAL_BAUD = 9600
@@ -17,7 +19,7 @@ transfer: Snake.atom remote-atom_transfer.py
 Snake.atom: VARIANT = $(if $(PROD:0=),-DPROD,)
 Snake.atom: OPTIMIZE = $(if $(OPT:0=),python3 optimize.py,tee)
 Snake.atom: remote-Snake.abp remote-AcornAtom.abp remote-optimize.py
-	cpp -P $(VARIANT) Snake.abp | $(OPTIMIZE) > Snake.atom
+	cpp -P $(VARIANT) $(DEBUG:1=-DDEBUG) $(TREE_CHECK:1=-DTREE_CHECK) Snake.abp | $(OPTIMIZE) > Snake.atom
 
 .PHONY: remote-%
 remote-%:
