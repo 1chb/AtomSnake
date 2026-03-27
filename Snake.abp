@@ -8,11 +8,11 @@
 #define NumFood 5
 
 #ifdef PROD
-#  define WIDTH 40
+#  define WIDTH 35
 #  ifdef TREE_CHECK
-#    define HEIGHT 16
+#    define HEIGHT 11
 #  else
-#    define HEIGHT 22
+#    define HEIGHT 17
 #  endif
 #  define notPROD(x)
 #else
@@ -22,7 +22,7 @@
 #endif
 
 #define SNAKE_COL 20
-#define SCORE_COL 32
+#define SCORE_COL 31
 
 // Variables:
 #define tickDelay A
@@ -31,7 +31,7 @@
 #define direction D
 #define lastDir E
 #define snakeLUT F
-// G -- Free
+#define player2 G // Packed: lastDir2*1000000 + head2*1000 + tail2
 #define height H
 // I,J,K,L,M,N -- Temp
 #define nodes O
@@ -70,15 +70,27 @@
 // │       └─→ ChangeDirection (500) [TAIL CALL]  D S AA => AA :
 // └─→ PauseLoop (1700)  => Y : N
 
-// Packed flags in B: bit 0=alive, bit 1=phone, bit 2=autoPlay, bit 3=bonusActive
+// Packed flags in B:
+// bit 0 (1)  = AliveBit    Game in progress
+// bit 1 (2)  = PhoneBit    N/S swap (value 2 required for direction XOR)
+// bit 2 (4)  = ManualBit   Manual player exists
+// bit 3 (8)  = AutoBit     Auto player exists
+// bit 4 (16) = BonusBit    Bonus food active
+// bit 5 (32) = HeadBit     0=manual head, 1=auto head (set before AdvanceHead)
+// Mode = flags&#C: 4=manual, 8=auto, 12=dual. Cycle: flags+4-(flags&#C)/12*12
 #define AliveBit 1
 #define PhoneBit 2  // Position corresponds to vertical direction bit
-#define AutoBit 4
-#define BonusBit 8
-#define isAlive isSet(AliveBit)
-#define isPhone isSet(PhoneBit)
-#define isAuto isSet(AutoBit)
-#define isBonus isSet(BonusBit)
+#define ManualBit 4
+#define AutoBit 8
+#define BonusBit 16
+#define HeadBit 32
+#define isAlive flags&AliveBit
+#define isPhone flags&PhoneBit
+#define isManual flags&ManualBit
+#define isAuto flags&AutoBit
+#define isDual flags&#C=#C
+#define notDual flags&#C<#C
+#define isBonus flags&BonusBit
 #define isSet(bit) flags&(bit)
 #define set(bit) flags=flags|bit
 #define clear(bit) flags=flags&(-1-bit)
@@ -103,7 +115,7 @@
 #define SOUTH #32 // 2 (or 8)
 #define PAUSE #35 // 5        Middle
 #define QUIT  27  // Esc
-#define AUTO  #30 // 0
+#define MODE  #2A // *        Cycle mode: manual/auto/dual
 #define PHONE #2F // /        Toggle North/South
 #define FASTER #2B // +       Speed up
 #define SLOWER #2D // -       Slow down
@@ -153,6 +165,11 @@
 #define AutoInput z
 
 #define Help 8300 // flags tickDelay => : N
+#define SwapData 7000 // head tail lastDir score player2 => head tail lastDir score player2 : I
+#define UndoSnake 7100 // tail head width AA => AA : K direction pos quantity
+#define ReplaceSnakes 7200 // Erase snakes, place new ones, update score header
+#define ReplaceFoodAt 7300 // Replace food at position J with new random food, clear J. Uses score to save J across SpawnFood.
+#define AfterManual 1350
 
 #ifdef DEBUG
 #  define Debug 9600
@@ -177,7 +194,7 @@
 #endif
 
 // Snake-specific macros
-#define SnakeHead $(snakeLUT+18+isAuto*2) // Assumes Manual head starts at 18, auto at 26, and isAuto is 0 or 4: 18+4*2=26
+#define SnakeHead $(snakeLUT+18+flags&HeadBit/4) // HeadBit=0: offset 18 (manual ◆). HeadBit=32: 32/4=8, offset 26 (auto Q).
 #define TryDir Gosub(TryDirSub); If(K=0) Then Goto(AutoDone)
 
 // N=8 E=6 W=4 S=2 N/S=/ P=5 A=0 -NN+ // 33 chars
@@ -238,7 +255,7 @@
 // 26-27  -        -          Q␍        SnakeHead Auto mode
 80 DIM snakeLUT(27)
 81 $F="qmtlkxlwujqkjvmx@*\(0`\(B_Q"; notPROD(F?18=27;F?22=27); F?25=13
-90 flags=0; lastKey=PAUSE; highScore=0; tickDelay=SLOW_DOWN
+90 flags=ManualBit; lastKey=PAUSE; highScore=0; tickDelay=SLOW_DOWN
 // --- end Init --- fall through
 
 // NewGame: re-init tree and play
@@ -254,19 +271,17 @@ Label(100, NewGame) Print(TopBorderPos "Wait...")
 // --- end InitTree ---
 170 vu(G-IJKLMN) time=0; Gosub(Play)
 180 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
-190 vu(.-......) If(isAuto=0) Then Goto(300)
-// Auto mode: delay then restart. Any key switches to manual.
+190 vu(.-......) If(isManual OR isDual) Then Goto(300)
+// Single auto mode: delay then restart. Any key goes to PauseLoop.
 200 vu(.-.....I) I=AutoNewGameDelay; DO; I=I-1; Until(I=0 OR KeyAvailable)
 210 vu(.-......) If(KeyEmpty) Then lastKey=0; Goto(NewGame)
 220 vu(.-......) lastKey=KeyPeek; KeyNext
 230 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
-240 vu(.-......) If(lastKey=PAUSE) Then clear(AutoBit); lastKey=0; Goto(NewGame)
-250 vu(.-......) If(lastKey=AUTO) Then Goto(NewGame)
-260 vu(.-......) clear(AutoBit); Goto(NewGame)
+240 vu(.-......) If(lastKey=MODE) Then Goto(NewGame) // Restart with mode change
+250 vu(.-......) Goto(NewGame) // Any other key: restart
 // Manual mode: wait for any valid key to restart, Quit to exit.
 300 vu(.-.....N) Gosub(PauseLoop)
 310 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
-320 vu(.-......) If(lastKey=AUTO) Then set(AutoBit)
 330 vu(.-......) Goto(NewGame)
 
 // Exit
@@ -297,7 +312,8 @@ Subroutine(600, TryDirSub, N head width size AA => K direction AA :)
 
 // === Play: one game ===
 Subroutine(1000, Play, flags lastKey time size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction AA : I J K L M N)
-1010 vu(.-......) score=0; flags=isSet(AutoBit+PhoneBit)|AliveBit
+// Preserve mode (ManualBit+AutoBit) and PhoneBit across games. Clear BonusBit, HeadBit. Set AliveBit.
+1010 vu(.-......) score=0; flags=flags&#E|AliveBit
 1020 vu(.-IJ..MN) Gosub(HomePage)
 1025 vu(.-.....N) Gosub(Help)
 1030 vu(.-IJKLMN) Gosub(InitGame)
@@ -307,24 +323,29 @@ Label(1080, GameLoop)
 1090 vu(.-..K...) K=time+tickDelay // Next tick time (temp)
 Label(1100, GameLoop2)
 1110 vu(.-..|...) If(isAlive=0) Then Return
-1120 vu(.-..|...) If(isAuto) Then Goto(AutoInput)
+// === Manual phase ===
+1120 vu(.-..|...) If(isManual=0) Then Goto(AfterManual)
 1130 vu(.-..|...) If(KeyEmpty) Then Goto(WaitForTick)
 1140 vu(.-..|...) lastKey=KeyPeek; KeyNext
 Label(1145, KeyDispatch)
-1150 vu(.-..|..N) If(lastKey=PAUSE) Then Gosub(PauseLoop); If(lastKey=AUTO) Then clear(AutoBit) // will toggle on the next line
-1160 vu(.-..|...) If(lastKey=AUTO) Then toggle(AutoBit)
-1171 vu(.-..|...) If(lastKey=NORTH) Then clear(AutoBit); direction=North:isPhone; Gosub(ChangeDirection)
-1180 vu(.-..|...) If(lastKey=WEST) Then clear(AutoBit); direction=West; Gosub(ChangeDirection)
-1190 vu(.-..|...) If(lastKey=EAST) Then clear(AutoBit); direction=East; Gosub(ChangeDirection)
-1200 vu(.-..|...) If(lastKey=SOUTH) Then clear(AutoBit); direction=South:isPhone; Gosub(ChangeDirection)
+1150 vu(.-..|..N) If(lastKey=PAUSE) Then Gosub(PauseLoop)
+1171 vu(.-..|...) If(lastKey=NORTH) Then direction=North:isPhone; Gosub(ChangeDirection)
+1180 vu(.-..|...) If(lastKey=WEST) Then direction=West; Gosub(ChangeDirection)
+1190 vu(.-..|...) If(lastKey=EAST) Then direction=East; Gosub(ChangeDirection)
+1200 vu(.-..|...) If(lastKey=SOUTH) Then direction=South:isPhone; Gosub(ChangeDirection)
 1220 vu(.-..|...) If(lastKey=QUIT) Then clear(AliveBit)
 Label(1300, WaitForTick)
 1310 vu(.-..|...) time=time+1
 1320 vu(.-..k...) If(time<K) Then Goto(GameLoop2)
-1340 vu(.-I.KLMN) Gosub(AdvanceHead)
-1350 vu(.-......) Goto(GameLoop)
+1340 vu(.-......) clear(HeadBit) // Manual head ◆
+1342 vu(.-I.KLMN) Gosub(AdvanceHead)
+// === Swap + Auto phase ===
+AfterManual vu(.-......) If(isDual) Then Gosub(SwapData)
+1355 vu(.-......) If(isAuto=0) Then Goto(GameLoop)
+// Single auto: check keys for PAUSE/QUIT
+1358 vu(.-......) If(isDual) Then Goto(AutoInput)
+1360 vu(.-......) If(KeyAvailable) Then lastKey=KeyPeek;KeyNext;Goto(KeyDispatch)
 Label(1400, AutoInput)
-1410 vu(.-......) If(KeyAvailable) Then lastKey=KeyPeek;KeyNext;Goto(KeyDispatch)
 // AutoStep (inlined): greedy AI - find nearest food, try directions
 1420 vu(.-......) direction=AA(head)&3
 1430 vu(.-......) If(foodCount=0) Then Goto(AutoFallback)
@@ -351,7 +372,9 @@ Label(1600, AutoFallback)
 1630 vu(.-..K..N) N=TurnLeft(direction); TryDir
 // end AutoStep
 Label(1640, AutoDone)
-1650 vu(.-IJKLMN) Gosub(AdvanceHead)
+1650 vu(.-......) set(HeadBit) // Auto head Q
+1652 vu(.-IJKLMN) Gosub(AdvanceHead)
+1655 vu(.-......) If(isDual) Then Gosub(SwapData)
 1660 vu(.-......) Goto(GameLoop)
 
 // === PauseLoop ===
@@ -365,7 +388,10 @@ Subroutine(1700, PauseLoop, flags tickDelay => flags tickDelay lastKey : N)
 1765 vu(.-.....N)   If(lastKey=PHONE) Then toggle(PhoneBit); Gosub(Help)
 1766 vu(.-.....N)   If(lastKey=FASTER And tickDelay>1) Then tickDelay=tickDelay-1; Gosub(Help)
 1767 vu(.-.....N)   If(lastKey=SLOWER) Then tickDelay=tickDelay+1; Gosub(Help)
-1770 vu(.-......) Until(lastKey=PAUSE OR lastKey=QUIT OR lastKey=AUTO OR IsDirKey(lastKey))
+// Cycle mode: manual(4)→auto(8)→dual(12)→manual. Only before first move or between games.
+1768 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=flags+4-(flags&#C)/12*12; If(isAlive) Then Gosub(ReplaceSnakes)
+1770 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0)) Then Gosub(Help)
+1775 vu(.-......) Until(lastKey=PAUSE OR lastKey=QUIT OR IsDirKey(lastKey))
 1780 vu(.-......) Return
 
 // === Adjust: update binary indexed tree ===
@@ -387,18 +413,32 @@ Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
 3060 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
 
 // === InitGame: set up snake and food ===
+// In dual mode: place auto snake first, save to player2, then place manual snake as active.
+// This ensures the game loop's manual phase has manual data in the active variables.
 Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags AA : I J K L M N pos quantity)
-4010 vu(.-......) head=CENTER_OF_BOARD
-4020 vu(.-......) tail=head-2
-4030 vu(.-......) direction=East
-4040 vu(.-.J....) For(J=tail) To(head)
-4050 vu(.-.j....)   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
-4060 vu(.-.j....)   AA(J)=AA(J)&CountMask|BorderBit|direction
-4070 vu(.-Ij..MN)   pos=J; quantity=-CountBit; Gosub(Adjust)
-4080 vu(.-.j....) Next(J)
+4005 vu(.-......) If(notDual) Then Goto(4040)
+// --- Dual: place auto snake first ---
+4010 vu(.-......) head=CENTER_OF_BOARD-5+width%2; tail=head+2; direction=West
+4020 vu(.-.J....) For(J=head) To(tail)
+4021 vu(.-.j....)   If(AA(J)&FlagsMask) Then Gosub(ReplaceFoodAt) // Replace food in the way
+4022 vu(.-.j....)   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
+4024 vu(.-.j....)   AA(J)=AA(J)&CountMask|BorderBit|direction; pos=J; quantity=-CountBit; Gosub(Adjust)
+4026 vu(.-.j....) Next(J)
+4028 vu(.-......) set(HeadBit); Print(MoveToPos(head) SnakeHead); clear(HeadBit) // Draw auto head Q
+4030 vu(.-......) player2=direction*1000000+head*1000+tail // Save auto to player2
+// --- Place manual snake (active in both single and dual) ---
+4040 vu(.-......) head=CENTER_OF_BOARD+2; tail=head-2; direction=East
+4050 vu(.-.J....) For(J=tail) To(head)
+4051 vu(.-.j....)   If(AA(J)&FlagsMask) Then Gosub(ReplaceFoodAt) // Replace food in the way
+4052 vu(.-.j....)   Print(MoveToPos(J) GraphicsOn "q" GraphicsOff)
+4054 vu(.-.j....)   AA(J)=AA(J)&CountMask|BorderBit|direction; pos=J; quantity=-CountBit; Gosub(Adjust)
+4056 vu(.-.j....) Next(J)
+// Set HeadBit for single auto (no manual player). Clear for manual/dual.
+4060 vu(.-......) If(isManual=0) Then set(HeadBit)
+4070 vu(.-......) Print(MoveToPos(head) SnakeHead) // Draw active snake head
+4080 vu(.-......) If(lastDir<0) Then Goto(4120) // Sentinel: skip food (called from ReplaceSnakes)
 4090 vu(.-......) foodCount=0; clear(BonusBit)
-4100 vu(.-......) Print(MoveToPos(head) SnakeHead)
-4110 vu(.-IJKLMN) For(lastDir=1) To(NumFood); Gosub(SpawnFood); Next(lastDir) // lastDir is used as a temp variable here.
+4100 vu(.-IJKLMN) For(lastDir=1) To(NumFood); Gosub(SpawnFood); Next(lastDir)
 4120 vu(.-......) lastDir=direction
 4130 vu(.-......) Return
 
@@ -470,12 +510,21 @@ Label(6400, Eat) // From 6280
 6440 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
 6450 vu(.-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
 6460 vu(.-......) score=score+1
+6462 vu(.-......) If(isDual) Then Goto(6472)
 #ifdef PROD
-6470 vu(.-......) Print(DoubleAt(1,(SCORE_COL+6),score))
+6464 vu(.-......) Print(DoubleAt(1,(SCORE_COL+6),score))
 #else
-6470 vu(.-......) Print(UpperAt(1,(SCORE_COL+6),score))
-6471 vu(.-......) Print(LowerAt(1,(SCORE_COL+6),score))
+6464 vu(.-......) Print(UpperAt(1,(SCORE_COL+6),score))
+6466 vu(.-......) Print(LowerAt(1,(SCORE_COL+6),score))
 #endif
+6468 vu(.-......) Goto(6480)
+// Dual score display at SCORE_COL: "Q<ai> ◆<you>"
+// HeadBit=32 (auto just ate): AI=score%1000, You=score/1000
+// HeadBit=0 (manual just ate): swap so I=AI, J=You
+6472 vu(.-IJ....) I=score%1000; J=score/1000; If(isSet(HeadBit)=0) Then I=score/1000; J=score%1000
+6474 vu(.-ij...N) For(N=1) To(2)
+6475 vu(.-||...n)   Print(Position(N,SCORE_COL) Double(N+2) "Q"I " " GraphicsOn "`" GraphicsOff J " ")
+6476 vu(.-ij...n) Next(N)
 6480 vu(.-IJKLMN) Gosub(SpawnFood) // Fall through to MarkHead
 Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw snake head at current position 
 6510 vu(.-......) AA(head)=AA(head)&CountMask|BorderBit|direction
@@ -483,20 +532,84 @@ Subroutine(6500, MarkHead, direction head width colOffset AA => AA : ) // draw s
 6530 vu(.-......) Print(MoveToPos(head)) // Reduce flickering: keep cursor at head
 6540 vu(.-......) Return
 
+// === SwapData: swap active/inactive snake state ===
+// Active state in S,T,E,U; inactive packed in G.
+// G = lastDir2*1000000 + head2*1000 + tail2
+// U = activeScore + inactiveScore*1000
+// Does NOT modify flag bits.
+SwapData vu(.-I.....) I=player2
+7010 vu(.-i.....) player2=lastDir*1000000+head*1000+tail
+7020 vu(.-i.....) head=I/1000%1000
+7030 vu(.-i.....) tail=I%1000
+7040 vu(.-i.....) lastDir=I/1000000
+7050 vu(.-......) score=score/1000+score%1000*1000
+7060 vu(.-......) Return
+
+// === UndoSnake: erase snake from tail to head ===
+// Walks the snake chain using direction bits in each cell.
+UndoSnake vu(.-..K...) pos=tail
+7110 vu(.-..k...) DO; direction=AA(pos)&3; AA(pos)=AA(pos)&CountMask
+7112 vu(.-..k...)   K=pos
+7115 vu(.-I.k.MN)   quantity=CountBit; Gosub(Adjust) // destroys I,M,N,pos
+7117 vu(.-..k...)   pos=K
+7120 vu(.-..k...) Print(MoveToPos(pos) " ")
+7125 vu(.-..K...) K=pos; Gosub(StepSub) // advances pos, K=old pos
+7130 vu(.-..k...) Until(K=head)
+7135 vu(.-......) Return
+
+// === ReplaceSnakes: erase old snakes, place new, update score header ===
+// Called from PauseLoop when * pressed at time=0 (isAlive=1).
+// Mode has already been cycled, so isDual/isManual/isAuto reflect the NEW mode.
+// To detect the OLD mode: we check what's on the board.
+// If isDual now: old was single (undo 1 snake). Else if old had 2 snakes: undo 2.
+// Simplification: always undo active snake. If player2 has valid data (from a previous
+// dual setup), also undo it — but only if the old mode was dual.
+// We track old mode: before cycling, flags&#C was the old mode. After cycling, it's the new.
+// The old mode was: new_mode's predecessor in the cycle (4→8→12→4).
+// old_dual means new mode is manual(4), since dual(12)→manual(4).
+ReplaceSnakes vu(.-I.....)
+7200 vu(.-IJKLMN) Gosub(UndoSnake) // Undo active snake
+// If old mode was dual (new mode is manual=4): undo other snake from player2
+7205 vu(.-......) If(flags&#C=ManualBit) Then head=player2/1000%1000; tail=player2%1000; Gosub(UndoSnake)
+// Place new snakes via InitGame (sentinel lastDir=-1 skips food placement)
+7210 vu(.-......) lastDir=-1
+7215 vu(.-IJKLMN) Gosub(InitGame)
+// Update score header at SCORE_COL
+7220 vu(.-I....N) For(I=1) To(2); Print(Position(I,SCORE_COL) Double(I+2))
+7222 vu(.-|....n)   If(isDual) Then Print("Q0 " GraphicsOn "`" GraphicsOff "0  ")
+7224 vu(.-|....n)   If(notDual) Then Print("Score 0  ")
+7226 vu(.-i....n) Next(I)
+7230 vu(.-......) Return
+
+// === ReplaceFoodAt: replace food at position J with a new random food, then clear J ===
+// Spawns new food first (at random empty cell), then removes old food from list, clears cell, returns to tree.
+// Uses score to save/restore J across SpawnFood call (score=0 at InitGame time).
+ReplaceFoodAt vu(.-......) score=J; Gosub(SpawnFood); J=score; score=0 // Save J, spawn, restore
+7310 vu(.-I.....) I=-1; DO I=I+1; Until(FoodGet(I)=J) // Find displaced food in list
+7320 vu(.-i.....) foodCount=foodCount-1
+7325 vu(.-i.....) FoodSet(I, FoodGet(foodCount)) // Swap with last entry
+7330 vu(.-......) If(AA(J)&FlagsMask=Bonus) Then clear(BonusBit)
+7335 vu(.-......) AA(J)=AA(J)&CountMask // Clear food flags
+7340 vu(.-I...MN) pos=J; quantity=CountBit; Gosub(Adjust) // Return cell to tree (now empty)
+7345 vu(.-......) Return
+
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
 8010 vu(.-......) Print(ClearScreen HideCursor)
 #ifdef PROD
 8020 vu(.-......) Print(DoubleAt(1,SNAKE_COL,"Snake"))
-8030 vu(.-......) Print(DoubleAt(1,SCORE_COL,"Score 0"))
-8040 vu(.-......) If(highScore) Then Print(DoubleAt(1,1, "High "highScore))
+8030 vu(.-......) If(notDual) Then Print(DoubleAt(1,SCORE_COL,"Score 0"))
+8032 vu(.-......) If(isDual) Then Print(DoubleAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
+8040 vu(.-......) If(highScore And notDual) Then Print(DoubleAt(1,1, "High "highScore))
 #else
 8020 vu(.-......) Print(UpperAt(1,SNAKE_COL,"Snake"))
 8021 vu(.-......) Print(LowerAt(1,SNAKE_COL,"Snake"))
-8030 vu(.-......) Print(UpperAt(1,SCORE_COL,"Score 0"))
-8031 vu(.-......) Print(LowerAt(1,SCORE_COL,"Score 0"))
-8040 vu(.-......) If(highScore) Then Print(UpperAt(1,1, "High "highScore))
-8041 vu(.-......) If(highScore) Then Print(LowerAt(1,1, "High "highScore))
+8030 vu(.-......) If(notDual) Then Print(UpperAt(1,SCORE_COL,"Score 0"))
+8031 vu(.-......) If(notDual) Then Print(LowerAt(1,SCORE_COL,"Score 0"))
+8032 vu(.-......) If(isDual) Then Print(UpperAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
+8033 vu(.-......) If(isDual) Then Print(LowerAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
+8040 vu(.-......) If(highScore And notDual) Then Print(UpperAt(1,1, "High "highScore))
+8041 vu(.-......) If(highScore And notDual) Then Print(LowerAt(1,1, "High "highScore))
 #endif
 8050 vu(.-......) For(I=1) To(height); PrintLn(); Print(Double(6)); Next(I)
 8060 vu(.-......) Print(ReverseVideo TopBorderPos)
@@ -520,13 +633,8 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8160 vu(.-......) Return
 
 Help vu(.-.....N) N=flags&PhoneBit*3 // Assumes PhoneBit=2 => 0|6
-#ifdef PROD
-8310 Print(ReverseVideo HelpPos)
-8311 Print("N="8-N" E=6 W=4 S="2+N" N/S=/ P=5 A=0 -"tickDelay"+ " NormalVideo)
-#else
 8310 Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N)
-8311 Print(" N/S=/ P=5 A=0 -"tickDelay"+ " NormalVideo)
-#endif
+8311 Print(" / P * -"tickDelay"+ " NormalVideo)
 8320 Return
 
 #define CellCount(i) AA(i)&CountMask
@@ -565,6 +673,15 @@ Help vu(.-.....N) N=flags&PhoneBit*3 // Assumes PhoneBit=2 => 0|6
 Label(9000, Clash)
 9010 vu(.-......) clear(AliveBit); lastKey=0
 9020 vu(.-......) Print(MoveToPos(head))
+// Dual mode: the active snake crashed. HeadBit tells us who.
+9021 vu(.-......) If(notDual) Then Goto(9030)
+9022 vu(.-......) Print("X")
+9023 vu(.-I.....) For(I=1) To(2)
+9024 vu(.-i.....)   Print(Position(I,1) Double(I+2))
+9025 vu(.-|.....)   If(isSet(HeadBit)) Then Print("You Win!")
+9026 vu(.-|.....)   If(isSet(HeadBit)=0) Then Print("AI Wins!")
+9027 vu(.-i.....) Next(I)
+9028 vu(.-......) Return
 9030 vu(.-......) If(foodCount=0) Then Print(SnakeHead); Goto(9050)
 9040 vu(.-......) Print("X")
 9050 vu(.-......) If(score<=highScore) Then Return

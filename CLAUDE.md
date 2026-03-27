@@ -194,6 +194,20 @@ Global state is stored in single-letter variables (A-Z). See `Snake.abp` for the
 ### Acorn Atom BASIC: IF Semantics
 **CRITICAL**: When an `IF` condition is **false**, the **entire rest of the line** is skipped — all statements after `THEN` to the end of the line, including those separated by `;`. There is no way to escape the THEN scope on the same line. A second `IF` on the same line creates a nested condition — its THEN scope also extends to end of line.
 
+### Operator Precedence
+Acorn Atom BASIC operator precedence (highest to lowest):
+1. `*`, `/`, `%`, `&` — Multiplicative and bitwise AND (same level, left-to-right)
+2. `+`, `-`, `|`, `:` — Additive and bitwise OR/XOR (same level, left-to-right)
+3. `=`, `<`, `>` — Comparison (return -1 for true, 0 for false)
+
+**Key implications:**
+- `flags&3=3` is parsed as `(flags&3)=3` — AND before comparison. Safe for flag testing.
+- `flags&1=0` is parsed as `(flags&1)=0` — works correctly for negative flag checks.
+- `5&2*2` is parsed as `(5&2)*2` = `0` — AND has same precedence as multiply, left-to-right.
+- `2*2&5` is parsed as `(2*2)&5` = `4` — multiply before AND, left-to-right.
+- `A+B&C` is parsed as `(A+B)&C` — wrong level! AND is level 1, addition is level 2. Use parentheses: `A+(B&C)`.
+- `A|B:C` is parsed as `(A|B):C` — OR and XOR are same level, left-to-right.
+
 ### Labels vs Variables
 Labels (lowercase a-z) and variables (uppercase A-Z) are **completely separate namespaces** in Acorn Atom BASIC. There is no relationship between `i` (a label) and `I` (a variable). Labels are assigned at program load time: a line like `1000p` sets `p=1000` when the program is loaded into memory, not when the line executes. `GOSUB p` then jumps to line 1000.
 

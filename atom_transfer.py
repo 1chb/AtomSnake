@@ -94,7 +94,7 @@ def validate_program(lines):
         
         # Check for lines out of order
         if line_num < prev_line_num:
-            warnings.append(
+            errors.append(
                 f"Line {file_line_num}: Line number {line_num} comes after {prev_line_num} (out of order)"
             )
         
@@ -216,7 +216,7 @@ def execute_and_cleanup_self_mod(ser):
     """Execute self-modification code and delete lines 1-9."""
     # Execute with 30 second timeout
     print("RUN patch", file=sys.stderr)
-    send_and_get_response(ser, "RUN", timeout=30)
+    send_and_get_response(ser, "RUN", timeout=60)
     
     # Delete lines 1-9
     print("DELETE patch", file=sys.stderr)
