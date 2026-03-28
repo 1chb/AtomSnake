@@ -329,6 +329,9 @@ Label(1100, GameLoop2)
 1140 vu(.-..|...) lastKey=KeyPeek; KeyNext
 Label(1145, KeyDispatch)
 1150 vu(.-..|..N) If(lastKey=PAUSE) Then Gosub(PauseLoop)
+// Mid-game * toggles manual↔auto (not in dual mode). DIR key in auto switches to manual.
+1155 vu(.-..|...) If(lastKey=MODE And notDual) Then toggle(#C) // XOR ManualBit+AutoBit swaps mode
+1165 vu(.-..|...) If(IsDirKey(lastKey) And isManual=0 And notDual) Then toggle(#C)
 1171 vu(.-..|...) If(lastKey=NORTH) Then direction=North:isPhone; Gosub(ChangeDirection)
 1180 vu(.-..|...) If(lastKey=WEST) Then direction=West; Gosub(ChangeDirection)
 1190 vu(.-..|...) If(lastKey=EAST) Then direction=East; Gosub(ChangeDirection)
