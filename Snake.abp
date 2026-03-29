@@ -603,7 +603,9 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8020 vu(.-......) Print(DoubleAt(1,SNAKE_COL,"Snake"))
 8030 vu(.-......) If(notDual) Then Print(DoubleAt(1,SCORE_COL,"Score 0"))
 8032 vu(.-......) If(isDual) Then Print(DoubleAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
-8040 vu(.-......) If(highScore And notDual) Then Print(DoubleAt(1,1, "High "highScore))
+// High score: "High ◆X" (manual record) or "High QX" (auto record)
+8040 vu(.-......) If(highScore>0) Then Print(DoubleAt(1,1,"High " GraphicsOn "`" GraphicsOff highScore))
+8042 vu(.-......) If(highScore<0) Then Print(DoubleAt(1,1,"High Q"Abs(highScore)))
 #else
 8020 vu(.-......) Print(UpperAt(1,SNAKE_COL,"Snake"))
 8021 vu(.-......) Print(LowerAt(1,SNAKE_COL,"Snake"))
@@ -611,8 +613,10 @@ Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA 
 8031 vu(.-......) If(notDual) Then Print(LowerAt(1,SCORE_COL,"Score 0"))
 8032 vu(.-......) If(isDual) Then Print(UpperAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
 8033 vu(.-......) If(isDual) Then Print(LowerAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
-8040 vu(.-......) If(highScore And notDual) Then Print(UpperAt(1,1, "High "highScore))
-8041 vu(.-......) If(highScore And notDual) Then Print(LowerAt(1,1, "High "highScore))
+8040 vu(.-......) If(highScore>0) Then Print(UpperAt(1,1,"High " GraphicsOn "`" GraphicsOff highScore))
+8041 vu(.-......) If(highScore>0) Then Print(LowerAt(1,1,"High " GraphicsOn "`" GraphicsOff highScore))
+8042 vu(.-......) If(highScore<0) Then Print(UpperAt(1,1,"High Q"Abs(highScore)))
+8043 vu(.-......) If(highScore<0) Then Print(LowerAt(1,1,"High Q"Abs(highScore)))
 #endif
 8050 vu(.-......) For(I=1) To(height); PrintLn(); Print(Double(6)); Next(I)
 8060 vu(.-......) Print(ReverseVideo TopBorderPos)
@@ -672,29 +676,51 @@ Help vu(.-.....N) N=flags&PhoneBit*3 // Assumes PhoneBit=2 => 0|6
 8760 vu(.-......) End
 #endif
 
-// === GameOver === head foodCount score => flags lastKey highScore : I
+// === GameOver === head foodCount score => flags lastKey highScore : I J
+// highScore encoding: positive=manual record, negative=auto record. Abs(highScore)=score value.
+// HeadBit tells us who crashed (0=manual, 32=auto).
+// Active snake's score=score%1000 (dual) or score (single). Inactive=score/1000.
 Label(9000, Clash)
 9010 vu(.-......) clear(AliveBit); lastKey=0
 9020 vu(.-......) Print(MoveToPos(head))
-// Dual mode: the active snake crashed. HeadBit tells us who.
-9021 vu(.-......) If(notDual) Then Goto(9030)
+9021 vu(.-......) If(notDual) Then Goto(9060)
+// --- Dual mode end ---
 9022 vu(.-......) Print("X")
-9023 vu(.-I.....) For(I=1) To(2)
-9024 vu(.-i.....)   Print(Position(I,1) Double(I+2))
-9025 vu(.-|.....)   If(isSet(HeadBit)) Then Print("You Win!")
-9026 vu(.-|.....)   If(isSet(HeadBit)=0) Then Print("AI Wins!")
-9027 vu(.-i.....) Next(I)
-9028 vu(.-......) Return
-9030 vu(.-......) If(foodCount=0) Then Print(SnakeHead); Goto(9050)
-9040 vu(.-......) Print("X")
-9050 vu(.-......) If(score<=highScore) Then Return
-9060 vu(.-......) highScore=score
-9070 vu(.-I.....) For(I=1) To(2)
-9080 vu(.-i.....)   Print(Position(I,1) Double(I+2)"High "highScore" (You")
-9090 vu(.-|.....)   If(foodCount=0) Then Print(" Win")
-9100 vu(.-|.....)   Print(")")
-9110 vu(.-i.....) Next(I)
-9120 vu(.-......) Return
+// I=manual score, J=auto score. Active(crashed)=score%1000, inactive(winner)=score/1000.
+9023 vu(.-IJ....) I=score%1000; J=score/1000; If(isSet(HeadBit)) Then I=score/1000; J=score%1000
+// Check high score. K: 0=no new high, 1=manual got high, -1=auto got high.
+9025 vu(.-ij.K..) K=0; If(I>=J And I>Abs(highScore)) Then highScore=I; K=1
+9026 vu(.-ij.k..) If(J>I And J>Abs(highScore)) Then highScore=-J; K=-1
+// Display: ◆[Win/Fail][ High] Q[Win/Fail][ High]
+9030 vu(.-I..k..) For(I=1) To(2); Print(Position(I,1) Double(I+2))
+// Manual result
+9032 vu(.-|..k..) Print(GraphicsOn "`" GraphicsOff)
+9034 vu(.-|..k..) If(isSet(HeadBit)) Then Print("Win")
+9036 vu(.-|..k..) If(isSet(HeadBit)=0) Then Print("Fail")
+9038 vu(.-|..k..) If(K=1) Then Print(" High")
+// Auto result
+9040 vu(.-|..k..) Print(" Q")
+9042 vu(.-|..k..) If(isSet(HeadBit)=0) Then Print("Win")
+9044 vu(.-|..k..) If(isSet(HeadBit)) Then Print("Fail")
+9046 vu(.-|..k..) If(K=-1) Then Print(" High")
+9048 vu(.-|..k..) Print("  ")
+9050 vu(.-i..k..) Next(I)
+9055 vu(.-......) Return
+// --- Single mode end ---
+9060 vu(.-......) If(foodCount=0) Then Print(SnakeHead); Goto(9070)
+9065 vu(.-......) Print("X")
+// Check high score. J=1 if new high, 0 otherwise.
+9070 vu(.-.J....) J=0; If(score>Abs(highScore)) Then highScore=score; J=1; If(isSet(HeadBit)) Then highScore=-score
+// Display: (◆ or Q)(Win or Fail)( High)
+9080 vu(.-I|....) For(I=1) To(2); Print(Position(I,1) Double(I+2))
+9082 vu(.-||....) If(isSet(HeadBit)) Then Print("Q")
+9084 vu(.-||....) If(isSet(HeadBit)=0) Then Print(GraphicsOn "`" GraphicsOff)
+9086 vu(.-||....) If(foodCount=0) Then Print("Win")
+9088 vu(.-||....) If(foodCount) Then Print("Fail")
+9090 vu(.-||....) If(J) Then Print(" High")
+9092 vu(.-||....) Print("  ")
+9094 vu(.-i|....) Next(I)
+9099 vu(.-......) Return
 
 #ifdef DEBUG
 Debug REM // AA(0) J => : I
