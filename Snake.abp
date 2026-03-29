@@ -599,25 +599,13 @@ ReplaceFoodAt vu(.-......) score=J; Gosub(SpawnFood); J=score; score=0 // Save J
 // === HomePage: draw title and borders ===
 Subroutine(8000, HomePage, highScore height colOffset width size nodes AA => AA : I J M N pos quantity)
 8010 vu(.-......) Print(ClearScreen HideCursor)
-#ifdef PROD
-8020 vu(.-......) Print(DoubleAt(1,SNAKE_COL,"Snake"))
-8030 vu(.-......) If(notDual) Then Print(DoubleAt(1,SCORE_COL,"Score 0"))
-8032 vu(.-......) If(isDual) Then Print(DoubleAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
-// High score: "High ◆X" (manual record) or "High QX" (auto record)
-8040 vu(.-......) If(highScore>0) Then Print(DoubleAt(1,1,"High " GraphicsOn "`" GraphicsOff highScore))
-8042 vu(.-......) If(highScore<0) Then Print(DoubleAt(1,1,"High Q"Abs(highScore)))
-#else
-8020 vu(.-......) Print(UpperAt(1,SNAKE_COL,"Snake"))
-8021 vu(.-......) Print(LowerAt(1,SNAKE_COL,"Snake"))
-8030 vu(.-......) If(notDual) Then Print(UpperAt(1,SCORE_COL,"Score 0"))
-8031 vu(.-......) If(notDual) Then Print(LowerAt(1,SCORE_COL,"Score 0"))
-8032 vu(.-......) If(isDual) Then Print(UpperAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
-8033 vu(.-......) If(isDual) Then Print(LowerAt(1,SCORE_COL,"Q0 " GraphicsOn "`" GraphicsOff "0"))
-8040 vu(.-......) If(highScore>0) Then Print(UpperAt(1,1,"High " GraphicsOn "`" GraphicsOff highScore))
-8041 vu(.-......) If(highScore>0) Then Print(LowerAt(1,1,"High " GraphicsOn "`" GraphicsOff highScore))
-8042 vu(.-......) If(highScore<0) Then Print(UpperAt(1,1,"High Q"Abs(highScore)))
-8043 vu(.-......) If(highScore<0) Then Print(LowerAt(1,1,"High Q"Abs(highScore)))
-#endif
+// Title row: Snake, score, high score — all drawn in a double-height For loop
+8015 vu(.-I.....) For(I=1) To(2); Print(Position(I,SNAKE_COL) Double(I+2) "Snake")
+8020 vu(.-|.....)   If(notDual) Then Print(Position(I,SCORE_COL) "Score 0")
+8022 vu(.-|.....)   If(isDual) Then Print(Position(I,SCORE_COL) "Q0 " GraphicsOn "`" GraphicsOff "0")
+8024 vu(.-|.....)   If(highScore>0) Then Print(Position(I,1) "High " GraphicsOn "`" GraphicsOff highScore)
+8026 vu(.-|.....)   If(highScore<0) Then Print(Position(I,1) "High Q" Abs(highScore))
+8028 vu(.-i.....) Next(I)
 8050 vu(.-......) For(I=1) To(height); PrintLn(); Print(Double(6)); Next(I)
 8060 vu(.-......) Print(ReverseVideo TopBorderPos)
 #ifdef HORIZONTAL_BORDERS_IN_BOARD
