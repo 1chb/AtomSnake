@@ -14,6 +14,7 @@
 #define DoubleAt(row, col, text) UpperAt(row, col, text) LowerAt(row, col, text)
 #define GraphicsOn ESC "(0"
 #define GraphicsOff ESC "(B"
+#define Backspace $8
 
 // BASIC language macros
 #ifdef PROD
