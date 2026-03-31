@@ -9,7 +9,7 @@
 #define InitSnakeLen 3
 
 #ifdef PROD
-#  define WIDTH 35
+#  define WIDTH 38
 #  ifdef TREE_CHECK
 #    define HEIGHT 11
 #  else
@@ -335,7 +335,7 @@ Subroutine(1000, Play, flags lastKey size height width colOffset highScore nodes
 1025 vu(.-.....N) Gosub(HelpSub)
 1030 vu(.-IJKLMN) Gosub(InitGame)
 1040 vu(.-IJKLMN) CheckTree
-1070 vu(.-......) If(IsDirKey(lastKey) OR lastKey=PAUSE) Then Goto(KeyDispatch) // Process saved direction key
+1070 vu(.-..K...) If(IsDirKey(lastKey) OR lastKey=PAUSE) Then K=tickDelay; Goto(KeyDispatch) // Process saved direction key
 Label(1080, GameLoop)
 1090 vu(.-..K...) K=time+tickDelay // Next tick time (temp)
 Label(1100, GameLoop2)
@@ -345,18 +345,18 @@ Label(1100, GameLoop2)
 1130 vu(.-..|...) If(KeyEmpty) Then Goto(WaitForTick)
 1140 vu(.-..|...) Gosub(ReadKey)
 Label(1145, KeyDispatch)
-1150 vu(.-IJ*LMN) If(lastKey=PAUSE) Then Gosub(PauseLoop) // BUG? K was live, PauseLoop may destroy it
+1150 vu(.-IJkLMN) If(lastKey=PAUSE) Then Gosub(PauseLoop); K=time+tickDelay // (*) Pause destroys K, compute a new end time
 // Mid-game * toggles manual↔auto (not in dual mode). DIR key in auto switches to manual.
-1155 vu(.-......) If(lastKey=MODE And notDual) Then toggle(#C) // XOR ManualBit+AutoBit swaps mode
-1165 vu(.-......) If(IsDirKey(lastKey) And isManual=0 And notDual) Then toggle(#C)
-1171 vu(.-......) If(lastKey=NORTH) Then direction=North:isPhone; Gosub(ChangeDirection)
-1180 vu(.-......) If(lastKey=WEST) Then direction=West; Gosub(ChangeDirection)
-1190 vu(.-......) If(lastKey=EAST) Then direction=East; Gosub(ChangeDirection)
-1200 vu(.-......) If(lastKey=SOUTH) Then direction=South:isPhone; Gosub(ChangeDirection)
-1220 vu(.-......) If(lastKey=QUIT) Then clear(AliveBit)
+1155 vu(.-..|...) If(lastKey=MODE And notDual) Then toggle(#C) // XOR ManualBit+AutoBit swaps mode
+1165 vu(.-..|...) If(IsDirKey(lastKey) And isManual=0 And notDual) Then toggle(#C)
+1171 vu(.-..|...) If(lastKey=NORTH) Then direction=North:isPhone; Gosub(ChangeDirection)
+1180 vu(.-..|...) If(lastKey=WEST) Then direction=West; Gosub(ChangeDirection)
+1190 vu(.-..|...) If(lastKey=EAST) Then direction=East; Gosub(ChangeDirection)
+1200 vu(.-..|...) If(lastKey=SOUTH) Then direction=South:isPhone; Gosub(ChangeDirection)
+1220 vu(.-..|...) If(lastKey=QUIT) Then clear(AliveBit)
 Label(1300, WaitForTick)
-1310 vu(.-......) time=time+1
-1320 vu(.-..k...) If(time<K) Then Goto(GameLoop2) // BUG? K may have been destroyed by PauseLoop at 1150
+1310 vu(.-..|...) time=time+1
+1320 vu(.-..k...) If(time<K) Then Goto(GameLoop2)
 1340 vu(.-......) clear(HeadBit) // Manual head ◆
 1342 vu(.-I.KLMN) Gosub(AdvanceHead)
 // === Swap + Auto phase ===
