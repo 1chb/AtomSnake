@@ -36,8 +36,8 @@ When working on changes:
 The user ALWAYS wants to review changes before they are committed. No exceptions.
 
 ### Best Practices for This Project
-1. The user must manually type any changes into the 6502 board, so minimize code size when possible
-2. Test changes thoroughly before the user invests time typing them in
+1. **Bugs are not allowed.** Test changes thoroughly before the user invests time typing them in
+2. Minimize code size when possible so the program fits into the 8KB RAM
 3. Use feature branches for experimental changes
 4. Snake.atom is generated from Snake.abp - regenerate after editing .abp files
 
@@ -188,6 +188,53 @@ The selected mode persists across games until toggled again.
 ### Variables
 
 Global state is stored in single-letter variables (A-Z). See `Snake.abp` for the complete variable list and their `#define` macro names. Key variables include `AA` (area array / binary indexed tree), `W` (width), `H` (height), `Z` (grid size W×H), `S` (snake head), `T` (snake tail), `D` (direction). Variables `I,J,K,L,M,N,P,Q` are temporaries reused across functions.
+
+### Variable Usage Annotations (`vu(...)`)
+
+Each code line in `Snake.abp` has a `vu(G-IJKLMN)` annotation that tracks the **liveness of temporary variables** at that line. The purpose is to answer: "which temp variables hold live values that must not be overwritten?"
+
+The 8 positions track: `G` (player2), `-` (separator), then `I`, `J`, `K`, `L`, `M`, `N`. Variables `P` and `Q` (pos, quantity) are not tracked as they are transient parameters to subroutines.
+
+**Annotation symbols:**
+
+| Symbol | Meaning | Details |
+|--------|---------|---------|
+| `.` | Free | Variable does not hold a live value. Safe to overwrite. |
+| **Uppercase** (`I`) | **Write** | Variable is assigned a new value on this line. The previous value is irrelevant — it does NOT depend on the current value. Introduces a new live value. |
+| **Lowercase** (`i`) | **Read** (and maybe write) | Variable's current value is **read/depended upon** on this line. The value from a prior assignment matters. It may also be modified, but the key point is the read dependency. |
+| **Pipe** (`\|`) | **Holds value** | Variable has a live value that will be needed on a future line, but is NOT accessed on this line. Used inside loops where a variable set before the loop is still needed after. |
+| `*` | **Clash (BUG)** | Variable was live (pipe or lowercase) but is destroyed on this line. Indicates a potential bug — the live value will be lost. |
+
+The lifecycle of a value is: **Uppercase** (written), then zero or more **Pipe** lines (holding), then **Lowercase** (used). This pattern repeats each time the value is needed on a subsequent line. A subroutine call is no different from inline code — if it destroys a variable, that's an Uppercase; if it reads one, that's a Lowercase. The subroutine's signature tells you which variables are affected.
+
+**Example:**
+```
+3520 vu(.-......) For(time=1) To(3)          // time written (not tracked), no temps
+3525 vu(.-.J....)   J=head; ...              // J written (uppercase)
+3530 vu(.-Ij.KLMN)  If(AA(J)&7) Gosub(...)  // J read; I,K,L,M,N destroyed by callee
+3540 vu(.-.j....)   pos=J; ...               // J read (lowercase, value survived)
+3550 vu(.-I...MN)   ...; Gosub(Adjust)       // I,M,N destroyed by Adjust
+3560 vu(.-......) Next(time)                  // no tracked temps live
+```
+
+### Subroutine Signatures
+
+Subroutines are documented with input/output/destroyed annotations:
+```
+Subroutine(line, label, inputs => outputs : destroyed)
+```
+Or for line-number-referenced subroutines:
+```
+#define Name line // inputs => outputs : destroyed
+```
+
+- **Inputs**: variables read by the subroutine (or its callees, transitively).
+- **Outputs**: variables whose values are meaningful to the caller after return. This includes variables modified as side effects, even if the caller doesn't always use them.
+- **Destroyed**: variables whose values are overwritten and unpredictable after return. The caller must not rely on their pre-call values surviving.
+
+**Signatures must reflect worst-case behavior**: if a conditional branch destroys a variable, it must be listed as destroyed. If a callee destroys a variable, the caller's signature must propagate that destruction upward.
+
+**Transitive closure**: a subroutine's inputs/outputs/destroyed must account for all callees recursively. If `A` calls `B` which destroys `I`, then `A` also destroys `I`.
 
 ## Key Implementation Details
 
