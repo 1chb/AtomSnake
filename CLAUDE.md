@@ -245,7 +245,7 @@ Or for line-number-referenced subroutines:
 Acorn Atom BASIC operator precedence (highest to lowest):
 1. `*`, `/`, `%`, `&` — Multiplicative and bitwise AND (same level, left-to-right)
 2. `+`, `-`, `|`, `:` — Additive and bitwise OR/XOR (same level, left-to-right)
-3. `=`, `<`, `>` — Comparison (return -1 for true, 0 for false)
+3. `=`, `<`, `>` — Comparison (return 1 for true, 0 for false)
 
 **Key implications:**
 - `flags&3=3` is parsed as `(flags&3)=3` — AND before comparison. Safe for flag testing.

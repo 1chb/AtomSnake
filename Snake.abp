@@ -9,7 +9,7 @@
 #define InitSnakeLen 3
 
 #ifdef PROD
-#  define WIDTH 37
+#  define WIDTH 36
 #  ifdef TREE_CHECK
 #    define HEIGHT 11
 #  else
@@ -217,8 +217,8 @@
 #endif
 
 // Snake-specific macros
-#define SnakeHead $(snakeLUT+18+flags&HeadBit/4) // HeadBit=0: offset 18 (manual ◆). HeadBit=32: 32/4=8, offset 26 (auto Q).
-#define PrimaryHeadIcon $(snakeLUT+18+isPrimaryAuto/4*8) // PrimaryAutoBit=0: offset 18 (◆). PrimaryAutoBit=4: 4/4*8=8, offset 26 (Q).
+#define SnakeHead $(snakeLUT+22-isPrimaryAuto+(flags&HeadBit=0)*2) // HeadBit=0: 24 (◆) or 20 (o). HeadBit=32: 22 or 18 (Q).
+#define PrimaryHeadIcon $(snakeLUT+24-isPrimaryAuto) // PrimaryAutoBit=0: 24 (◆). PrimaryAutoBit=4: 20 (o).
 #define TryDir Gosub(TryDirSub); If(K=0) Then Goto(AutoDone)
 
 // N=8 E=6 W=4 S=2 N/S=/ P=5 A=0 -NN+ // 33 chars
@@ -276,10 +276,13 @@
 // 15     S(3)     S(3)       x         (|)       South→South
 // 16     -        -          @         Mouse     Food (15+1)
 // 17     -        -          *         Bonus     Food (15+2)
-// 18-25  -        -          \(0`\(B␍  SnakeHead Manual mode: GraphicsOn "`" GraphicsOff <CR>
-// 26-27  -        -          Q␍        SnakeHead Auto mode
-80 DIM snakeLUT(27)
-81 $F="qmtlkxlwujqkjvmx@*\(0`\(B_Q"; notPROD(F?18=27;F?22=27); F?25=13
+// 18-19  -        -          Q␍        SnakeHead Secondary (left) auto (HeadBit=32, isPrimaryAuto=4)
+// 20-21  -        -          o␍        SnakeHead Primary (right) auto
+// 22-23  -        -          Q␍        SnakeHead Secondary (left) auto (HeadBit=32, isPrimaryAuto=0)
+// 24-31  -        -          \(0`\(B␍  SnakeHead Primary (right) manual: GraphicsOn "`" GraphicsOff <CR>
+80 DIM snakeLUT(31)
+81 $F="qmtlkxlwujqkjvmx@*Q_o_Q_\(0`\(B"; notPROD(F?24=27;F?28=27)
+82 F?19=13; F?21=13; F?23=13
 90 flags=0; lastKey=PAUSE; highScore=0; tickDelay=SLOW_DOWN
 // --- end Init --- fall through
 
@@ -354,7 +357,7 @@ Label(1145, KeyDispatch)
 1150 vu(.-IJkLMN) If(lastKey=PAUSE) Then Gosub(PauseLoop); K=time+tickDelay // (*) Pause destroys K, compute a new end time
 // Mid-game * toggles primary manual↔auto. DIR key in auto switches primary to manual.
 1155 vu(.-..|...) If(lastKey=MODE) Then toggle(PrimaryAutoBit)
-1165 vu(.-..|...) If(IsDirKey(lastKey) And isPrimaryAuto) Then toggle(PrimaryAutoBit)
+1165 vu(.-..|...) If(IsDirKey(lastKey) And isPrimaryAuto And time>0) Then toggle(PrimaryAutoBit)
 1171 vu(.-..|...) If(lastKey=NORTH) Then direction=North:isPhone; Gosub(ChangeDirection)
 1180 vu(.-..|...) If(lastKey=WEST) Then direction=West; Gosub(ChangeDirection)
 1190 vu(.-..|...) If(lastKey=EAST) Then direction=East; Gosub(ChangeDirection)
@@ -399,7 +402,8 @@ Label(1600, AutoFallback)
 1630 vu(.-..K..N) N=TurnLeft(direction); TryDir
 // end AutoStep
 Label(1640, AutoDone)
-1650 vu(.-......) set(HeadBit) // Auto head Q
+1648 vu(.-......) clear(HeadBit) // Primary head (◆ or o)
+1650 vu(.-......) If(isSet(FinalPassBit)) Then set(HeadBit) // Secondary head (Q) when FinalPassBit set
 1652 vu(.-IJKLMN) Gosub(AdvanceHead)
 1654 vu(.-......) If(isDual=0) Then Goto(GameLoop) // Single mode: done
 1656 vu(.-......) Gosub(SwapData)
@@ -474,12 +478,11 @@ PlaceSnake vu(.-......) tail=head // head direction width colOffset snakeLUT fla
 // In dual mode: place secondary (left) auto snake first, save to player2, then place primary (right) snake.
 // This ensures the game loop has primary data in the active variables.
 Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags player2 time AA : I J K L M N pos quantity)
-4005 vu(.-......) If(notDual) Then Goto(4040)
+4005 vu(.-......) If(notDual) Then Goto(4050)
 // --- Dual: place secondary (left) auto snake first ---
 4010 vu(.-......) set(HeadBit); head=CENTER_OF_BOARD-3+width%2; direction=West; Gosub(PlaceSnake); clear(HeadBit)
 4030 vu(.-......) player2=direction*1000000+head*1000+tail // S=head(left), T=tail(right)
-// --- Place primary (right) snake ---
-4040 vu(.-......) If(isPrimaryAuto) Then set(HeadBit)
+// --- Place primary (right) snake --- HeadBit=0: draws ◆ or o via SnakeHead
 4050 vu(.-......) head=CENTER_OF_BOARD; direction=East; Gosub(PlaceSnake)
 4080 vu(.-......) If(lastDir<0) Then Goto(4120) // Sentinel: skip food (called from ReplaceSnakes)
 4090 vu(.-......) foodCount=0; clear(BonusBit)
@@ -703,8 +706,8 @@ Label(8300, HelpSub) vu(.-.....N) N=flags&PhoneBit*3 // flags tickDelay => : N
 #endif
 
 // === GameOver === head foodCount score => flags lastKey highScore : I J K N
-// highScore encoding: positive=primary manual record, negative=auto record. Abs(highScore)=score value.
-// HeadBit tells us who crashed (0=primary, 32=secondary/auto).
+// highScore encoding: positive=manual record, negative=auto record. Abs(highScore)=score value.
+// HeadBit tells us who crashed (0=primary, 32=secondary).
 // Active snake's score=score%1000 (dual) or score (single). Inactive=score/1000.
 Label(9000, Clash)
 // N caches HeadBit for game-over display (N is free: loop uses I, not N)
@@ -736,14 +739,13 @@ Label(9000, Clash)
 9050 vu(.-i.k..|) Next(I)
 9055 vu(.-.....|) Return
 // --- Single mode end ---
-9060 vu(.-.....n) If(foodCount=0) Then Print($(snakeLUT+18+cachedHead/4)); Goto(9070)
+9060 vu(.-.....n) If(foodCount=0) Then Print(PrimaryHeadIcon); Goto(9070)
 9065 vu(.-.....|) Print("X")
 // Check high score. J=1 if new high, 0 otherwise.
-9070 vu(.-.J...n) J=0; If(score>Abs(highScore)) Then highScore=score; J=1; If(cachedHead) Then highScore=-score
-// Display: (◆ or Q)(Win or Fail)( High)
+9070 vu(.-.J...n) J=0; If(score>Abs(highScore)) Then highScore=score; J=1; If(isPrimaryAuto) Then highScore=-score
+// Display: (◆ or o)(Win or Fail)( High) — single mode always primary
 9080 vu(.-I|...|) For(I=1) To(2); Print(Position(I,1) Double(I+2))
-9082 vu(.-||...n) If(cachedHead) Then Print("Q")
-9084 vu(.-||...n) If(cachedHead=0) Then Print(GraphicsOn "`" GraphicsOff)
+9082 vu(.-||...|) Print(PrimaryHeadIcon)
 9086 vu(.-||...|) If(foodCount=0) Then Print("Win")
 9088 vu(.-||...|) If(foodCount) Then Print("Fail")
 9090 vu(.-||...|) If(J) Then Print(" High")
