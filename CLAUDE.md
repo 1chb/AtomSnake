@@ -246,6 +246,7 @@ Acorn Atom BASIC operator precedence (highest to lowest):
 1. `*`, `/`, `%`, `&` — Multiplicative and bitwise AND (same level, left-to-right)
 2. `+`, `-`, `|`, `:` — Additive and bitwise OR/XOR (same level, left-to-right)
 3. `=`, `<`, `>` — Comparison (return 1 for true, 0 for false)
+4. `AND`, `OR` - Also bitwise like `&` and `|` but lower precedence
 
 **Key implications:**
 - `flags&3=3` is parsed as `(flags&3)=3` — AND before comparison. Safe for flag testing.
@@ -338,11 +339,11 @@ When modifying the code:
 ### Memory Layout
 - **Total RAM**: 8192 bytes (8KB)
 - **System/BASIC workspace**: ~1282 bytes (from address 0)
-- **Program**: ~3442 bytes in memory (optimized PROD)
+- **Program**: ~4647 bytes in memory (optimized PROD)
 - **`DIM AA(Z-1)`**: Z × 4 bytes (integer array; double-letter DIM = 4-byte integers)
-- **`DIM F(18)`**: 19 bytes (string buffer; single-letter DIM = 1-byte ASCII characters)
-- **For 40×21 board**: 840 × 4 + 19 = 3379 bytes for arrays, leaving ~89 bytes free
-- **For 40×22 board**: 880 × 4 + 19 = 3539 bytes — does NOT fit (exceeds available memory)
+- **`DIM F(31)`**: 32 bytes (string buffer; single-letter DIM = 1-byte ASCII characters)
+- **For 36×17 board**: 36 x (17-2) × 4 + 32 = 2192 bytes for arrays, leaving ~71 bytes free
+- **For 40×22 board**: 40 x (22-2) × 4 + 32 = 3232 bytes — does NOT fit (exceeds available memory with ~1 KB)
 
 Note: `DIM` with single-letter variable names allocates byte strings (1 byte per element).
 `DIM` with double-letter variable names allocates integer arrays (4 bytes per element).

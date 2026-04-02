@@ -97,7 +97,7 @@
 // bit 5 (32) = HeadBit        0=manual head, 1=auto head (set before AdvanceHead)
 // bit 6 (64) = FinalPassBit   Last auto pass in dual mode (transient within tick)
 // Mode = flags&#C: 0=single manual, 4=single auto, 8=dual M+A, 12=dual A+A
-// Cycle: flags+4-(flags&#C)/12*16
+#define CycleModes(f) f+4-(f&12>8)*16 // flags+4-(flags&#C)/12*16
 #define AliveBit 1
 #define PhoneBit 2  // Position corresponds to vertical direction bit
 #define PrimaryAutoBit 4
@@ -425,9 +425,9 @@ Subroutine(1700, PauseLoop, flags tickDelay time head tail lastDir score player2
 1767 vu(.-.....N)   If(lastKey=SLOWER) Then tickDelay=tickDelay+1; Gosub(HelpSub)
 // Cycle mode: manual(0)→auto(4)→dual M+A(8)→dual A+A(12)→manual. Only before first move or between games.
 #ifdef PROD
-1768 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=flags+4-(flags&#C)/12*16; Gosub(HelpSub); If(isAlive) Then Gosub(ReplaceSnakes)
+1768 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=CycleModes(flags); Gosub(HelpSub); If(isAlive) Then Gosub(ReplaceSnakes)
 #else
-1768 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=flags+4-(flags&#C)/12*16; Gosub(HelpSub)
+1768 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=CycleModes(flags); Gosub(HelpSub)
 1770 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0) And isAlive) Then Gosub(ReplaceSnakes)
 #endif
 1775 vu(.-......) Until(lastKey=PAUSE OR lastKey=QUIT OR IsDirKey(lastKey))
