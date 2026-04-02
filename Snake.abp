@@ -187,6 +187,7 @@
 
 // Help is now label v (HelpSub), no longer needs line number define
 #define PrimaryAutoKeys 1358
+#define DirDispatch 1171
 #define PlaceSnake 3500 // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
 #define SwapData 7000 // head tail lastDir score player2 => head tail lastDir score player2 : I
 #define UndoSnake 7100 // tail head width colOffset size nodes AA => AA : I K M N direction pos quantity
@@ -344,7 +345,8 @@ Subroutine(1000, Play, flags lastKey size height width colOffset highScore nodes
 1025 vu(.-.....N) Gosub(HelpSub)
 1030 vu(.-IJKLMN) Gosub(InitGame)
 1040 vu(.-IJKLMN) CheckTree
-1070 vu(.-..K...) If(IsDirKey(lastKey) OR lastKey=PAUSE) Then K=tickDelay; Goto(KeyDispatch) // Process saved direction key
+1070 vu(.-..K...) If(lastKey=PAUSE) Then Gosub(PauseLoop); K=time+tickDelay; Goto(DirDispatch) // Initial pause: no toggle on exit
+1075 vu(.-..K...) If(IsDirKey(lastKey)) Then K=tickDelay; Goto(DirDispatch) // Saved dir key from previous game: no toggle
 Label(1080, GameLoop)
 1090 vu(.-..K...) K=time+tickDelay // Next tick time (temp)
 Label(1100, GameLoop2)
@@ -357,7 +359,7 @@ Label(1145, KeyDispatch)
 1150 vu(.-IJkLMN) If(lastKey=PAUSE) Then Gosub(PauseLoop); K=time+tickDelay // (*) Pause destroys K, compute a new end time
 // Mid-game * toggles primary manual↔auto. DIR key in auto switches primary to manual.
 1155 vu(.-..|...) If(lastKey=MODE) Then toggle(PrimaryAutoBit)
-1165 vu(.-..|...) If(IsDirKey(lastKey) And isPrimaryAuto And time>0) Then toggle(PrimaryAutoBit)
+1165 vu(.-..|...) If(IsDirKey(lastKey) And isPrimaryAuto>0) Then toggle(PrimaryAutoBit)
 1171 vu(.-..|...) If(lastKey=NORTH) Then direction=North:isPhone; Gosub(ChangeDirection)
 1180 vu(.-..|...) If(lastKey=WEST) Then direction=West; Gosub(ChangeDirection)
 1190 vu(.-..|...) If(lastKey=EAST) Then direction=East; Gosub(ChangeDirection)
