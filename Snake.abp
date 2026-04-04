@@ -7,8 +7,7 @@
 #define AutoNewGameDelay 1500
 #define NumFood 5
 #define InitSnakeLen 3
-#define PackBase 999       // Must be > W*(H-2) i.e. larger than the board size
-#define PackBase2 (PackBase*PackBase)
+
 
 #ifdef PROD
 #  define WIDTH 36
@@ -34,7 +33,7 @@
 #define direction D
 #define lastDir E
 #define snakeLUT F
-#define player2 G // Packed: lastDir2*PackBase2 + head2*PackBase + tail2
+#define player2 G // Packed: lastDir2*size*size + head2*size + tail2
 #define height H
 // I,J,K,L,M,N -- Temp
 #define nodes O
@@ -485,7 +484,7 @@ Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA =
 4005 vu(.-......) If(notDual) Then Goto(4050)
 // --- Dual: place secondary (left) auto snake first ---
 4010 vu(.-......) set(HeadBit); head=CENTER_OF_BOARD-3+width%2; direction=West; Gosub(PlaceSnake); clear(HeadBit)
-4030 vu(.-......) player2=direction*PackBase2+head*PackBase+tail // S=head(left), T=tail(right)
+4030 vu(.-......) player2=direction*size*size+head*size+tail // S=head(left), T=tail(right)
 // --- Place primary (right) snake --- HeadBit=0: draws ◆ or o via SnakeHead
 4050 vu(.-......) head=CENTER_OF_BOARD; direction=East; Gosub(PlaceSnake)
 4080 vu(.-......) If(lastDir<0) Then Goto(4120) // Sentinel: skip food (called from ReplaceSnakes)
@@ -571,9 +570,9 @@ Subroutine(6200, AdvanceHead, head tail lastDir width colOffset snakeLUT score f
 #endif
 6468 vu(.-......) Goto(6480)
 // Dual score display at SCORE_COL: "Q<secondary> ◆<primary>" or "Q<secondary> Q<primary>"
-// HeadBit=32 (secondary auto just ate): secondary=score%PackBase, primary=score/PackBase
+// HeadBit=32 (secondary auto just ate): secondary=score%size, primary=score/size
 // HeadBit=0 (primary just ate): swap so I=secondary, J=primary
-6472 vu(.-IJ....) I=score%PackBase; J=score/PackBase; If(isSet(HeadBit)=0) Then I=score/PackBase; J=score%PackBase
+6472 vu(.-IJ....) I=score%size; J=score/size; If(isSet(HeadBit)=0) Then I=score/size; J=score%size
 6474 vu(.-ij...N) For(N=1) To(2)
 6475 vu(.-||...n)   Print(Position(N,SCORE_COL) Double(N+2) "Q"I " " PrimaryHeadIcon J " ")
 6476 vu(.-||...n) Next(N)
@@ -586,15 +585,15 @@ Subroutine(6500, MarkHead, direction head width colOffset snakeLUT flags AA => A
 
 // === SwapData: swap active/inactive snake state ===
 // Active state in S,T,E,U; inactive packed in G.
-// G = lastDir2*PackBase2 + head2*PackBase + tail2
-// U = activeScore + inactiveScore*PackBase
+// G = lastDir2*size*size + head2*size + tail2
+// U = activeScore + inactiveScore*size
 // Does NOT modify flag bits.
 SwapData vu(.-I.....) I=player2
-7010 vu(.-i.....) player2=lastDir*PackBase2+head*PackBase+tail
-7020 vu(.-i.....) head=I/PackBase%PackBase
-7030 vu(.-i.....) tail=I%PackBase
-7040 vu(.-i.....) lastDir=I/PackBase2
-7050 vu(.-......) score=score/PackBase+score%PackBase*PackBase
+7010 vu(.-i.....) player2=lastDir*size*size+head*size+tail
+7020 vu(.-i.....) head=I/size%size
+7030 vu(.-i.....) tail=I%size
+7040 vu(.-i.....) lastDir=I/size/size
+7050 vu(.-......) score=score/size+score%size*size
 7060 vu(.-......) Return
 
 // === UndoSnake: erase snake from tail to head ===
@@ -619,7 +618,7 @@ UndoSnake vu(.-..K...) pos=tail
 ReplaceSnakes vu(.-I.....)
 7200 vu(.-IJKLMN) Gosub(UndoSnake) // Undo active snake
 // If old mode was dual (new mode is 0 or 12): undo other snake from player2
-7205 vu(.-......) If(flags&#C%12=0) Then head=player2/PackBase%PackBase; tail=player2%PackBase; Gosub(UndoSnake)
+7205 vu(.-......) If(flags&#C%12=0) Then head=player2/size%size; tail=player2%size; Gosub(UndoSnake)
 // Place new snakes via InitGame (sentinel lastDir=-1 skips food placement)
 7210 vu(.-......) lastDir=-1
 7215 vu(.-IJKLMN) Gosub(InitGame)
@@ -712,7 +711,7 @@ Label(8300, HelpSub) vu(.-.....N) N=flags&PhoneBit*3 // flags tickDelay => : N
 // === GameOver === head foodCount score => flags lastKey highScore : I J K N
 // highScore encoding: positive=manual record, negative=auto record. Abs(highScore)=score value.
 // HeadBit tells us who crashed (0=primary, 32=secondary).
-// Active snake's score=score%PackBase (dual) or score (single). Inactive=score/PackBase.
+// Active snake's score=score%size (dual) or score (single). Inactive=score/size.
 Label(9000, Clash)
 // N caches HeadBit for game-over display (N is free: loop uses I, not N)
 #define cachedHead N
@@ -721,8 +720,8 @@ Label(9000, Clash)
 9021 vu(.-.....|) If(notDual) Then Goto(9060)
 // --- Dual mode end ---
 9022 vu(.-.....|) Print("X")
-// I=primary score, J=secondary score. Active(crashed)=score%PackBase, inactive(winner)=score/PackBase.
-9023 vu(.-IJ...n) I=score%PackBase; J=score/PackBase; If(cachedHead) Then I=score/PackBase; J=score%PackBase
+// I=primary score, J=secondary score. Active(crashed)=score%size, inactive(winner)=score/size.
+9023 vu(.-IJ...n) I=score%size; J=score/size; If(cachedHead) Then I=score/size; J=score%size
 // Check high score. K: 0=no new high, 1=primary got high, -1=secondary got high.
 // highScore sign: positive=manual, negative=auto. Primary auto uses negative too.
 9025 vu(.-ijK..|) K=0; If(I>=J And I>Abs(highScore)) Then highScore=I; K=1; If(isPrimaryAuto) Then highScore=-I
