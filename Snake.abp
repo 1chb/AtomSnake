@@ -10,7 +10,7 @@
 
 
 #ifdef PROD
-#  define WIDTH 36
+#  define WIDTH 38
 #  ifdef TREE_CHECK
 #    define HEIGHT 11
 #  else
@@ -58,7 +58,6 @@
 // │   │   └─→ Border (3000)  O P V W Z AA => AA : I M N P Q
 // │   │       ├─→ MoveTo (2900)  P V W => :
 // │   │       └─→ [falls through to BorderPrim (3020)]
-// │   ├─→ HelpSub (8300)  A B => : N
 // │   ├─→ InitGame (4000)  B F H O V W Z AA => B D E G R S T X AA : I J K L M N P Q
 // │   │   ├─→ PlaceSnake (3500)  B D F O S V W Z AA => R S T AA : I J K L M N P Q
 // │   │   │   ├─→ StepSub (6000)  D P W => P :
@@ -343,7 +342,6 @@ Subroutine(1000, Play, flags lastKey size height width colOffset highScore nodes
 // Preserve mode (PrimaryAutoBit+DualBit) and PhoneBit across games. Clear BonusBit, HeadBit, FinalPassBit. Set AliveBit.
 1010 vu(.-......) score=0; flags=flags&#E|AliveBit
 1020 vu(.-IJ..MN) Gosub(8000) // HomePage (was label h, stolen for ReadKey)
-1025 vu(.-.....N) Gosub(HelpSub)
 1030 vu(.-IJKLMN) Gosub(InitGame)
 1040 vu(.-IJKLMN) CheckTree
 1070 vu(.-..K...) If(lastKey=PAUSE) Then Gosub(PauseLoop); K=time+tickDelay; Goto(DirDispatch) // Initial pause: no toggle on exit
@@ -415,24 +413,31 @@ Label(1640, AutoDone)
 
 // === PauseLoop ===
 Subroutine(1700, PauseLoop, flags tickDelay time head tail lastDir score player2 height width colOffset size nodes snakeLUT direction foodCount AA => flags tickDelay lastKey head tail direction lastDir foodCount player2 time AA : I J K L M N P Q)
-1710 vu(.-.....N) For(N=1)To(300)
+1710 vu(.-.....N) For(N=1) To(300)
 1720 vu(.-.....|)   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
 1730 vu(.-.....n) Next(N)
-1740 vu(.-......) DO
-1750 vu(.-......)   DO; Until(KeyAvailable)
-1760 vu(.-......)   Gosub(ReadKey)
-1765 vu(.-.....N)   If(lastKey=PHONE) Then toggle(PhoneBit); Gosub(HelpSub)
-1766 vu(.-.....N)   If(lastKey=FASTER And tickDelay>1) Then tickDelay=tickDelay-1; Gosub(HelpSub)
-1767 vu(.-.....N)   If(lastKey=SLOWER) Then tickDelay=tickDelay+1; Gosub(HelpSub)
+Label(1735, HelpSub)
+1736 vu(.-.....N) N=flags&PhoneBit*3 // flags tickDelay => : N
+#ifdef PROD
+1740 vu(.-.....n) Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N) " / P * -"tickDelay"+ " NormalVideo
+#else
+1740 vu(.-.....n) Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N)
+1745 vu(.-......) Print(" / P * -"tickDelay"+ " NormalVideo)
+#endif
+1750 vu(.-......) DO; Until(KeyAvailable)
+1760 vu(.-......) Gosub(ReadKey)
+1765 vu(.-.....N) If(lastKey=PHONE) Then toggle(PhoneBit); Goto(HelpSub)
+1766 vu(.-.....N) If(lastKey=FASTER And tickDelay>1) Then tickDelay=tickDelay-1; Goto(HelpSub)
+1767 vu(.-.....N) If(lastKey=SLOWER) Then tickDelay=tickDelay+1; Goto(HelpSub)
 // Cycle mode: manual(0)→auto(4)→dual M+A(8)→dual A+A(12)→manual. Only before first move or between games.
 #ifdef PROD
-1768 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=CycleModes(flags); Gosub(HelpSub); If(isAlive) Then Gosub(ReplaceSnakes)
+1768 vu(.-.....N) If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=CycleModes(flags); If(isAlive) Then Gosub(ReplaceSnakes)
 #else
-1768 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=CycleModes(flags); Gosub(HelpSub)
-1770 vu(.-.....N)   If(lastKey=MODE And (isAlive=0 OR time=0) And isAlive) Then Gosub(ReplaceSnakes)
+1768 vu(.-.....N) If(lastKey=MODE And (isAlive=0 OR time=0)) Then flags=CycleModes(flags)
+1770 vu(.-.....N) If(lastKey=MODE And (isAlive=0 OR time=0) And isAlive) Then Gosub(ReplaceSnakes)
 #endif
-1775 vu(.-......) Until(lastKey=PAUSE OR lastKey=QUIT OR IsDirKey(lastKey))
-1780 vu(.-......) Return
+1775 vu(.-......) If(lastKey=PAUSE OR lastKey=QUIT OR IsDirKey(lastKey)) Then Return
+1780 vu(.-......) Goto(1750)
 
 // === Adjust: update binary indexed tree ===
 Subroutine(2000, Adjust, pos quantity size nodes AA => AA : I M N pos)
@@ -670,11 +675,6 @@ ReplaceFoodAt vu(.-......) score=J; Gosub(SpawnFood); J=score; score=0 // Save J
 #endif
 8150 vu(.-......) Print(NormalVideo)
 8160 vu(.-......) Return
-
-Label(8300, HelpSub) vu(.-.....N) N=flags&PhoneBit*3 // flags tickDelay => : N
-8310 Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N)
-8311 Print(" / P * -"tickDelay"+ " NormalVideo)
-8320 Return
 
 #define CellCount(i) AA(i)&CountMask
 #define ChildA(i) i+i+1
