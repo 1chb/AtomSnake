@@ -492,10 +492,10 @@ PlaceOneSnake vu(.-......) tail=head // head direction width colOffset snakeLUT 
 Subroutine(4000, PlaceSnakes, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir flags player2 time AA : I J K L M N pos quantity)
 4005 vu(.-......) lastDir=CENTER_OF_BOARD; If(notDual) Then Goto(4050)
 // --- Dual: place secondary (left) auto snake first ---
-4010 vu(.-IJKLMN) set(HeadBit); head=lastDir-3+width%2; direction=West; Gosub(PlaceOneSnake); clear(HeadBit)
+4010 vu(.-IJKLMN) set(HeadBit); head=lastDir-2; direction=West; Gosub(PlaceOneSnake); clear(HeadBit)
 4030 vu(.-......) player2=(direction*size+head)*size+tail // S=head(left), T=tail(right)
 // --- Place primary (right) snake --- HeadBit=0: draws ◆ or o via SnakeHead
-4050 vu(.-IJKLMN) head=lastDir; direction=East; Gosub(PlaceOneSnake)
+4050 vu(.-IJKLMN) head=lastDir-1-width&1+isDual/(DualBit/((InitSnakeLen+1)/2)); direction=East; Gosub(PlaceOneSnake)
 4080 vu(.-......) lastDir=direction; time=0
 4090 vu(.-......) Return
 

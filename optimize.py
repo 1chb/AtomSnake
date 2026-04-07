@@ -449,40 +449,46 @@ def merge_adjacent_strings(line):
 def eval_const_parens(line):
     """Evaluate parenthesized constant integer expressions.
     
-    '(-1-2)' -> '-3', '(-1-4)' -> '-5'
+    '(-1-2)' -> '-3', '(-1-4)' -> '-5', '(8/(4/2))' -> '4'
     Only evaluates parens containing just integers and +-*/.
+    Handles nested parens by repeating until no more reductions.
     Respects strings.
     """
-    result = []
-    i = 0
-    in_string = False
-    while i < len(line):
-        c = line[i]
-        if c == '"':
-            in_string = not in_string
-        if not in_string and c == '(':
-            # Skip if preceded by letter/$ (array access, DIM, function)
-            if i > 0 and (line[i-1].isalpha() or line[i-1] == '$'):
-                result.append(c)
-                i += 1
-                continue
-            # Find matching close paren
-            j = i + 1
-            while j < len(line) and line[j] != ')':
-                j += 1
-            if j < len(line):
-                inner = line[i+1:j]
-                if re.fullmatch(r'[-+*/\d ]+', inner):
-                    try:
-                        val = int(eval(inner))  # noqa: S307
-                        result.append(str(val))
-                        i = j + 1
-                        continue
-                    except Exception:
-                        pass
-        result.append(c)
-        i += 1
-    return ''.join(result)
+    changed = True
+    while changed:
+        changed = False
+        result = []
+        i = 0
+        in_string = False
+        while i < len(line):
+            c = line[i]
+            if c == '"':
+                in_string = not in_string
+            if not in_string and c == '(':
+                # Skip if preceded by letter/$ (array access, DIM, function)
+                if i > 0 and (line[i-1].isalpha() or line[i-1] == '$'):
+                    result.append(c)
+                    i += 1
+                    continue
+                # Find matching close paren
+                j = i + 1
+                while j < len(line) and line[j] != ')':
+                    j += 1
+                if j < len(line):
+                    inner = line[i+1:j]
+                    if re.fullmatch(r'[-+*/\d ]+', inner):
+                        try:
+                            val = int(eval(inner))  # noqa: S307
+                            result.append(str(val))
+                            i = j + 1
+                            changed = True
+                            continue
+                        except Exception:
+                            pass
+            result.append(c)
+            i += 1
+        line = ''.join(result)
+    return line
 
 
 def remove_line_number_space(line):
