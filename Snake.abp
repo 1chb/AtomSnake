@@ -58,16 +58,16 @@
 // │   │   └─→ Border (3000)  O P V W Z AA => AA : I M N P Q
 // │   │       ├─→ MoveTo (2900)  P V W => :
 // │   │       └─→ [falls through to BorderPrim (3020)]
-// │   ├─→ InitGame (4000)  B F H O V W Z AA => B D E G R S T X AA : I J K L M N P Q
-// │   │   ├─→ PlaceSnake (3500)  B D F O S V W Z AA => R S T AA : I J K L M N P Q
-// │   │   │   ├─→ StepSub (6000)  D P W => P :
-// │   │   │   ├─→ MoveTo (2900)  P V W => :
-// │   │   │   ├─→ Adjust (2000)  O P Q Z AA => AA : I M N P
-// │   │   │   └─→ ReplaceFoodAt (7300)  J => : I K L M N P Q
-// │   │   │       └─→ SpawnFood (5100)  B F O V W X Z AA => B X AA : I J K L M N P Q
-// │   │   │           ├─→ MoveTo (2900)  P V W => :
-// │   │   │           └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
-// │   │   └─→ SpawnFood (5100) [x5 in loop]  B F O V W X Z AA => B X AA : I J K L M N P Q
+// │   ├─→ PlaceSnakes (4000)  B F H O V W Z AA => B D E G R S T AA : I J K L M N P Q
+// │   │   └─→ PlaceOneSnake (3500)  B D F O S V W Z AA => R S T AA : I J K L M N P Q
+// │   │       ├─→ StepSub (6000)  D P W => P :
+// │   │       ├─→ MoveTo (2900)  P V W => :
+// │   │       ├─→ Adjust (2000)  O P Q Z AA => AA : I M N P
+// │   │       └─→ ReplaceFoodAt (7300)  J => : I K L M N P Q
+// │   │           └─→ SpawnFood (5100)  B F O V W X Z AA => B X AA : I J K L M N P Q
+// │   │               ├─→ MoveTo (2900)  P V W => :
+// │   │               └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
+// │   ├─→ SpawnFood (5100) [x5 in loop]  B F O V W X Z AA => B X AA : I J K L M N P Q
 // │   ├─→ ReadKey (2800)  => Y :
 // │   ├─→ PauseLoop (1700)  A B R D E F G H O S T U V W X Z AA => A B R D E G S T X Y AA : I J K L M N P Q
 // │   │   ├─→ ReadKey (2800)  => Y :
@@ -77,7 +77,7 @@
 // │   │       │   ├─→ MoveTo (2900)  P V W => :
 // │   │       │   ├─→ Adjust (2000)  O P Q Z AA => AA : I M N P
 // │   │       │   └─→ StepSub (6000)  D P W => P :
-// │   │       └─→ InitGame (4000)  [see above]
+// │   │       └─→ PlaceSnakes (4000)  [see above]
 // │   ├─→ ChangeDirection (500) [x4]  D S AA => AA :
 // │   ├─→ AdvanceHead (6200)  B E F O S T U V W X Z AA => B E S T U X AA : D I J K L M N P Q
 // │   │   ├─→ StepSub (6000) [x2]  D P W => P :
@@ -171,7 +171,7 @@
 #define TryDirSub k
 #define KeyDispatch l
 #define AutoFallback m
-#define InitGame n
+#define PlaceSnakes n
 #define PauseLoop o
 #define Play p
 #define GameLoop q
@@ -186,10 +186,10 @@
 #define AutoInput z
 
 // Help is now label v (HelpSub), no longer needs line number define
-#define PlaceSnake 3500 // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
+#define PlaceOneSnake 3500 // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
 #define SwapPlayer 7000 // head tail lastDir score player2 => head tail lastDir score player2 : I
 #define UndoSnake 7100 // tail head width colOffset size nodes AA => AA : I K M N direction pos quantity
-#define ReplaceSnakes 7200 // head tail flags player2 width height colOffset nodes size snakeLUT direction AA => head tail direction lastDir flags player2 foodCount time AA : I J K L M N pos quantity
+#define ReplaceSnakes 7200 // head tail flags player2 width height colOffset nodes size snakeLUT direction AA => head tail direction lastDir flags player2 time AA : I J K L M N pos quantity
 #define ReplaceFoodAt 7300 // J foodCount flags nodes size width colOffset snakeLUT score AA => foodCount flags score AA : I K L M N pos quantity
 
 #ifdef DEBUG
@@ -342,7 +342,10 @@ Subroutine(1000, Play, flags lastKey size height width colOffset highScore nodes
 // Preserve mode (PrimaryAutoBit+DualBit) and PhoneBit across games. Clear BonusBit, HeadBit, FinalPassBit. Set AliveBit.
 1010 vu(.-......) score=0; flags=flags&#E|AliveBit
 1020 vu(.-IJ..MN) Gosub(8000) // HomePage (was label h, stolen for ReadKey)
-1030 vu(.-IJKLMN) Gosub(InitGame)
+1030 vu(.-IJKLMN) Gosub(PlaceSnakes)
+1032 vu(.-......) foodCount=0; clear(BonusBit)
+1034 vu(.-IJKLMN) For(lastDir=1) To(NumFood); Gosub(SpawnFood); Next(lastDir)
+1036 vu(.-......) lastDir=direction
 1040 vu(.-IJKLMN) CheckTree
 1070 vu(.-..K...) If(lastKey=PAUSE) Then Gosub(PauseLoop); K=time+tickDelay; Goto(DirDispatch) // Initial pause: no toggle on exit
 1075 vu(.-..K...) If(IsDirKey(lastKey)) Then K=tickDelay; Goto(DirDispatch) // Saved dir key from previous game: no toggle
@@ -468,12 +471,12 @@ Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
 3050 vu(.-......) quantity=-CountBit
 3060 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
 
-// === PlaceSnake: place a snake starting at head(S) in direction(D) ===
+// === PlaceOneSnake: place a snake starting at head(S) in direction(D) ===
 // Grows forward from starting position (becomes tail) by InitSnakeLen segments.
 // HeadBit must be set by caller to select head character (Q or ◆).
 // Uses StepSub to advance, similar to AdvanceHead.
 // Loop uses time(R) since most temp vars are destroyed by Adjust/ReplaceFoodAt (J is preserved by ReplaceFoodAt).
-PlaceSnake vu(.-......) tail=head // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
+PlaceOneSnake vu(.-......) tail=head // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
 3520 vu(.-......) For(time=1) To(InitSnakeLen)
 3525 vu(.-.J....)   J=head; If(time>1) Then pos=head; Gosub(StepSub); head=pos; J=head
 3530 vu(.-IjKLMN)   If(AA(J)&FlagsMask) Then Gosub(ReplaceFoodAt)
@@ -483,21 +486,18 @@ PlaceSnake vu(.-......) tail=head // head direction width colOffset snakeLUT fla
 3570 vu(.-......) pos=head; Gosub(MoveTo); Print(SnakeHead) // Draw head character
 3580 vu(.-......) Return
 
-// === InitGame: set up snake and food ===
+// === PlaceSnakes: place snake(s) on the board ===
 // In dual mode: place secondary (left) auto snake first, save to player2, then place primary (right) snake.
 // This ensures the game loop has primary data in the active variables.
-Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags player2 time AA : I J K L M N pos quantity)
-4005 vu(.-......) If(notDual) Then Goto(4050)
+Subroutine(4000, PlaceSnakes, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir flags player2 time AA : I J K L M N pos quantity)
+4005 vu(.-......) lastDir=CENTER_OF_BOARD; If(notDual) Then Goto(4050)
 // --- Dual: place secondary (left) auto snake first ---
-4010 vu(.-IJKLMN) set(HeadBit); head=CENTER_OF_BOARD-3+width%2; direction=West; Gosub(PlaceSnake); clear(HeadBit)
+4010 vu(.-IJKLMN) set(HeadBit); head=lastDir-3+width%2; direction=West; Gosub(PlaceOneSnake); clear(HeadBit)
 4030 vu(.-......) player2=(direction*size+head)*size+tail // S=head(left), T=tail(right)
 // --- Place primary (right) snake --- HeadBit=0: draws ◆ or o via SnakeHead
-4050 vu(.-IJKLMN) head=CENTER_OF_BOARD; direction=East; Gosub(PlaceSnake)
-4080 vu(.-......) If(lastDir<0) Then Goto(4120) // Sentinel: skip food (called from ReplaceSnakes)
-4090 vu(.-......) foodCount=0; clear(BonusBit)
-4100 vu(.-IJKLMN) For(lastDir=1) To(NumFood); Gosub(SpawnFood); Next(lastDir)
-4120 vu(.-......) lastDir=direction; time=0
-4130 vu(.-......) Return
+4050 vu(.-IJKLMN) head=lastDir; direction=East; Gosub(PlaceOneSnake)
+4080 vu(.-......) lastDir=direction; time=0
+4090 vu(.-......) Return
 
 // === SpawnFood: place food on random empty cell ===
 Subroutine(5100, SpawnFood, nodes size width colOffset snakeLUT foodCount flags AA => foodCount flags AA : I J K L M N pos quantity)
@@ -624,9 +624,7 @@ ReplaceSnakes vu(.-I.....)
 7200 vu(.-IJKLMN) Gosub(UndoSnake) // Undo active snake
 // If old mode was dual (new mode is 0 or 12): undo other snake from player2
 7205 vu(.-......) If(flags&#C%12=0) Then head=player2/size%size; tail=player2%size; Gosub(UndoSnake)
-// Place new snakes via InitGame (sentinel lastDir=-1 skips food placement)
-7210 vu(.-......) lastDir=-1
-7215 vu(.-IJKLMN) Gosub(InitGame)
+7215 vu(.-IJKLMN) Gosub(PlaceSnakes)
 // Update score header at SCORE_COL
 7220 vu(.-I....N) For(I=1) To(2); Print(Position(I,SCORE_COL) Double(I+2))
 7222 vu(.-|....n)   If(isDual) Then Print("Q0 " PrimaryHeadIcon "0  ")
@@ -636,7 +634,7 @@ ReplaceSnakes vu(.-I.....)
 
 // === ReplaceFoodAt: replace food at position J with a new random food, then clear cell at J ===
 // Spawns new food first (at random empty cell), then removes old food from list, clears cell, returns to tree.
-// Uses score to save/restore J across SpawnFood call (score=0 at InitGame time).
+// Uses score to save/restore J across SpawnFood call (score=0 at PlaceSnakes time).
 ReplaceFoodAt vu(.-IjKLMN) score=J; Gosub(SpawnFood); J=score; score=0 // Save J, spawn, restore
 7310 vu(.-Ij....) I=-1; DO I=I+1; Until(FoodGet(I)=J) // Find displaced food in list
 7320 vu(.-ij....) foodCount=foodCount-1
