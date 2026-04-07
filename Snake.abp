@@ -63,7 +63,7 @@
 // │   │   │   ├─→ StepSub (6000)  D P W => P :
 // │   │   │   ├─→ MoveTo (2900)  P V W => :
 // │   │   │   ├─→ Adjust (2000)  O P Q Z AA => AA : I M N P
-// │   │   │   └─→ ReplaceFoodAt (7300)  => : I J K L M N P Q
+// │   │   │   └─→ ReplaceFoodAt (7300)  J => : I K L M N P Q
 // │   │   │       └─→ SpawnFood (5100)  B F O V W X Z AA => B X AA : I J K L M N P Q
 // │   │   │           ├─→ MoveTo (2900)  P V W => :
 // │   │   │           └─→ Adjust (2000)  O P Q Z AA => AA : I M N P
@@ -471,11 +471,11 @@ Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
 // Grows forward from starting position (becomes tail) by InitSnakeLen segments.
 // HeadBit must be set by caller to select head character (Q or ◆).
 // Uses StepSub to advance, similar to AdvanceHead.
-// Loop uses time(R) since all temp vars (I-N,P,Q) are destroyed by Adjust/ReplaceFoodAt.
+// Loop uses time(R) since most temp vars are destroyed by Adjust/ReplaceFoodAt (J is preserved by ReplaceFoodAt).
 PlaceSnake vu(.-......) tail=head // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
 3520 vu(.-......) For(time=1) To(InitSnakeLen)
 3525 vu(.-.J....)   J=head; If(time>1) Then pos=head; Gosub(StepSub); head=pos; J=head
-3530 vu(.-Ij.KLMN)   If(AA(J)&FlagsMask) Then Gosub(ReplaceFoodAt)
+3530 vu(.-IjKLMN)   If(AA(J)&FlagsMask) Then Gosub(ReplaceFoodAt)
 3540 vu(.-.j....)   pos=J; Gosub(MoveTo); Print(GraphicsOn "q" GraphicsOff)
 3550 vu(.-I...MN)   AA(head)=AA(head)&CountMask|BorderBit|direction; quantity=-CountBit; Gosub(Adjust)
 3560 vu(.-......) Next(time)
@@ -488,10 +488,10 @@ PlaceSnake vu(.-......) tail=head // head direction width colOffset snakeLUT fla
 Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA => head tail direction lastDir foodCount flags player2 time AA : I J K L M N pos quantity)
 4005 vu(.-......) If(notDual) Then Goto(4050)
 // --- Dual: place secondary (left) auto snake first ---
-4010 vu(.-......) set(HeadBit); head=CENTER_OF_BOARD-3+width%2; direction=West; Gosub(PlaceSnake); clear(HeadBit)
+4010 vu(.-IJKLMN) set(HeadBit); head=CENTER_OF_BOARD-3+width%2; direction=West; Gosub(PlaceSnake); clear(HeadBit)
 4030 vu(.-......) player2=direction*size*size+head*size+tail // S=head(left), T=tail(right)
 // --- Place primary (right) snake --- HeadBit=0: draws ◆ or o via SnakeHead
-4050 vu(.-......) head=CENTER_OF_BOARD; direction=East; Gosub(PlaceSnake)
+4050 vu(.-IJKLMN) head=CENTER_OF_BOARD; direction=East; Gosub(PlaceSnake)
 4080 vu(.-......) If(lastDir<0) Then Goto(4120) // Sentinel: skip food (called from ReplaceSnakes)
 4090 vu(.-......) foodCount=0; clear(BonusBit)
 4100 vu(.-IJKLMN) For(lastDir=1) To(NumFood); Gosub(SpawnFood); Next(lastDir)
@@ -634,16 +634,16 @@ ReplaceSnakes vu(.-I.....)
 7226 vu(.-i....n) Next(I)
 7230 vu(.-......) Return
 
-// === ReplaceFoodAt: replace food at position J with a new random food, then clear J ===
+// === ReplaceFoodAt: replace food at position J with a new random food, then clear cell at J ===
 // Spawns new food first (at random empty cell), then removes old food from list, clears cell, returns to tree.
 // Uses score to save/restore J across SpawnFood call (score=0 at InitGame time).
-ReplaceFoodAt vu(.-......) score=J; Gosub(SpawnFood); J=score; score=0 // Save J, spawn, restore
-7310 vu(.-I.....) I=-1; DO I=I+1; Until(FoodGet(I)=J) // Find displaced food in list
-7320 vu(.-i.....) foodCount=foodCount-1
-7325 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last entry
-7330 vu(.-......) If(AA(J)&FlagsMask=Bonus) Then clear(BonusBit)
-7335 vu(.-......) AA(J)=AA(J)&CountMask // Clear food flags
-7340 vu(.-I...MN) pos=J; quantity=CountBit; Goto(Adjust) // Tail-call: Adjust's RETURN returns to our caller
+ReplaceFoodAt vu(.-IjKLMN) score=J; Gosub(SpawnFood); J=score; score=0 // Save J, spawn, restore
+7310 vu(.-Ij....) I=-1; DO I=I+1; Until(FoodGet(I)=J) // Find displaced food in list
+7320 vu(.-ij....) foodCount=foodCount-1
+7325 vu(.-i|....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last entry
+7330 vu(.-.j....) If(AA(J)&FlagsMask=Bonus) Then clear(BonusBit)
+7335 vu(.-.j....) AA(J)=AA(J)&CountMask // Clear food flags
+7340 vu(.-Ij..MN) pos=J; quantity=CountBit; Goto(Adjust) // Tail-call: Adjust's RETURN returns to our caller
 
 // === HomePage: draw title and borders ===
 // HomePage: no longer has a label (was h, now used for ReadKey). Called via GOS.8000.

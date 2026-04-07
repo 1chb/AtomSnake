@@ -211,7 +211,7 @@ The lifecycle of a value is: **Uppercase** (written), then zero or more **Pipe**
 ```
 3520 vu(.-......) For(time=1) To(3)          // time written (not tracked), no temps
 3525 vu(.-.J....)   J=head; ...              // J written (uppercase)
-3530 vu(.-Ij.KLMN)  If(AA(J)&7) Gosub(...)  // J read; I,K,L,M,N destroyed by callee
+3530 vu(.-IjKLMN)  If(AA(J)&7) Gosub(...)   // J read; I,K,L,M,N destroyed by callee
 3540 vu(.-.j....)   pos=J; ...               // J read (lowercase, value survived)
 3550 vu(.-I...MN)   ...; Gosub(Adjust)       // I,M,N destroyed by Adjust
 3560 vu(.-......) Next(time)                  // no tracked temps live
