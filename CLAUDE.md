@@ -339,10 +339,10 @@ When modifying the code:
 ### Memory Layout
 - **Total RAM**: 8192 bytes (8KB)
 - **System/BASIC workspace**: ~1282 bytes (from address 0)
-- **Program**: ~4558 bytes in memory (optimized PROD)
+- **Program**: ~4554 bytes in memory (optimized PROD)
 - **`DIM AA(Z-1)`**: Z × 4 bytes (integer array; double-letter DIM = 4-byte integers)
 - **`DIM F(31)`**: 32 bytes (string buffer; single-letter DIM = 1-byte ASCII characters)
-- **For 38×17 board**: 38 x (17-2) × 4 + 32 = 2312 bytes for arrays, leaving ~8 bytes free
+- **For 38×17 board**: 38 x (17-2) × 4 + 32 = 2312 bytes for arrays, leaving ~12 bytes free
 - **For 40×22 board**: 40 x (22-2) × 4 + 32 = 3232 bytes — does NOT fit (exceeds available memory with ~1 KB)
 
 Note: `DIM` with single-letter variable names allocates byte strings (1 byte per element).

@@ -186,14 +186,11 @@
 #define AutoInput z
 
 // Help is now label v (HelpSub), no longer needs line number define
-#define PrimaryAutoKeys 1358
-#define DirDispatch 1171
 #define PlaceSnake 3500 // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
-#define SwapData 7000 // head tail lastDir score player2 => head tail lastDir score player2 : I
+#define SwapPlayer 7000 // head tail lastDir score player2 => head tail lastDir score player2 : I
 #define UndoSnake 7100 // tail head width colOffset size nodes AA => AA : I K M N direction pos quantity
 #define ReplaceSnakes 7200 // head tail flags player2 width height colOffset nodes size snakeLUT direction AA => head tail direction lastDir flags player2 foodCount time AA : I J K L M N pos quantity
 #define ReplaceFoodAt 7300 // J foodCount flags nodes size width colOffset snakeLUT score AA => foodCount flags score AA : I K L M N pos quantity
-#define AfterManual 1350
 
 #ifdef DEBUG
 #  define Debug 9600
@@ -338,6 +335,9 @@ Subroutine(600, TryDirSub, N head width size AA => K direction AA :)
 630 vu(.-......) Return
 
 // === Play: one game ===
+#define DirDispatch 1171
+#define AfterManual 1350
+#define PrimaryAutoKeys 1358
 Subroutine(1000, Play, flags lastKey size height width colOffset highScore nodes snakeLUT direction AA => flags tickDelay lastKey head tail score lastDir foodCount time direction player2 AA : I J K L M N P Q)
 // Preserve mode (PrimaryAutoBit+DualBit) and PhoneBit across games. Clear BonusBit, HeadBit, FinalPassBit. Set AliveBit.
 1010 vu(.-......) score=0; flags=flags&#E|AliveBit
@@ -372,8 +372,9 @@ Label(1300, WaitForTick)
 // === Auto phase ===
 AfterManual vu(.-......) If(isPrimaryAuto) Then Goto(PrimaryAutoKeys)
 // Primary was manual: swap to secondary if dual, else done
-1352 vu(.-......) If(isDual) Then Gosub(SwapData); set(FinalPassBit); Goto(AutoInput)
+1352 vu(.-......) If(isDual) Then Gosub(SwapPlayer); set(FinalPassBit); Goto(AutoInput)
 1355 vu(.-......) Goto(GameLoop)
+
 // Primary is auto: check keys (PAUSE, QUIT, MODE, DIR all handled via KeyDispatch)
 PrimaryAutoKeys vu(.-......) If(KeyAvailable) Then Gosub(ReadKey);Goto(KeyDispatch)
 Label(1400, AutoInput)
@@ -407,7 +408,7 @@ Label(1640, AutoDone)
 1650 vu(.-......) If(isSet(FinalPassBit)) Then set(HeadBit) // Secondary head (Q) when FinalPassBit set
 1652 vu(.-IJKLMN) Gosub(AdvanceHead)
 1654 vu(.-......) If(isDual=0) Then Goto(GameLoop) // Single mode: done
-1656 vu(.-......) Gosub(SwapData)
+1656 vu(.-......) Gosub(SwapPlayer)
 1658 vu(.-......) If(isSet(FinalPassBit)) Then clear(FinalPassBit); Goto(GameLoop) // Last pass: done
 1660 vu(.-......) set(FinalPassBit); Goto(AutoInput) // First pass done, process other snake
 
@@ -489,7 +490,7 @@ Subroutine(4000, InitGame, height width colOffset nodes size snakeLUT flags AA =
 4005 vu(.-......) If(notDual) Then Goto(4050)
 // --- Dual: place secondary (left) auto snake first ---
 4010 vu(.-IJKLMN) set(HeadBit); head=CENTER_OF_BOARD-3+width%2; direction=West; Gosub(PlaceSnake); clear(HeadBit)
-4030 vu(.-......) player2=direction*size*size+head*size+tail // S=head(left), T=tail(right)
+4030 vu(.-......) player2=(direction*size+head)*size+tail // S=head(left), T=tail(right)
 // --- Place primary (right) snake --- HeadBit=0: draws ◆ or o via SnakeHead
 4050 vu(.-IJKLMN) head=CENTER_OF_BOARD; direction=East; Gosub(PlaceSnake)
 4080 vu(.-......) If(lastDir<0) Then Goto(4120) // Sentinel: skip food (called from ReplaceSnakes)
@@ -588,28 +589,27 @@ Subroutine(6500, MarkHead, direction head width colOffset snakeLUT flags AA => A
 6530 vu(.-......) Print(Backspace) // Keep cursor at head (SnakeHead advances by 1)
 6540 vu(.-......) Return
 
-// === SwapData: swap active/inactive snake state ===
+// === SwapPlayer: swap active/inactive snake state ===
 // Active state in S,T,E,U; inactive packed in G.
 // G = lastDir2*size*size + head2*size + tail2
 // U = activeScore + inactiveScore*size
 // Does NOT modify flag bits.
-SwapData vu(.-I.....) I=player2
-7010 vu(.-i.....) player2=lastDir*size*size+head*size+tail
-7020 vu(.-i.....) head=I/size%size
-7030 vu(.-i.....) tail=I%size
+SwapPlayer vu(.-I.....) I=player2
+7010 vu(.-i.....) player2=(lastDir*size+head)*size+tail
+7020 vu(.-i.....) tail=I%size
+7030 vu(.-i.....) head=I/size%size
 7040 vu(.-i.....) lastDir=I/size/size
 7050 vu(.-......) score=score/size+score%size*size
 7060 vu(.-......) Return
 
 // === UndoSnake: erase snake from tail to head ===
 // Walks the snake chain using direction bits in each cell.
-UndoSnake vu(.-..K...) pos=tail
-7110 vu(.-..k...) DO; direction=AA(pos)&3; AA(pos)=AA(pos)&CountMask
-7112 vu(.-..k...)   K=pos
+UndoSnake vu(.-......) pos=tail
+7110 vu(.-......) DO; direction=AA(pos)&3; AA(pos)=AA(pos)&CountMask
+7112 vu(.-..K...)   K=pos
 7115 vu(.-I.k.MN)   quantity=CountBit; Gosub(Adjust) // destroys I,M,N,pos
-7117 vu(.-..k...)   pos=K
-7120 vu(.-..k...) Gosub(MoveTo); Print(" ")
-7125 vu(.-..K...) K=pos; Gosub(StepSub) // advances pos, K=old pos
+7120 vu(.-..k...)   pos=K; Gosub(MoveTo); Print(" ")
+7125 vu(.-..|...)   Gosub(StepSub) // advances pos
 7130 vu(.-..k...) Until(K=head)
 7135 vu(.-......) Return
 
