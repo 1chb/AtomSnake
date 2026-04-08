@@ -10,7 +10,7 @@
 
 
 #ifdef PROD
-#  define WIDTH 38
+#  define WIDTH 36
 #  ifdef TREE_CHECK
 #    define HEIGHT 11
 #  else
@@ -33,7 +33,7 @@
 #define direction D
 #define lastDir E
 #define snakeLUT F
-#define player2 G // Packed: lastDir2*size*size + head2*size + tail2
+// #define player2 G // Packed: lastDir2*size*size + head2*size + tail2
 #define height H
 // I,J,K,L,M,N -- Temp
 #define nodes O
@@ -48,6 +48,12 @@
 #define foodCount X
 #define lastKey Y
 #define size Z
+
+#define player2(ix) GG(ix)
+#define HeadIx 0
+#define TailIx 1
+#define LastDirIx 2
+#define Player2Size 3
 
 // Call Graph (depth-first, showing call relationships):
 // Main Program
@@ -187,7 +193,7 @@
 
 // Help is now label v (HelpSub), no longer needs line number define
 #define PlaceOneSnake 3500 // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
-#define SwapPlayer 7000 // head tail lastDir score player2 => head tail lastDir score player2 : I
+#define SwapPlayer 7000
 #define UndoSnake 7100 // tail head width colOffset size nodes AA => AA : I K M N direction pos quantity
 #define ReplaceSnakes 7200 // head tail flags player2 width height colOffset nodes size snakeLUT direction AA => head tail direction lastDir flags player2 time AA : I J K L M N pos quantity
 #define ReplaceFoodAt 7300 // J foodCount flags nodes size width colOffset snakeLUT score AA => foodCount flags score AA : I K L M N pos quantity
@@ -249,7 +255,7 @@
 // --- Init (inlined) --- width height => size nodes colOffset snakeLUT AA : I J K
 30 @=0; colOffset=(42-width)/2
 40 size=SIZE_OF_BOARD
-50 DIM AA(size-1)
+50 DIM AA(size-1); DIM player2((Player2Size-1))
 60 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
 70 nodes=nodes/2-1 // Halved tree: frees cells for food list
 // Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
@@ -493,7 +499,7 @@ Subroutine(4000, PlaceSnakes, height width colOffset nodes size snakeLUT flags A
 4005 vu(.-......) lastDir=CENTER_OF_BOARD; If(notDual) Then Goto(4050)
 // --- Dual: place secondary (left) auto snake first ---
 4010 vu(.-IJKLMN) set(HeadBit); head=lastDir-2; direction=West; Gosub(PlaceOneSnake); clear(HeadBit)
-4030 vu(.-......) player2=(direction*size+head)*size+tail // S=head(left), T=tail(right)
+4030 vu(.-......) player2(HeadIx)=head; player2(TailIx)=tail; player2(LastDirIx)=direction
 // --- Place primary (right) snake --- HeadBit=0: draws ◆ or o via SnakeHead
 4050 vu(.-IJKLMN) head=lastDir-1-width&1+isDual/(DualBit/((InitSnakeLen+1)/2)); direction=East; Gosub(PlaceOneSnake)
 4080 vu(.-......) lastDir=direction; time=0
@@ -590,17 +596,11 @@ Subroutine(6500, MarkHead, direction head width colOffset snakeLUT flags AA => A
 6540 vu(.-......) Return
 
 // === SwapPlayer: swap active/inactive snake state ===
-// Active state in S,T,E,U; inactive packed in G.
-// G = lastDir2*size*size + head2*size + tail2
-// U = activeScore + inactiveScore*size
-// Does NOT modify flag bits.
-SwapPlayer vu(.-I.....) I=player2
-7010 vu(.-i.....) player2=(lastDir*size+head)*size+tail
-7020 vu(.-i.....) tail=I%size
-7030 vu(.-i.....) head=I/size%size
-7040 vu(.-i.....) lastDir=I/size/size
-7050 vu(.-......) score=score/size+score%size*size
-7060 vu(.-......) Return
+SwapPlayer vu(.-I.....) SwapUsing(I, player2(HeadIx), head) // head tail lastDir score player2 => head tail lastDir score player2 : I
+7010 vu(.-I.....) SwapUsing(I, player2(TailIx), tail)
+7020 vu(.-I.....) SwapUsing(I, player2(LastDirIx), lastDir)
+7030 vu(.-......) score=score/size+score%size*size
+7040 vu(.-......) Return
 
 // === UndoSnake: erase snake from tail to head ===
 // Walks the snake chain using direction bits in each cell.
@@ -623,7 +623,7 @@ UndoSnake vu(.-......) pos=tail
 ReplaceSnakes vu(.-I.....)
 7200 vu(.-IJKLMN) Gosub(UndoSnake) // Undo active snake
 // If old mode was dual (new mode is 0 or 12): undo other snake from player2
-7205 vu(.-......) If(flags&#C%12=0) Then head=player2/size%size; tail=player2%size; Gosub(UndoSnake)
+7205 vu(.-......) If(flags&#C%12=0) Then head=player2(HeadIx); tail=player2(TailIx); Gosub(UndoSnake)
 7215 vu(.-IJKLMN) Gosub(PlaceSnakes)
 // Update score header at SCORE_COL
 7220 vu(.-I....N) For(I=1) To(2); Print(Position(I,SCORE_COL) Double(I+2))
