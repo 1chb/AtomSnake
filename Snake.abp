@@ -401,6 +401,9 @@ Label(1400, AutoInput)
 // IgnoreBonus (was label c, now just line number target)
 1469 vu(.-i..|..) Next(I) // L=nearest food
 1480 vu(.-.J.lM.) J=L%width-head%width; M=L/width-head/width // J=dx, M=dy
+// Prefer current direction if it moves toward food (avoids diagonal staircases)
+// (direction&2-1) = +1 for E/S, -1 for W/N. (J+(M-J)*(direction&1)) = J for E/W, M for N/S.
+1485 vu(.-.j.Km.) If((direction&2-1)*(J+(M-J)*(direction&1))>0) Then N=direction; TryDir
 1490 vu(.-.j..|N) N=East; If(J<0) Then N=West // N=horizontal toward food
 1500 vu(.-.j..mn) If(Abs(M)>Abs(J)) Then N=South; If(M<0) Then N=North // Override: vertical if |dy|>|dx|
 1510 vu(.-.|KL|n) L=N; TryDir // L=primary direction toward food
