@@ -3,18 +3,18 @@
 
 #include "AcornAtom.abp"
 
-#define SLOW_DOWN 24-size/50
+#define SLOW_DOWN 30-size/50
 #define AutoNewGameDelay 1500
 #define NumFood 5
 #define InitSnakeLen 3
 
 
 #ifdef PROD
-#  define WIDTH 36
+#  define WIDTH 40
 #  ifdef TREE_CHECK
 #    define HEIGHT 11
 #  else
-#    define HEIGHT 17
+#    define HEIGHT 22
 #  endif
 #  define notPROD(x)
 #else
@@ -33,7 +33,7 @@
 #define direction D
 #define lastDir E
 #define snakeLUT F
-// #define player2 G // Packed: lastDir2*size*size + head2*size + tail2
+#define board G // Array [0..size-1] of Board bits
 #define height H
 // I,J,K,L,M,N -- Temp
 #define nodes O
@@ -49,11 +49,16 @@
 #define lastKey Y
 #define size Z
 
+#define tree(ix) AA(ix)
+
+#define food(ix) FF(ix)
+
 #define player2(ix) GG(ix)
 #define HeadIx 0
 #define TailIx 1
 #define LastDirIx 2
-#define Player2Size 3
+#define ScoreIx 3
+#define Player2Size 4
 
 // Call Graph (depth-first, showing call relationships):
 // Main Program
@@ -148,20 +153,21 @@
 #define SLOWER #2D // -       Slow down
 #define IsDirKey(n) (n-2)&-7=48
 
-// Bits
-#define DirMask -4
+// Board bits
+#define DirMask -4 // #FFFFFFFC = -4
 #define BorderBit 4
-#define FlagsMask 7
-#define CountBit 8
-#define CountMask -CountBit // #FFFFFFF8 = -8
 #define Mouse 1
 #define Bonus 2
+#define getBoard(k) board?k
+#define setBoard(k,v) board?k=v
+#define getDirection(k) getBoard(k)&3 // Direction bits: 0,1
+#define setDirection(k,d) setBoard(k,getBoard(k)&DirMask|d) // Direction bits: 0,1
+#define isOccupied(k) getBoard(k)&BorderBit // Can also be occupied by snake (same bit).
+#define isBonusAt(k) getBoard(k)=Bonus
 
-// Food list: stored in upper bits of AA(nodes..nodes+foodCount-1)
-// FoodGet(k) retrieves position of k-th food item
-// FoodSet(k,p) stores position p as k-th food item (preserves cell flags)
-#define FoodGet(k) AA(nodes+k)/CountBit
-#define FoodSet(k,p) AA(nodes+k)=AA(nodes+k)&FlagsMask|p*CountBit
+// Food list: stored in food(0..foodCount-1) where foodCount <= NumFood
+#define getFoodAt(k) food(k) // retrieves position of k-th food item
+#define setFoodAt(k,p) food(k)=p // stores position p as k-th food item
 
 // Labels
 #define Adjust a
@@ -199,7 +205,6 @@
 #define ReplaceFoodAt 7300 // J foodCount flags nodes size width colOffset snakeLUT score AA => foodCount flags score AA : I K L M N pos quantity
 
 #ifdef DEBUG
-#  define Debug 9600
 #  define Failure 9800
 #  define AssertStmt(condition) If ((condition)=0) Then Goto(Failure)
 #else
@@ -255,9 +260,8 @@
 // --- Init (inlined) --- width height => size nodes colOffset snakeLUT AA : I J K
 30 @=0; colOffset=(42-width)/2
 40 size=SIZE_OF_BOARD
-50 DIM AA(size-1); DIM player2((Player2Size-1))
-60 nodes=1; DO; nodes=nodes+nodes; Until(nodes+nodes>size+1)
-70 nodes=nodes/2-1 // Halved tree: frees cells for food list
+50 nodes=1; DO nodes=nodes+nodes+1; Until(nodes>size/10)
+70 DIM tree(nodes-1); DIM player2((Player2Size-1)); DIM board(size-1); DIM food(NumFood)
 // Snake body LUT: snakeLUT?(lastDir*4+direction) => line drawing char
 // Directions: W=0 N=1 E=2 S=3. Graphics: q=- x=| j=┘ k=┐ l=┌ m=└ t=├ u=┤ v=┴ w=┬. Food: @=Mouse *=Bonus
 // Index  lastDir  direction  Char(s)   Graphic   Transition
@@ -294,13 +298,13 @@
 Label(100, NewGame) Print(TopBorderPos "Wait...")
 // --- InitTree (inlined) --- size nodes => AA : I J K
 //  vu(G-IJKLMN) Scopes of temp variables
-110 vu(.-......) AA(0)=size*CountBit
+110 vu(.-......) tree(0)=size
 120 vu(.-I.....) For(I=1) To(nodes-2) Step(2)
-130 vu(.-iJK...)   J=(I-1)/2; K=AA(J)/2&CountMask
-140 vu(.-ijk...)   AA(I)=K; AA(I+1)=AA(J)-K
+130 vu(.-iJK...)   J=(I-1)/2; K=tree(J)/2
+140 vu(.-ijk...)   tree(I)=K; tree(I+1)=tree(J)-K
 150 vu(.-i.....) Next(I)
-160 vu(.-I.....) For(I=nodes) To(size-1); AA(I)=0; Next(I)
-// --- end InitTree ---
+// --- Init Board ---
+160 vu(.-I.....) For(I=0) To(size-1); setBoard(I,0); Next(I)
 170 vu(G-IJKLMN) Gosub(Play)
 180 vu(.-......) If(lastKey=QUIT) Then Goto(Quit)
 190 vu(.-......) If(isPrimaryAuto=0) Then Goto(240)
@@ -320,12 +324,11 @@ Label(400, Quit)
 420 vu(.-I.....) For(I=1) To(300)
 430 vu(.-|.....)   If(KeyAvailable) T.KeyNext // T. needed: THEN separates ? operators in condition and statement
 440 vu(.-i.....) Next(I)
-450 vu(.-......) End
+450 vu(.-......) @=8; End
 
 // === ChangeDirection ===
 Subroutine(500, ChangeDirection, head direction AA => AA :)
-510 vu(.-......) If(AA(head)&3=direction) Then Return // Dir not changed
-520 vu(.-......) AA(head)=AA(head)&DirMask|direction
+520 vu(.-......) setDirection(head, direction)
 530 vu(.-......) Return
 
 // === TryDirSub: test if direction N is safe, apply if so ===
@@ -336,7 +339,7 @@ Subroutine(600, TryDirSub, N head width size AA => K direction AA :)
 #ifndef HORIZONTAL_BORDERS_IN_BOARD
 615 vu(.-..k...) If(K<0 OR K>=size) Then K=BorderBit; Return
 #endif
-620 vu(.-..k...) K=AA(K)&BorderBit
+620 vu(.-..k...) K=isOccupied(K)
 625 vu(.-..k..n) If(K=0) Then direction=N; Goto(ChangeDirection) // Tail-call optimization
 630 vu(.-......) Return
 
@@ -349,10 +352,9 @@ Subroutine(1000, Play, flags lastKey size height width colOffset highScore nodes
 1010 vu(.-......) score=0; flags=flags&#E|AliveBit
 1020 vu(.-IJ..MN) Gosub(8000) // HomePage (was label h, stolen for ReadKey)
 1030 vu(.-IJKLMN) Gosub(PlaceSnakes)
-1032 vu(.-......) foodCount=0; clear(BonusBit)
-1034 vu(.-IJKLMN) For(lastDir=1) To(NumFood); Gosub(SpawnFood); Next(lastDir)
-1036 vu(.-......) lastDir=direction
-1040 vu(.-IJKLMN) CheckTree
+1040 vu(.-......) foodCount=0; clear(BonusBit)
+1050 vu(.-IJKLMN) For(lastDir=1) To(NumFood); Gosub(SpawnFood); Next(lastDir)
+1060 vu(.-......) lastDir=direction
 1070 vu(.-..K...) If(lastKey=PAUSE) Then Gosub(PauseLoop); K=time+tickDelay; Goto(DirDispatch) // Initial pause: no toggle on exit
 1075 vu(.-..K...) If(IsDirKey(lastKey)) Then K=tickDelay; Goto(DirDispatch) // Saved dir key from previous game: no toggle
 Label(1080, GameLoop)
@@ -388,13 +390,13 @@ AfterManual vu(.-......) If(isPrimaryAuto) Then Goto(PrimaryAutoKeys)
 PrimaryAutoKeys vu(.-......) If(KeyAvailable) Then Gosub(ReadKey);Goto(KeyDispatch)
 Label(1400, AutoInput)
 // AutoStep (inlined): greedy AI - find nearest food, try directions
-1420 vu(.-......) direction=AA(head)&3
+1420 vu(.-......) direction=getDirection(head)
 1430 vu(.-......) If(foodCount=0) Then Goto(AutoFallback)
-1440 vu(.-..K...) K=#7FFF
-1450 vu(.-IJk...) For(I=0) To(foodCount-1); J=FoodGet(I)
-1455 vu(.-|j|...)   If(AA(J)&FlagsMask=Bonus And score%10<3 And foodCount>1) Then Goto(1469) // When score is bad, ignore bonus if possible
+1440 vu(.-..K...) K=#7FFF // Bigger than M. TODO: Why not use size?
+1450 vu(.-IJ|...) For(I=0) To(foodCount-1); J=getFoodAt(I)
+1455 vu(.-|j|...)   If(isBonusAt(J) And score%10<3 And foodCount>1) Then Goto(1469) // When score is bad, ignore bonus if possible
 1460 vu(.-|||.M.)   M=Abs(J/width-head/width)+Abs(J%width-head%width)
-1465 vu(.-|j|.m.)   If(AA(J)&FlagsMask=Bonus And score%10=9) Then M=0
+1465 vu(.-|j|.m.)   If(isBonusAt(J) And score%10=9) Then M=0
 1467 vu(.-|.kLm.)   If(M<K) Then K=M; L=J
 // IgnoreBonus (was label c, now just line number target)
 1469 vu(.-i..|..) Next(I) // L=nearest food
@@ -428,11 +430,12 @@ Subroutine(1700, PauseLoop, flags tickDelay time head tail lastDir score player2
 1730 vu(.-.....n) Next(N)
 Label(1735, HelpSub)
 1736 vu(.-.....N) N=flags&PhoneBit*3 // flags tickDelay => : N
+1739 If(isAlive=0) Then Goto(1750)
 #ifdef PROD
-1740 vu(.-.....n) Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N) " / P * -"tickDelay"+ " NormalVideo
+1740 vu(.-.....n) Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N " P=5 N/S * -"tickDelay"+ " NormalVideo)
 #else
 1740 vu(.-.....n) Print(ReverseVideo HelpPos "N="8-N" E=6 W=4 S="2+N)
-1745 vu(.-......) Print(" / P * -"tickDelay"+ " NormalVideo)
+1745 vu(.-......) Print(" P=5 N/S * -"tickDelay"+ " NormalVideo)
 #endif
 1750 vu(.-......) DO; Until(KeyAvailable)
 1760 vu(.-......) Gosub(ReadKey)
@@ -450,9 +453,9 @@ Label(1735, HelpSub)
 1780 vu(.-......) Goto(1750)
 
 // === Adjust: update binary indexed tree ===
-Subroutine(2000, Adjust, pos quantity size nodes AA => AA : I M N pos)
+Subroutine(2000, Adjust, pos quantity size nodes tree => tree : I M N pos)
 2010 vu(.-I...M.) I=0; M=size
-2020 vu(.-i...|.) DO; AA(I)=AA(I)+quantity
+2020 vu(.-i...|.) DO; tree(I)=tree(I)+quantity
 2030 vu(.-i...mN)   N=M; M=M/2; I=I+I+1 // Assume lower half
 2040 vu(.-i...mn)   If (pos>=M) Then pos=pos-M; M=N-M; I=I+1 // Otherwise upper half
 2050 vu(.-i...|.) Until(I>=nodes)
@@ -469,12 +472,12 @@ Subroutine(2900, MoveTo, pos width colOffset => :)
 2920 vu(.-......) Return
 
 // === Border: draw and mark border cell ===
-Subroutine(3000, Border, pos width colOffset size nodes AA => AA : I M N pos quantity)
+Subroutine(3000, Border, pos width colOffset size nodes board tree => board tree : I M N pos quantity)
 3010 vu(.-......) Gosub(MoveTo)
-Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
+Subroutine(3020, BorderPrim, pos size nodes board tree => board tree : I M N pos quantity)
 3030 vu(.-......) Print(" ")
-3040 vu(.-......) AA(pos)=AA(pos)|BorderBit
-3050 vu(.-......) quantity=-CountBit
+3040 vu(.-......) setBoard(pos,BorderBit) // Just overwrite -  there should be 0 before.
+3050 vu(.-......) quantity=-1
 3060 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
 
 // === PlaceOneSnake: place a snake starting at head(S) in direction(D) ===
@@ -485,9 +488,9 @@ Subroutine(3020, BorderPrim, pos size nodes AA => AA : I M N pos quantity)
 PlaceOneSnake vu(.-......) tail=head // head direction width colOffset snakeLUT flags nodes size AA => head tail time AA : I J K L M N pos quantity
 3520 vu(.-......) For(time=1) To(InitSnakeLen)
 3525 vu(.-.J....)   J=head; If(time>1) Then pos=head; Gosub(StepSub); head=pos; J=head
-3530 vu(.-IjKLMN)   If(AA(J)&FlagsMask) Then Gosub(ReplaceFoodAt)
+3530 vu(.-IjKLMN)   If(getBoard(J)) Then Gosub(ReplaceFoodAt)
 3540 vu(.-.j....)   pos=J; Gosub(MoveTo); Print(GraphicsOn "q" GraphicsOff)
-3550 vu(.-I...MN)   AA(head)=AA(head)&CountMask|BorderBit|direction; quantity=-CountBit; Gosub(Adjust)
+3550 vu(.-I...MN)   setBoard(head,BorderBit|direction); quantity=-1; Gosub(Adjust)
 3560 vu(.-......) Next(time)
 3570 vu(.-......) pos=head; Gosub(MoveTo); Print(SnakeHead) // Draw head character
 3580 vu(.-......) Return
@@ -499,7 +502,7 @@ Subroutine(4000, PlaceSnakes, height width colOffset nodes size snakeLUT flags A
 4005 vu(.-......) lastDir=CENTER_OF_BOARD; If(notDual) Then Goto(4050)
 // --- Dual: place secondary (left) auto snake first ---
 4010 vu(.-IJKLMN) set(HeadBit); head=lastDir-2; direction=West; Gosub(PlaceOneSnake); clear(HeadBit)
-4030 vu(.-......) player2(HeadIx)=head; player2(TailIx)=tail; player2(LastDirIx)=direction
+4030 vu(.-......) player2(HeadIx)=head; player2(TailIx)=tail; player2(LastDirIx)=direction; player2(ScoreIx)=0
 // --- Place primary (right) snake --- HeadBit=0: draws ◆ or o via SnakeHead
 4050 vu(.-IJKLMN) head=lastDir-1-width&1+isDual/(DualBit/((InitSnakeLen+1)/2)); direction=East; Gosub(PlaceOneSnake)
 4080 vu(.-......) lastDir=direction; time=0
@@ -507,35 +510,31 @@ Subroutine(4000, PlaceSnakes, height width colOffset nodes size snakeLUT flags A
 
 // === SpawnFood: place food on random empty cell ===
 Subroutine(5100, SpawnFood, nodes size width colOffset snakeLUT foodCount flags AA => foodCount flags AA : I J K L M N pos quantity)
-5110 vu(.-......) If(AA(0)&CountMask=0) Then Return // Board full
-5120 vu(.-......) pos=Abs(Rnd)%(AA(0)/CountBit)
+5110 vu(.-......) If(tree(0)=0) Then Return // Board full
+5120 vu(.-......) pos=Abs(Rnd)%(tree(0))
 5130 vu(.-.....N) N=pos
-#ifdef DEBUG
-5140 vu(.-.....|) Print(UpperAt(1,1,pos":"isBonus":"N%13" "))
-5141 vu(.-.....|) Print(LowerAt(1,1,pos":"isBonus":"N%13" "))
-#endif
-// Locate (inlined): find Nth empty cell in tree
-5150 vu(.-IJK..|) pos=pos*CountBit; I=1; J=0; K=size // Interval [J..K)
+// Locate (inlined): find Nth empty cell using binary search in tree and thereafter linear search in board
+5150 vu(.-IJK..|) I=1; J=0; K=size // Interval [J..K) // I=tree index, J,K,M=board indices
 5160 vu(.-|||..|) DO
 5163 vu(.-|jk.M|)   M=(K-J)/2
-5166 vu(.-i||L||)   L=AA(I)&CountMask
+5166 vu(.-i||L||)   L=tree(I)
 5170 vu(.-ijklm|)   If(pos<L) Then K=J+M; I=I+I+1
 5180 vu(.-ij|lm|)   If(pos>=L) Then J=J+M; pos=pos-L; I=I+I+3
 5190 vu(.-i||..|) Until(I>=nodes)
 Label(5200, LocateLinear) AssertStmt(J<size) // Linear search:
-5210 vu(.-.j..M|) If(AA(J)&FlagsMask) J=J+1; Goto(LocateLinear)
-5220 vu(.-.j..M|) If(pos>0) Then pos=pos-CountBit; J=J+1; Goto(LocateLinear)
+5210 vu(.-.j..M|) If(getBoard(J)) J=J+1; Goto(LocateLinear)
+5220 vu(.-.j..M|) If(pos>0) Then pos=pos-1; J=J+1; Goto(LocateLinear)
 // end Locate
-5300 vu(.-.j..M|) AssertStmt(pos=0 AND AA(J)&FlagsMask=0)
+5300 vu(.-.j..M|) AssertStmt(pos=0 AND getBoard(J)=0)
 5320 vu(.-.|K..|) K=Mouse
 5330 vu(.-.|k..n) If(isBonus=0 And N%13=5) Then K=Bonus; set(BonusBit)
-5340 vu(.-.jk...) AA(J)=AA(J)+K
-5350 vu(.-.jk...) pos=J; Gosub(MoveTo); Print($(snakeLUT+15)?K) // food:K=1, bonus:K=2
-5360 vu(.-Ij..MN) quantity=-CountBit; Gosub(Adjust)
-5370 vu(.-.j....) FoodSet(foodCount,J)
-5380 vu(.-.|....) foodCount=foodCount+1
+5340 vu(.-.jk...) setBoard(J,K)
+5350 vu(.-.|k...) pos=J; Gosub(MoveTo); Print($(snakeLUT+15)?K) // food:K=1, bonus:K=2
+5360 vu(.-I|..MN) quantity=-1; Gosub(Adjust)
+5370 vu(.-.j....) setFoodAt(foodCount, J)
+5380 vu(.-......) foodCount=foodCount+1
 5385 vu(.-IJKLMN) CheckTree
-5390 vu(.-.|....) Return
+5390 vu(.-......) Return
 
 // === StepSub: advance position one step in direction ===
 Subroutine(6000, StepSub, pos direction width => pos :)
@@ -544,7 +543,7 @@ Subroutine(6000, StepSub, pos direction width => pos :)
 
 // === AdvanceHead: move snake forward one step ===
 Subroutine(6200, AdvanceHead, head tail lastDir width colOffset snakeLUT score foodCount flags nodes size AA => head tail score flags foodCount AA lastDir : direction I J K L M N pos quantity) // J K L destroyed when EAT (via SpawnFood)
-6210 vu(.-......) direction=AA(head)&3
+6210 vu(.-......) direction=getDirection(head)
 6220 vu(.-.....N) N=snakeLUT?(lastDir*4+direction)
 6230 vu(.-.....n) Print(MoveToPos(head) GraphicsOn $N GraphicsOff)
 6240 vu(.-......) lastDir=direction
@@ -552,62 +551,56 @@ Subroutine(6200, AdvanceHead, head tail lastDir width colOffset snakeLUT score f
 #ifndef HORIZONTAL_BORDERS_IN_BOARD
 6255 vu(.-......) If(head<0 OR head>=size) Then Goto(Clash)
 #endif
-6260 vu(.-......) If(AA(head)&BorderBit) Then Goto(Clash)
-6280 vu(.-......) If(AA(head)&FlagsMask) Then Goto(6400)
+6260 vu(.-......) If(isOccupied(head)) Then Goto(Clash)
+6280 vu(.-......) If(getBoard(head)) Then Goto(6400) // Eat (it is not occupied)
 // EatTail (inlined): remove tail segment
-6290 vu(.-I...MN) pos=tail; quantity=CountBit; Gosub(Adjust)
+6290 vu(.-I...MN) pos=tail; quantity=1; Gosub(Adjust)
 6295 vu(.-I.....) I=direction
-6300 vu(.-|.....) direction=AA(tail)
-6310 vu(.-|.....) AA(tail)=direction&CountMask
+6300 vu(.-|.....) direction=getDirection(tail)
+6310 vu(.-|.....) setBoard(tail, 0)
 6320 vu(.-|.....) Print(MoveToPos(tail) " ")
 6330 vu(.-|.....) pos=tail; Gosub(StepSub); tail=pos
 6335 vu(.-i.....) direction=I
 // end EatTail
 6350 vu(.-......) Gosub(MarkHead)
-6360 vu(.-......) pos=head; quantity=-CountBit
+6360 vu(.-......) pos=head; quantity=-1
 6370 vu(.-I...MN) Goto(Adjust) // Tail-call optimization
 // Eat (was label v, now line number target) From 6280
 6400 vu(.-......) foodCount=foodCount-1
 6420 vu(.-I.....) I=-1
-6430 vu(.-i.....) DO I=I+1; Until(FoodGet(I)=head) // Locate eaten food.
-6440 vu(.-i.....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last
-6450 vu(.-......) If(AA(head)&FlagsMask=Bonus) Then score=score+(score%10)-1; clear(BonusBit)
+6430 vu(.-i.....) DO I=I+1; Until(getFoodAt(I)=head) // Locate eaten food.
+6440 vu(.-i.....) setFoodAt(I, getFoodAt(foodCount)) // Replace eaten food with last food
+6450 vu(.-......) If(isBonusAt(head)) Then score=score+(score%10)-1; clear(BonusBit)
 6460 vu(.-......) score=score+1
 6462 vu(.-......) If(isDual) Then Goto(6472)
-#ifdef PROD
 6464 vu(.-......) Print(DoubleAt(1,(SCORE_COL+6),score))
-#else
-6464 vu(.-......) Print(UpperAt(1,(SCORE_COL+6),score))
-6466 vu(.-......) Print(LowerAt(1,(SCORE_COL+6),score))
-#endif
 6468 vu(.-......) Goto(6480)
 // Dual score display at SCORE_COL: "Q<secondary> ◆<primary>" or "Q<secondary> Q<primary>"
-// HeadBit=32 (secondary auto just ate): secondary=score%size, primary=score/size
-// HeadBit=0 (primary just ate): swap so I=secondary, J=primary
-6472 vu(.-IJ....) I=score%size; J=score/size; If(isSet(HeadBit)=0) Then I=score/size; J=score%size
+// HeadBit=0 (primary just ate): I=secondary=player2(ScoreIx), J=primary=score
+// HeadBit=32 (secondary auto just ate) - swap: I=secondary=score, J=primary=player2(ScoreIx)
+6472 vu(.-IJ....) I=player2(ScoreIx); J=score; If(isSet(HeadBit)) Then J=I; I=score // Swap
 6474 vu(.-ij...N) For(N=1) To(2)
 6475 vu(.-||...n)   Print(Position(N,SCORE_COL) Double(N+2) "Q"I " " PrimaryHeadIcon J " ")
 6476 vu(.-||...n) Next(N)
 6480 vu(.-IJKLMN) Gosub(SpawnFood) // Fall through to MarkHead
-Subroutine(6500, MarkHead, direction head width colOffset snakeLUT flags AA => AA : ) // draw snake head at current position 
-6510 vu(.-......) AA(head)=AA(head)&CountMask|BorderBit|direction
-6520 vu(.-......) Print(MoveToPos(head) SnakeHead)
-6530 vu(.-......) Print(Backspace) // Keep cursor at head (SnakeHead advances by 1)
+Subroutine(6500, MarkHead, direction head width colOffset snakeLUT flags board => board : ) // draw snake head at current position 
+6510 vu(.-......) setBoard(head, BorderBit|direction)
+6520 vu(.-......) Print(MoveToPos(head) SnakeHead Backspace) // Backspace keeps cursor at head (SnakeHead advances by 1)
 6540 vu(.-......) Return
 
 // === SwapPlayer: swap active/inactive snake state ===
 SwapPlayer vu(.-I.....) SwapUsing(I, player2(HeadIx), head) // head tail lastDir score player2 => head tail lastDir score player2 : I
 7010 vu(.-I.....) SwapUsing(I, player2(TailIx), tail)
 7020 vu(.-I.....) SwapUsing(I, player2(LastDirIx), lastDir)
-7030 vu(.-......) score=score/size+score%size*size
+7030 vu(.-I.....) SwapUsing(I, player2(ScoreIx), score)
 7040 vu(.-......) Return
 
 // === UndoSnake: erase snake from tail to head ===
 // Walks the snake chain using direction bits in each cell.
 UndoSnake vu(.-......) pos=tail
-7110 vu(.-......) DO; direction=AA(pos)&3; AA(pos)=AA(pos)&CountMask
+7110 vu(.-......) DO direction=getDirection(pos); setBoard(pos, 0)
 7112 vu(.-..K...)   K=pos
-7115 vu(.-I.k.MN)   quantity=CountBit; Gosub(Adjust) // destroys I,M,N,pos
+7115 vu(.-I.|.MN)   quantity=1; Gosub(Adjust)
 7120 vu(.-..k...)   pos=K; Gosub(MoveTo); Print(" ")
 7125 vu(.-..|...)   Gosub(StepSub) // advances pos
 7130 vu(.-..k...) Until(K=head)
@@ -636,12 +629,12 @@ ReplaceSnakes vu(.-I.....)
 // Spawns new food first (at random empty cell), then removes old food from list, clears cell, returns to tree.
 // Uses score to save/restore J across SpawnFood call (score=0 at PlaceSnakes time).
 ReplaceFoodAt vu(.-IjKLMN) score=J; Gosub(SpawnFood); J=score; score=0 // Save J, spawn, restore
-7310 vu(.-Ij....) I=-1; DO I=I+1; Until(FoodGet(I)=J) // Find displaced food in list
+7310 vu(.-Ij....) I=-1; DO I=I+1; Until(getFoodAt(I)=J) // Find displaced food in list
 7320 vu(.-ij....) foodCount=foodCount-1
-7325 vu(.-i|....) AA(nodes+I)=AA(nodes+I)&FlagsMask|AA(nodes+foodCount)&CountMask // Swap with last entry
-7330 vu(.-.j....) If(AA(J)&FlagsMask=Bonus) Then clear(BonusBit)
-7335 vu(.-.j....) AA(J)=AA(J)&CountMask // Clear food flags
-7340 vu(.-Ij..MN) pos=J; quantity=CountBit; Goto(Adjust) // Tail-call: Adjust's RETURN returns to our caller
+7325 vu(.-i|....) setFoodAt(I, getFoodAt(foodCount)) // Replace food with last entry
+7330 vu(.-.j....) If(isBonusAt(J)) Then clear(BonusBit)
+7335 vu(.-.j....) setBoard(J, 0) // Clear food flags
+7340 vu(.-Ij..MN) pos=J; quantity=1; Goto(Adjust) // Tail-call: Adjust's RETURN returns to our caller
 
 // === HomePage: draw title and borders ===
 // HomePage: no longer has a label (was h, now used for ReadKey). Called via GOS.8000.
@@ -674,7 +667,7 @@ ReplaceFoodAt vu(.-IjKLMN) score=J; Gosub(SpawnFood); J=score; score=0 // Save J
 8150 vu(.-......) Print(NormalVideo)
 8160 vu(.-......) Return
 
-#define CellCount(i) AA(i)&CountMask
+#define CellCount(i) tree(i)
 #define ChildA(i) i+i+1
 #define ChildB(i) i+i+2
 
@@ -694,13 +687,13 @@ ReplaceFoodAt vu(.-IjKLMN) score=J; Gosub(SpawnFood); J=score; score=0 // Save J
 8590 vu(.-i|||mn)     If(pos>=M) Then pos=pos-M; M=N-M; I=I+1 // When right
 8600 vu(.-i|||..)   Until(I>=nodes/2)
 8610 vu(.-i|kl..)   If(I>L) Then Gosub(8650) // Validate when new leaf
-8620 vu(.-|jk|..)   If(AA(J)&FlagsMask=0) Then K=K+CountBit // Count empty cells
+8620 vu(.-|jk|..)   If(getBoard(J)=0) Then K=K+1 // Count empty cells
 8630 vu(.-|j||..) Next(J)
 8650 vu(.-i.kl..) If (CellCount(L)=K) Then L=I; K=0; Return // OK
 8700 vu(.-......) PrintLn(" - Error:")
 8710 vu(.-......) For(pos=0) To(size-1)
-8720 vu(.-......)   @=4; Print(AA(pos)/8)
-8730 vu(.-......)   @=1; Print("/"AA(pos)&7)
+8720 vu(.-......)   If(pos<nodes) Then @=4; Print(tree(pos))
+8730 vu(.-......)   @=1; Print("/"getBoard(pos))
 8740 vu(.-......) Next(pos)
 8750 vu(.-......) @=8; PrintLn(ShowCursor)
 8760 vu(.-......) End
@@ -709,17 +702,17 @@ ReplaceFoodAt vu(.-IjKLMN) score=J; Gosub(SpawnFood); J=score; score=0 // Save J
 // === GameOver === head foodCount score => flags lastKey highScore : I J K N
 // highScore encoding: positive=manual record, negative=auto record. Abs(highScore)=score value.
 // HeadBit tells us who crashed (0=primary, 32=secondary).
-// Active snake's score=score%size (dual) or score (single). Inactive=score/size.
+// Active snake's Score=score. Inactive=player2(ScoreIx).
 Label(9000, Clash)
-// N caches HeadBit for game-over display (N is free: loop uses I, not N)
+// N caches HeadBit for game-over display (N is free: loop uses I)
 #define cachedHead N
 9010 vu(.-.....N) clear(AliveBit); lastKey=0; cachedHead=isSet(HeadBit)
 9020 vu(.-.....|) pos=head; Gosub(MoveTo)
 9021 vu(.-.....|) If(notDual) Then Goto(9060)
 // --- Dual mode end ---
 9022 vu(.-.....|) Print("X")
-// I=primary score, J=secondary score. Active(crashed)=score%size, inactive(winner)=score/size.
-9023 vu(.-IJ...n) I=score%size; J=score/size; If(cachedHead) Then I=score/size; J=score%size
+// I=primary score, J=secondary score. Active(crashed) TODO: When no food, the winner is the one with most score.
+9023 vu(.-IJ...n) I=score; J=player2(ScoreIx); If(cachedHead) Then I=J; J=score
 // Check high score. K: 0=no new high, 1=primary got high, -1=secondary got high.
 // highScore sign: positive=manual, negative=auto. Primary auto uses negative too.
 9025 vu(.-ijK..|) K=0; If(I>=J And I>Abs(highScore)) Then highScore=I; K=1; If(isPrimaryAuto) Then highScore=-I
@@ -756,16 +749,10 @@ Label(9000, Clash)
 #undef cachedHead
 
 #ifdef DEBUG
-Debug REM // AA(0) J => : I
-9610 vu(.-Ij....) For(I=1) To(2)
-9620 vu(.-ij....)   Print(Position(I,5)Double(I+2)AA(0)/8":"J".")
-9630 vu(.-i.....) Next(I)
-9640 vu(.-......) Return
-
-Failure REM // K size width colOffset AA => : M pos)
+Failure REM // K size width colOffset board => : M pos)
 // Error: dump board flags and halt
 9820 vu(.-......) For(pos=0) To(size-1)
-9830 vu(.-....M.)   M=AA(pos)&FlagsMask
+9830 vu(.-....M.)   M=getBoard(pos)
 9840 vu(.-....m.)   If(M>0) Then Print(MoveToPos(pos) M)
 9850 vu(.-......) Next(pos)
 9860 vu(.-......) Goto(Quit)
