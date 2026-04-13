@@ -383,7 +383,7 @@ Label(1300, WaitForTick)
 // === Auto phase ===
 AfterManual vu(.-......) If(isPrimaryAuto) Then Goto(PrimaryAutoKeys)
 // Primary was manual: swap to secondary if dual, else done
-1352 vu(.-......) If(isDual) Then Gosub(SwapPlayer); set(FinalPassBit); Goto(AutoInput)
+1352 vu(.-......) If(isDual) Then If(isAlive) Then Gosub(SwapPlayer); set(FinalPassBit); Goto(AutoInput)
 1355 vu(.-......) Goto(GameLoop)
 
 // Primary is auto: check keys (PAUSE, QUIT, MODE, DIR all handled via KeyDispatch)
@@ -422,6 +422,7 @@ Label(1640, AutoDone)
 1650 vu(.-......) If(isSet(FinalPassBit)) Then set(HeadBit) // Secondary head (Q) when FinalPassBit set
 1652 vu(.-IJKLMN) Gosub(AdvanceHead)
 1654 vu(.-......) If(isDual=0) Then Goto(GameLoop) // Single mode: done
+1655 vu(.-......) If(isAlive=0) Then Goto(GameLoop) // Dual mode: stop immediately if snake just crashed
 1656 vu(.-......) Gosub(SwapPlayer)
 1658 vu(.-......) If(isSet(FinalPassBit)) Then clear(FinalPassBit); Goto(GameLoop) // Last pass: done
 1660 vu(.-......) set(FinalPassBit); Goto(AutoInput) // First pass done, process other snake

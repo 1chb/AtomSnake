@@ -339,15 +339,14 @@ When modifying the code:
 ### Memory Layout
 - **Total RAM**: 8192 bytes (8KB)
 - **System/BASIC workspace**: ~1282 bytes (from address 0) Available ~ 6910 bytes.
-- **Program**: ~4415 bytes in memory (optimized PROD)
+- **Program**: ~4483 bytes in memory (optimized PROD)
 - **`DIM AA(O-1)`**: O × 4 = 4O bytes (integer array; double-letter DIM = 4-byte integers) O = Number of nodes, O=2^k-1, where 3 <= O < Z (or just above Z/10 to save memory and performance of tree updates)
 - **`DIM FF(5-1)`**: 5 × 4 = 20 bytes
 - **`DIM GG(2)`**  : 3 × 4 = 12 bytes (integer array; double-letter DIM = 4-byte integers)
 - **`DIM F(31)`**  :32 × 1 = 32 bytes (string buffer; single-letter DIM = 1-byte ASCII characters)
 - **`DIM G(Z-1)`** : Z × 1 =  Z bytes (flags array; single-letter DIM = 1-byte integers)
-- **For 40×22 board**: 40 x (22-2) =  800 => O=127 ( 800/10= 80): (127 + 5 + 3)*4 + 32 + 800 = 1372 bytes for arrays, leaving ~1123 bytes free
-- **For 40×22 board**: 40 x (37-2) = 1400 => O=255 (1400/10=140): (255 + 5 + 3)*4 + 32 + 800 = 1372 bytes for arrays, leaving ~1123 bytes free
-
+- **For 40×22 board**: 40 x (22-2) = 800 => O=127 (800/10=80): (127 + 5 + 3)*4 + 32 + 800 = 1372 bytes for arrays, leaving ~1055 bytes free
+- **For 40×35 board**: 40 x (35-2) = 1320 => O=255 (1320/10=132): (255 + 5 + 3)*4 + 32 + 1320 = 2404 bytes for arrays, leaving ~23 bytes free
 
 Note: `DIM` with single-letter variable names allocates byte strings (1 byte per element).
 `DIM` with double-letter variable names allocates integer arrays (4 bytes per element).
