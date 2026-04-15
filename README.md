@@ -4,6 +4,10 @@ A classic snake game written in BBC BASIC for a modified Acorn Atom 6502 board
 computer, featuring binary indexed tree-based food placement, VT100 terminal
 graphics, and support for single and dual-player modes.
 
+![Snake game running on VT100 terminal](Snake-on-VT100.jpg)
+
+![The modified Acorn Atom board computer](board.jpg)
+
 ## The Acorn Atom
 
 ### Hardware
