@@ -187,3 +187,7 @@ small auxiliary array (`GG`, 3 integers) via a swap routine. Each game tick
 moves the primary snake first, swaps state, moves the secondary snake (always
 AI-controlled), then swaps back. Both snakes coexist on the same board array
 and tree — a crash by either ends the game with the survivor winning.
+
+### Snake in action
+- Auto mode on real VT100: https://www.youtube.com/watch?v=VGX-_36iDMQ
+- Manual mode on VT100 emulator: https://www.youtube.com/watch?v=s2Q3cZxiXhA
