@@ -191,3 +191,12 @@ and tree — a crash by either ends the game with the survivor winning.
 ### Snake in action
 - Auto mode on real VT100: https://www.youtube.com/watch?v=VGX-_36iDMQ
 - Manual mode on VT100 emulator: https://www.youtube.com/watch?v=s2Q3cZxiXhA
+
+## Resources
+### Acorn Atom
+- Wiki: https://en.wikipedia.org/wiki/Acorn_Atom
+- Original: https://www.theoddys.com/acorn/acorn_system_computers/atom/atom.html
+- Manual: https://www.theoddys.com/acorn/acorn_system_computers/atom/Atomic%20Theory%20and%20Practice.pdf
+### VT100
+- Wiki: https://en.wikipedia.org/wiki/VT100
+- Commands: http://www.braun-home.net/michael/info/misc/VT100_commands.htm
