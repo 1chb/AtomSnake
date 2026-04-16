@@ -13,7 +13,7 @@ graphics, and support for single and dual-player modes.
 ### Hardware
 
 The target platform is a custom board computer built around the **MOS 6502**
-8-bit CPU running at approximately 1 MHz. It is a modified Acorn Atom — a
+8-bit CPU running at 1.8432 MHz. It is a modified Acorn Atom — a
 British home computer from 1980. The system has **8 KB of RAM** total, of which
 roughly 1,282 bytes are reserved for the BASIC interpreter workspace, leaving
 about 6,910 bytes for program code and data combined.
